@@ -255,7 +255,7 @@ private fun ProfileMenu(ui: Ui, app: EncargosApp, lock: () -> Unit, close: () ->
         Spacer(Modifier.height(6.dp))
         val items = listOf(Triple(Screen.Payments, "Pagos", Icons.Outlined.Payments), Triple(Screen.Stats, "Estadísticas", Icons.Outlined.BarChart), Triple(Screen.Settings, "Ajustes", Icons.Outlined.Settings),
             Triple(Screen.Pending, "Pendientes", Icons.Outlined.Schedule), Triple(Screen.Completed, "Completados", Icons.Outlined.TaskAlt), Triple(Screen.Backup, "Respaldo", Icons.Outlined.Save),
-            Triple(Screen.Security, "Seguridad", Icons.Outlined.Shield), Triple(Screen.Sync, "Sincronización", Icons.Outlined.CloudSync))
+            Triple(Screen.Security, "Seguridad", Icons.Outlined.Shield), Triple(Screen.Sync, "Sincronizar", Icons.Outlined.CloudSync))
         items.chunked(3).forEach { row ->
             Row(Modifier.fillMaxWidth()) {
                 row.forEach { (s, l, ic) ->

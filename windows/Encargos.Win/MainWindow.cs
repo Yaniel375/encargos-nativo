@@ -246,7 +246,7 @@ public sealed class MainWindow : Window
         var tiles = new List<UIElement>();
         foreach (var (k, l, gl, full) in new[] { ("payments", "Pagos", "\uE8C7", "Registro de pagos"), ("stats", "Estadísticas", "\uE9D2", "Estadísticas"), ("settings", "Ajustes", "\uE713", "Ajustes"),
             ("pending", "Pendientes", "\uE823", "Pendientes"), ("completed", "Completados", "\uE73E", "Encargos completados"), ("backup", "Respaldo", "\uE74E", "Respaldo"),
-            ("security", "Seguridad", "\uE72E", "Seguridad"), ("sync", "Sincronización", "\uE895", "Sincronización") })
+            ("security", "Seguridad", "\uE72E", "Seguridad"), ("sync", "Sincronizar", "\uE895", "Sincronización") })
         {
             var key = k; var lab = T(l, 12, true, null, false); lab.HorizontalAlignment = HorizontalAlignment.Center;
             var ic = new FontIcon { Glyph = gl, FontSize = 18, Foreground = Text, HorizontalAlignment = HorizontalAlignment.Center };

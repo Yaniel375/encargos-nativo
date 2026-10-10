@@ -52,15 +52,15 @@ def tap(text, cls=None, exact=False, wait=1.5, last=False):
     if nd is None: say(f"  ✗ no encontré '{text}'"); return False
     x, y = center(nd); adb("shell", "input", "tap", str(x), str(y)); time.sleep(wait); say(f"  ✓ toqué '{text}'"); return True
 
-def type_in(label, value):
+def type_in(label, value, exact=True):
     # la etiqueta está encima del campo: se toca el primer campo de texto que hay debajo.
     # si la etiqueta queda tapada por la barra fija "Guardar encargo", se desplaza la pantalla primero
     hide_kb()
     for _ in range(4):
-        lab = find(label)
+        lab = find(label, exact=exact)
         if lab is not None and center(lab)[1] < 1350: break
         adb("shell", "input", "swipe", "540", "1300", "540", "800", "400"); time.sleep(1)
-    lab = find(label)
+    lab = find(label, exact=exact)
     es = edits()
     target = None
     if lab is not None:
@@ -113,7 +113,7 @@ shot("acceso_lleno")
 tap("Crear acceso", wait=5)
 shot("inicio")
 tap("Nuevo", exact=True, wait=2, last=True); shot("nuevo_encargo")
-type_in("Nombre del cliente", "Cliente Prueba"); type_in("Teléfono", "55512345"); hide_kb()
+type_in("Nombre del cliente *", "Cliente Prueba"); type_in("Teléfono (WhatsApp)", "55512345"); hide_kb()
 type_in("Costo del pedido", "40"); type_in("Libras", "3"); hide_kb()
 shot("nuevo_encargo_lleno")
 for _ in range(4):
