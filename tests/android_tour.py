@@ -128,15 +128,26 @@ if tap("Cliente Prueba", wait=2): shot("ficha_encargo"); say("  total 61.00 visi
 tap("Clientes", exact=True, wait=2, last=True); shot("clientes")
 tap("Notas", exact=True, wait=2, last=True); shot("notas")
 tap("Inicio", exact=True, wait=2, last=True); shot("inicio_con_datos")
-for dest in ["Registro de pagos", "Estadísticas", "Respaldo", "Seguridad", "Sincronización", "Ajustes"]:
+# menú del perfil: Pagos · Estadísticas · Ajustes
+for dest in ["Registro de pagos", "Estadísticas", "Ajustes"]:
     if tap("Más", wait=1.2) and tap(dest, wait=2.5): shot(dest.lower().replace(" ", "_"))
+    adb("shell", "input", "keyevent", "4"); time.sleep(1.2)
+# lo que salió del menú sigue accesible desde Ajustes → Datos y seguridad
+for dest, row in [("respaldo", "Respaldo e importación"), ("seguridad", "Seguridad"), ("sincronización", "Sincronización (Telegram)")]:
+    if tap("Más", wait=1.2) and tap("Ajustes", wait=2.5):
+        for _ in range(3):
+            if find(row, exact=True) is not None: break
+            adb("shell", "input", "swipe", "540", "1500", "540", "700", "400"); time.sleep(1)
+        if tap(row, exact=True, wait=2.5): shot(dest); adb("shell", "input", "keyevent", "4"); time.sleep(1.2)
     adb("shell", "input", "keyevent", "4"); time.sleep(1.2)
 if tap("Más", wait=1.5): shot("menu_perfil"); adb("shell", "input", "keyevent", "4"); time.sleep(1)
 if tap("Más", wait=1.2) and tap("Ajustes", wait=2.5):
     if tap("Precio por libra", wait=2): shot("ajustes_hoja_tarifas"); tap("Cerrar", exact=True, wait=1.2)
     adb("shell", "input", "swipe", "540", "1500", "540", "500", "500"); time.sleep(1.2); shot("ajustes_abajo")
     adb("shell", "input", "keyevent", "4"); time.sleep(1.2)
-if tap("Más", wait=1.2) and tap("Pendientes", wait=2.5): shot("pendientes"); adb("shell", "input", "keyevent", "4"); time.sleep(1.2)
+if tap("Más", wait=1.2) and tap("Registro de pagos", wait=2.5):
+    if tap("Pendientes y fondos a favor", wait=2.5): shot("pendientes"); adb("shell", "input", "keyevent", "4"); time.sleep(1.2)
+    adb("shell", "input", "keyevent", "4"); time.sleep(1.2)
 tap("Encargos", exact=True, wait=2, last=True)
 if tap("Opciones del encargo", wait=1.2): shot("menu_encargo"); adb("shell", "input", "keyevent", "4"); time.sleep(1)
 tap("Inicio", exact=True, wait=2, last=True)
@@ -155,7 +166,8 @@ if tap("Cliente Prueba", wait=2): shot("dia_ficha"); adb("shell", "input", "keye
 tap("Clientes", exact=True, wait=2, last=True); shot("dia_clientes")
 tap("Nuevo", exact=True, wait=2, last=True); shot("dia_nuevo")
 tap("Notas", exact=True, wait=2, last=True); shot("dia_notas")
-for dest in ["Estadísticas", "Registro de pagos", "Ajustes", "Seguridad"]:
+if tap("Más", wait=1.5): shot("dia_menu_perfil"); adb("shell", "input", "keyevent", "4"); time.sleep(1)
+for dest in ["Estadísticas", "Registro de pagos", "Ajustes"]:
     if tap("Más", wait=1.2) and tap(dest, wait=2.5): shot("dia_" + dest.lower().replace(" ", "_"))
     adb("shell", "input", "keyevent", "4"); time.sleep(1.2)
 tap("Notificaciones", wait=2); shot("dia_notificaciones"); adb("shell", "input", "keyevent", "4"); time.sleep(1)

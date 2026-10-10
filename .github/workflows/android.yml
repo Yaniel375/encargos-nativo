@@ -2,7 +2,7 @@ name: Android (APK)
 
 on:
   push:
-    branches: [main, rediseno-premium, interfaz-referencia]
+    branches: [main, rediseno-premium, interfaz-referencia, menu-perfil]
     paths: ["core/**", "android/**", "tests/android_tour.py", "*.kts", "gradle.properties", ".github/workflows/android.yml"]
   workflow_dispatch:
 

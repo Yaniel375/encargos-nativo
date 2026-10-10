@@ -239,27 +239,31 @@ public sealed class MainWindow : Window
         if (BtnStyle != null) chip.Style = BtnStyle;
         // menú del perfil como en la referencia: cabecera con el usuario, accesos en cuadrícula, modo día/noche y bloquear
         var menu = new Flyout();
-        menu.FlyoutPresenterStyle = new Style(typeof(FlyoutPresenter)) { Setters = { new Setter(Control.PaddingProperty, new Thickness(10)), new Setter(Control.CornerRadiusProperty, new CornerRadius(18)), new Setter(Control.BackgroundProperty, CardBg), new Setter(Control.BorderBrushProperty, Line2) } };
-        var mp = new StackPanel { Spacing = 6, Width = 300 };
-        var whoName = T(Services.Core.GreetName.IfEmpty("Mi cuenta"), 15, true, null, false, 1); whoName.FontWeight = FontWeights.ExtraBold;
-        mp.Children.Add(Click(Lead(Avatar(Services.Core.GreetName.IfEmpty("E"), Blue, 36), V(0, whoName, Muted(Services.Security.UserName().IfEmpty("—"), 12)), new FontIcon { Glyph = "\uE76C", FontSize = 12, Foreground = Mut }), () => { menu.Hide(); Go(new SettingsPage()); }));
+        menu.FlyoutPresenterStyle = new Style(typeof(FlyoutPresenter)) { Setters = { new Setter(Control.PaddingProperty, new Thickness(10)), new Setter(Control.CornerRadiusProperty, new CornerRadius(18)), new Setter(Control.BackgroundProperty, CardBg), new Setter(Control.BorderBrushProperty, Line2), new Setter(Control.BorderThicknessProperty, new Thickness(1)) } };
+        // usuario y rol → Pagos · Estadísticas · Ajustes → separador → Modo día/noche → Bloquear app
+        // (Pendientes, Completados, Respaldo, Seguridad y Sincronización siguen en la barra lateral)
+        var mp = new StackPanel { Spacing = 4, Width = 300 };
+        var whoName = T(Services.Core.GreetName.IfEmpty("Mi cuenta"), 15.5, true, null, false, 1); whoName.FontWeight = FontWeights.ExtraBold;
+        var headBtn = Click(Lead(Avatar(Services.Core.GreetName.IfEmpty("E"), Blue, 40), V(0, whoName, Muted(Services.Security.UserName().IfEmpty("admin"), 12.5)), new FontIcon { Glyph = "\uE76C", FontSize = 13, Foreground = Mut }), () => { menu.Hide(); Go(new SettingsPage()); });
+        headBtn.Padding = new Thickness(8); Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(headBtn, "Ver perfil y ajustes");
+        mp.Children.Add(headBtn);
         var tiles = new List<UIElement>();
-        foreach (var (k, l, gl, full) in new[] { ("payments", "Pagos", "\uE8C7", "Registro de pagos"), ("stats", "Estadísticas", "\uE9D2", "Estadísticas"), ("settings", "Ajustes", "\uE713", "Ajustes"),
-            ("pending", "Pendientes", "\uE823", "Pendientes"), ("completed", "Completados", "\uE73E", "Encargos completados"), ("backup", "Respaldo", "\uE74E", "Respaldo"),
-            ("security", "Seguridad", "\uE72E", "Seguridad"), ("sync", "Sincronizar", "\uE895", "Sincronización") })
+        foreach (var (k, l, gl, full) in new[] { ("payments", "Pagos", "\uE8C7", "Registro de pagos"), ("stats", "Estadísticas", "\uE9D2", "Estadísticas"), ("settings", "Ajustes", "\uE713", "Ajustes") })
         {
-            var key = k; var lab = T(l, 12, true, null, false); lab.HorizontalAlignment = HorizontalAlignment.Center;
-            var ic = new FontIcon { Glyph = gl, FontSize = 18, Foreground = Text, HorizontalAlignment = HorizontalAlignment.Center };
-            var tb = Click(V(5, ic, lab), () => { menu.Hide(); Go(PageFor(key)); }); tb.Padding = new Thickness(4, 9, 4, 9);
+            var key = k; var lab = T(l, 12.5, true, null, false); lab.HorizontalAlignment = HorizontalAlignment.Center;
+            var ic = new FontIcon { Glyph = gl, FontSize = 19, Foreground = Text, HorizontalAlignment = HorizontalAlignment.Center };
+            var tb = Click(V(6, ic, lab), () => { menu.Hide(); if (Top.Nav != key) Go(PageFor(key)); }); tb.Padding = new Thickness(4, 10, 4, 10);
             Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(tb, full);
             tiles.Add(tb);
         }
         mp.Children.Add(Grid2(tiles, 3));
-        mp.Children.Add(new Border { Height = 1, Background = LineBr, Margin = new Thickness(0, 2, 0, 2) });
-        var themeIc = IconTile(Day ? "\uE708" : "\uE706", 30);
-        mp.Children.Add(Click(Lead(themeIc, T(Day ? "Modo noche" : "Modo día", 14, true)), () => { menu.Hide(); var d = !K.Day; Services.Core.Ls.Set("encargos_aurora_mode", d ? "day" : "night"); Services.Post(() => ApplyTheme(d)); }));
-        var lockIc = IconTile("\uE72E", 30); ((FontIcon)lockIc.Child).Foreground = Rose;
-        mp.Children.Add(Click(Lead(lockIc, T("Bloquear ahora", 14, true, Rose)), () => { menu.Hide(); Services.Security.Log(true, "Bloqueo manual"); ShowLock(); }));
+        mp.Children.Add(new Border { Height = 1, Background = LineBr, Margin = new Thickness(4, 6, 4, 6) });
+        var themeIc = IconTile(Day ? "\uE708" : "\uE706", 34);
+        var themeBtn = Click(Lead(themeIc, T(Day ? "Modo noche" : "Modo día", 14, true)), () => { menu.Hide(); var d = !K.Day; Services.Core.Ls.Set("encargos_aurora_mode", d ? "day" : "night"); Services.Post(() => ApplyTheme(d)); });
+        themeBtn.Padding = new Thickness(6); mp.Children.Add(themeBtn);
+        var lockIc = new Border { Width = 34, Height = 34, CornerRadius = new CornerRadius(12), Background = Alpha(Rose, .12), BorderBrush = Alpha(Rose, .35), BorderThickness = new Thickness(1), Child = new FontIcon { Glyph = "\uE72E", FontSize = 15, Foreground = Rose } };
+        var lockBtn = Click(Lead(lockIc, T("Bloquear app", 14, true, Rose)), () => { menu.Hide(); Services.Security.Log(true, "Bloqueo manual"); ShowLock(); });
+        lockBtn.Padding = new Thickness(6); Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(lockBtn, "Bloquear app"); mp.Children.Add(lockBtn);
         menu.Content = mp;
         chip.Flyout = menu; Grid.SetColumn(chip, 3); bar.Children.Add(Fx.Bounce(chip, .96));
         var header = new Border { Child = bar, Margin = new Thickness(16, 14, 16, 6), Padding = new Thickness(16, 9, 10, 9), CornerRadius = new CornerRadius(20), Background = Br(Day ? 0xE6FFFFFFu : 0xC7090D18u), BorderBrush = LineBr, BorderThickness = new Thickness(1) };
