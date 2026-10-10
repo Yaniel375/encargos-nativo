@@ -202,9 +202,12 @@ fun LockScreen(onUnlocked: () -> Unit) {
                         }
                     }
                     Spacer(Modifier.height(2.dp))
+                    // teclado centrado dentro de la tarjeta
+                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                     PinPad(onKey = { k -> if (!working && pin.length < sec.pinLen()) { pin += k; msg = "" } }, onDel = { pin = pin.dropLast(1) }, pal = NIGHT, key = 56,
                         left = { if (sec.bioOn() && Bio.available(ui.act)) Box(Modifier.size(56.dp).clip(CircleShape).background(NIGHT.blue.copy(alpha = .12f)).border(1.dp, NIGHT.blue.copy(alpha = .4f), CircleShape).clickable { Bio.prompt(ui.act) { ok -> if (ok) done("bio") } }, contentAlignment = Alignment.Center) { Icon(Icons.Filled.Fingerprint, "Entrar con huella", Modifier.size(28.dp), tint = NIGHT.blueInk) }
                                  else Box(Modifier.size(56.dp).clip(CircleShape).clickable { usePass = true; msg = "" }, contentAlignment = Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally) { Icon(Icons.Filled.Key, null, Modifier.size(20.dp), tint = NIGHT.mut); Text("Clave", fontSize = 10.5.sp, color = NIGHT.mut) } } })
+                    }
                     Box(Modifier.fillMaxWidth().padding(horizontal = 8.dp).height(1.dp).background(NIGHT.line))
                     Text("Entrar con usuario y contraseña", Modifier.align(Alignment.CenterHorizontally).clip(RoundedCornerShape(10.dp)).clickable { usePass = true; msg = "" }.padding(horizontal = 10.dp, vertical = 6.dp), color = NIGHT.blueInk, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 }
