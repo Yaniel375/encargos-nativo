@@ -88,6 +88,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.TextStyle
 import kotlinx.coroutines.launch
 import androidx.compose.material.icons.filled.ZoomIn
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.calculatePan
@@ -680,8 +682,8 @@ private fun ratioOf(bm: Bitmap) = (bm.width.toFloat() / bm.height.coerceAtLeast(
             // barra inferior: anterior / siguiente / eliminar
             Row(Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (list.size > 1) {
-                    GlassIconBtn(androidx.compose.material.icons.Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Foto anterior", enabled = pager.currentPage > 0) { scope.launch { pager.animateScrollToPage(pager.currentPage - 1) } }
-                    GlassIconBtn(androidx.compose.material.icons.Icons.AutoMirrored.Filled.KeyboardArrowRight, "Foto siguiente", enabled = pager.currentPage < list.size - 1) { scope.launch { pager.animateScrollToPage(pager.currentPage + 1) } }
+                    GlassIconBtn(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Foto anterior", enabled = pager.currentPage > 0) { scope.launch { pager.animateScrollToPage(pager.currentPage - 1) } }
+                    GlassIconBtn(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Foto siguiente", enabled = pager.currentPage < list.size - 1) { scope.launch { pager.animateScrollToPage(pager.currentPage + 1) } }
                 }
                 Text("Pellizca o toca dos veces para ampliar", fontSize = 11.5.sp, color = Color.White.copy(alpha = .7f), modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
                 if (onDelete != null) Secondary("Eliminar", Modifier.height(40.dp), color = C.rose) { onDelete(pager.currentPage) }
