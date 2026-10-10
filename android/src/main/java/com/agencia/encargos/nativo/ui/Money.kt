@@ -136,7 +136,7 @@ fun PendingScreen() {
     val p = app.stats.pending(); var age by rememberSaveable { mutableStateOf(0) }
     val days = { x: JObj -> core.attention.daysSince(x["date"]) }
     val shown = p.pend.filter { age == 0 || days(it) >= age }
-    Page {
+    Page(right = "${p.pend.size} por cobrar") {
         item { Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Kpi("Pendiente", "- " + money(p.pendTotal), C.rose, modifier = Modifier.weight(1f)); Kpi("A favor", "+ " + money(p.fundsTotal), C.green, modifier = Modifier.weight(1f)); Kpi("Pedidos", "${p.pend.size}", modifier = Modifier.weight(1f)) } }
         item { Text("Saldos pendientes", fontWeight = FontWeight.Bold, fontSize = 16.sp) }
         item { Choice(listOf("0" to "Todas", "15" to "+15 días (${p.pend.count { days(it) >= 15 }})", "30" to "+30 días (${p.pend.count { days(it) >= 30 }})"), age.toString()) { age = it.toInt() } }

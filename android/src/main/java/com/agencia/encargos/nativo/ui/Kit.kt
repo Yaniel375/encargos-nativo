@@ -61,85 +61,175 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material3.Typography
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.unit.TextUnit
+import kotlinx.coroutines.delay
 import com.agencia.encargos.core.Js
 import kotlin.math.max
 
-/* ======================= Colores (mismo sistema que la app: azul, verde, rojo) ======================= */
+/* ======================= Colores (los de la app web, tema aurora) ======================= */
 object C {
-    val bg = Color(0xFF070B14); val surface = Color(0xFF0F172A); val card = Color(0xFF131C2E); val line = Color(0xFF26324A)
-    val tx = Color(0xFFF1F5F9); val mut = Color(0xFF94A3B8)
-    val blue = Color(0xFF3B82F6); val green = Color(0xFF34D399); val rose = Color(0xFFFB7185); val amber = Color(0xFFFBBF24); val vio = Color(0xFFA78BFA); val teal = Color(0xFF2DD4BF)
+    val bg = W.base; val surface = Color(0xFF0B1220); val card = Color(0xFF111A2C); val line = Color(0xFF243049)
+    val tx = W.tx; val mut = W.mut
+    val blue = W.blue; val green = W.green; val rose = W.rose; val amber = W.amber; val vio = Color(0xFFA78BFA); val teal = Color(0xFF2DD4BF)
     fun status(s: String?): Color = when (s) { "En tránsito" -> Color(0xFF94A3B8); "Recibido" -> Color(0xFF7DD3FC); "Entregado" -> green; "Cancelado" -> Color(0xFF64748B); else -> blue }
 }
 private val Dark = darkColorScheme(primary = C.blue, onPrimary = Color.White, secondary = C.green, background = C.bg, surface = C.surface, onSurface = C.tx, onBackground = C.tx,
-    surfaceVariant = C.card, onSurfaceVariant = C.mut, outline = C.line, error = C.rose, surfaceContainer = C.card, surfaceContainerHigh = C.card, surfaceContainerHighest = Color(0xFF1B2539))
+    surfaceVariant = C.card, onSurfaceVariant = C.mut, outline = C.line, outlineVariant = W.line, error = C.rose, surfaceContainer = Color(0xFF0E1628), surfaceContainerHigh = Color(0xFF0E1628),
+    surfaceContainerHighest = Color(0xFF16213A), surfaceContainerLow = Color(0xFF0B1220), primaryContainer = W.blueSoft, onPrimaryContainer = W.blueInk, secondaryContainer = Color(0xFF16213A), onSecondaryContainer = W.tx)
 private val Light = lightColorScheme(primary = Color(0xFF2563EB), secondary = Color(0xFF059669), background = Color(0xFFF4F6FB), surface = Color.White, error = Color(0xFFE11D48))
 
-@Composable fun EncargosTheme(day: Boolean = false, content: @Composable () -> Unit) = MaterialTheme(colorScheme = if (day) Light else Dark, content = content)
+private fun manropeTypography(): Typography {
+    val t = Typography()
+    fun f(s: TextStyle) = s.copy(fontFamily = Manrope)
+    return Typography(displayLarge = f(t.displayLarge), displayMedium = f(t.displayMedium), displaySmall = f(t.displaySmall), headlineLarge = f(t.headlineLarge),
+        headlineMedium = f(t.headlineMedium), headlineSmall = f(t.headlineSmall), titleLarge = f(t.titleLarge).copy(fontWeight = FontWeight.ExtraBold), titleMedium = f(t.titleMedium).copy(fontWeight = FontWeight.ExtraBold),
+        titleSmall = f(t.titleSmall), bodyLarge = f(t.bodyLarge).copy(fontSize = 15.sp), bodyMedium = f(t.bodyMedium), bodySmall = f(t.bodySmall),
+        labelLarge = f(t.labelLarge).copy(fontWeight = FontWeight.Bold), labelMedium = f(t.labelMedium), labelSmall = f(t.labelSmall))
+}
+
+@Composable fun EncargosTheme(day: Boolean = false, content: @Composable () -> Unit) = MaterialTheme(colorScheme = if (day) Light else Dark, typography = manropeTypography(), content = content)
 
 fun money(v: Any?) = Js.money(v)
 fun lb(v: Double) = Js.toFixed(v, 2) + " lb"
 
+/** ¿Modo día? (los componentes de vidrio cambian a tarjetas blancas). */
+@Composable fun isDay() = MaterialTheme.colorScheme.background != C.bg
+
 /* ======================= Piezas reutilizables ======================= */
-@Composable fun SectionCard(title: String? = null, modifier: Modifier = Modifier, action: (@Composable () -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
-    Card(modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = .6f))) {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (title != null || action != null) Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(title ?: "", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f)); action?.invoke()
-            }
-            content()
+
+/** Tarjeta de sección (.aCard): vidrio, radio 18, título 16 extra negrita, icono opcional. */
+@Composable fun SectionCard(title: String? = null, modifier: Modifier = Modifier, action: (@Composable () -> Unit)? = null, icon: ImageVector? = null, content: @Composable ColumnScope.() -> Unit) {
+    Column(modifier.fillMaxWidth().glass(day = isDay()).padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        if (title != null || action != null) Row(verticalAlignment = Alignment.CenterVertically) {
+            if (icon != null) { Icon(icon, null, Modifier.size(19.dp), tint = MaterialTheme.colorScheme.onSurface); Spacer(Modifier.width(9.dp)) }
+            Text(title ?: "", fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.16).sp, modifier = Modifier.weight(1f)); action?.invoke()
         }
+        content()
     }
 }
 
+/** Recuadro de dato (Libras / Cobrado / Pendiente): neutro, o teñido del color del dato. */
 @Composable fun Kpi(label: String, value: String, color: Color = MaterialTheme.colorScheme.onSurface, sub: String? = null, modifier: Modifier = Modifier) {
-    Box(modifier.clip(RoundedCornerShape(14.dp)).background(color.copy(alpha = .10f)).border(1.dp, color.copy(alpha = .25f), RoundedCornerShape(14.dp)).padding(12.dp)) {
-        Column { Text(label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(value, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    val neutral = color == MaterialTheme.colorScheme.onSurface
+    val shape = RoundedCornerShape(12.dp)
+    Box(modifier.clip(shape).background(if (neutral) W.tile else color.copy(alpha = .08f)).border(1.dp, if (neutral) W.line else color.copy(alpha = .30f), shape).padding(horizontal = 11.dp, vertical = 9.dp)) {
+        Column { Text(label, fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            Text(value, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.2).sp, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (sub != null) Text(sub, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }
 
 @Composable fun KpiRow(vararg items: @Composable RowScope.() -> Unit) { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { items.forEach { it() } } }
 
+/** Etiqueta con punto (• Pedido, • Entregado). */
 @Composable fun Chip(text: String, color: Color, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
-    Row(modifier.clip(RoundedCornerShape(50)).background(color.copy(alpha = .16f)).border(1.dp, color.copy(alpha = .34f), RoundedCornerShape(50))
-        .let { if (onClick != null) it.clickable { onClick() } else it }.padding(horizontal = 10.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(7.dp).clip(CircleShape).background(color)); Spacer(Modifier.width(6.dp)); Text(text, color = color, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+    val shape = RoundedCornerShape(50)
+    Row(modifier.clip(shape).background(color.copy(alpha = .14f)).border(1.dp, color.copy(alpha = .38f), shape)
+        .let { if (onClick != null) it.clickable { tapFeedback(); onClick() } else it }.padding(horizontal = 10.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(6.dp).clip(CircleShape).background(color)); Spacer(Modifier.width(6.dp)); Text(text, color = lerpInk(color), fontSize = 11.5.sp, fontWeight = FontWeight.Bold, maxLines = 1)
     }
 }
+private fun lerpInk(c: Color) = Color(c.red + (1 - c.red) * .45f, c.green + (1 - c.green) * .45f, c.blue + (1 - c.blue) * .45f, 1f)
 @Composable fun StatusChip(s: String?, onClick: (() -> Unit)? = null) = Chip(s?.ifEmpty { null } ?: "Pedido", C.status(s), onClick = onClick)
 
-@OptIn(ExperimentalMaterial3Api::class)
+/** Filtros en pastilla (Todos · Pedido · En tránsito…). */
 @Composable fun Choice(options: List<Pair<String, String>>, selected: String, onSelect: (String) -> Unit) {
-    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        options.forEach { (v, l) -> FilterChip(selected = v == selected, onClick = { onSelect(v) }, label = { Text(l) }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = C.blue.copy(alpha = .25f))) }
+    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        options.forEach { (v, l) ->
+            val on = v == selected; val shape = RoundedCornerShape(50)
+            val bg by animateColorAsState(if (on) W.blue.copy(alpha = .20f) else Color(148, 163, 184, 15), tween(240), label = "chip")
+            val bd by animateColorAsState(if (on) W.blue.copy(alpha = .65f) else W.line, tween(240), label = "chipB")
+            val src = remember { MutableInteractionSource() }
+            Box(Modifier.pressBounce(src, .95f).clip(shape).background(bg).border(1.dp, bd, shape)
+                .clickable(src, null) { tapFeedback(); onSelect(v) }.padding(horizontal = 15.dp, vertical = 9.dp)) {
+                Text(l, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (on) Color.White else Color(0xFFCBD5E1), maxLines = 1)
+            }
+        }
     }
 }
 
+/** Campo de la web: etiqueta arriba y caja oscura redondeada que se ilumina en azul al escribir. */
 @Composable fun Field(value: String, onChange: (String) -> Unit, label: String, modifier: Modifier = Modifier, number: Boolean = false, singleLine: Boolean = true, minLines: Int = 1, prefix: String? = null, suffix: String? = null, password: Boolean = false) {
-    OutlinedTextField(value, onChange, label = { Text(label) }, modifier = modifier.fillMaxWidth(), singleLine = singleLine, minLines = minLines,
-        prefix = prefix?.let { p -> @Composable { Text(p) } }, suffix = suffix?.let { x -> @Composable { Text(x) } },
-        visualTransformation = if (password) androidx.compose.ui.text.input.PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
-        keyboardOptions = KeyboardOptions(keyboardType = if (number) KeyboardType.Decimal else if (password) KeyboardType.Password else KeyboardType.Text), shape = RoundedCornerShape(12.dp))
+    val src = remember { MutableInteractionSource() }; val focused by src.collectIsFocusedAsState()
+    var show by remember { mutableStateOf(false) }
+    val bd by animateColorAsState(if (focused) W.blue.copy(alpha = .85f) else W.line2, tween(200), label = "fb")
+    val day = isDay(); val shape = RoundedCornerShape(14.dp)
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(label, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        BasicTextField(value, onChange, Modifier.fillMaxWidth().let { if (focused) it.glow(W.blue, 6.dp, 0.dp, .22f) else it }, singleLine = singleLine, minLines = minLines,
+            textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontFamily = Manrope, fontSize = 15.sp, fontWeight = FontWeight.SemiBold),
+            cursorBrush = SolidColor(W.blue), interactionSource = src,
+            visualTransformation = if (password && !show) PasswordVisualTransformation() else VisualTransformation.None,
+            keyboardOptions = KeyboardOptions(keyboardType = if (number) KeyboardType.Decimal else if (password) KeyboardType.Password else KeyboardType.Text),
+            decorationBox = { inner ->
+                Row(Modifier.fillMaxWidth().clip(shape).background(if (day) Color(0xFFF1F5F9) else W.inputBg).border(1.dp, bd, shape).padding(horizontal = 14.dp, vertical = if (singleLine) 14.dp else 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (prefix != null) Text(prefix + " ", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                    Box(Modifier.weight(1f)) { inner() }
+                    if (suffix != null) Text(" $suffix", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
+                    if (password) Icon(if (show) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility, if (show) "Ocultar" else "Mostrar", Modifier.size(20.dp).clickable { show = !show }, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            })
+    }
 }
 
+/** Buscador (.aSearch): vidrio, radio 16, lupa. */
 @Composable fun SearchBox(q: String, onQ: (String) -> Unit, hint: String) {
-    OutlinedTextField(q, onQ, placeholder = { Text(hint) }, leadingIcon = { Icon(Icons.Filled.Search, null) }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp))
+    val src = remember { MutableInteractionSource() }; val focused by src.collectIsFocusedAsState()
+    val bd by animateColorAsState(if (focused) W.blue.copy(alpha = .7f) else W.line, tween(200), label = "sb")
+    val shape = RoundedCornerShape(16.dp)
+    BasicTextField(q, onQ, Modifier.fillMaxWidth(), singleLine = true, interactionSource = src, cursorBrush = SolidColor(W.blue),
+        textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontFamily = Manrope, fontSize = 15.sp, fontWeight = FontWeight.Medium),
+        decorationBox = { inner ->
+            Row(Modifier.fillMaxWidth().glass(shape, bd, isDay()).padding(horizontal = 14.dp, vertical = 15.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.Search, null, Modifier.size(19.dp), tint = W.mut); Spacer(Modifier.width(10.dp))
+                Box(Modifier.weight(1f)) { if (q.isEmpty()) Text(hint, color = W.mut, fontSize = 14.5.sp, fontWeight = FontWeight.Medium, maxLines = 1); inner() }
+            }
+        })
 }
 
+/** Botón principal: degradado azul, brillo, rebote al tocar y vibración breve. */
 @Composable fun Primary(text: String, modifier: Modifier = Modifier, icon: ImageVector? = null, enabled: Boolean = true, color: Color = C.blue, onClick: () -> Unit) {
-    Button(onClick, modifier.height(48.dp), enabled = enabled, shape = RoundedCornerShape(14.dp), colors = ButtonDefaults.buttonColors(containerColor = color)) {
-        if (icon != null) { Icon(icon, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)) }; Text(text, fontWeight = FontWeight.Bold, maxLines = 1)
+    val src = remember { MutableInteractionSource() }; val shape = RoundedCornerShape(14.dp)
+    val brush = if (color == C.blue) W.primary else Brush.linearGradient(listOf(Color(color.red + (1 - color.red) * .15f, color.green + (1 - color.green) * .15f, color.blue + (1 - color.blue) * .15f), color))
+    Row(modifier.height(52.dp).pressBounce(src).graphicsLayer { alpha = if (enabled) 1f else .5f }.glow(color, 14.dp, 8.dp, if (enabled) .45f else 0f)
+        .clip(shape).background(brush).clickable(src, null, enabled = enabled) { tapFeedback(); onClick() }.padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+        if (icon != null) { Icon(icon, null, Modifier.size(18.dp), tint = Color.White); Spacer(Modifier.width(8.dp)) }
+        Text(text, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
+/** Botón secundario (.secondary): vidrio gris con borde. */
 @Composable fun Secondary(text: String, modifier: Modifier = Modifier, icon: ImageVector? = null, color: Color? = null, onClick: () -> Unit) {
-    OutlinedButton(onClick, modifier.height(46.dp), shape = RoundedCornerShape(14.dp), colors = if (color != null) ButtonDefaults.outlinedButtonColors(contentColor = color) else ButtonDefaults.outlinedButtonColors()) {
-        if (icon != null) { Icon(icon, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)) }; Text(text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    val src = remember { MutableInteractionSource() }; val shape = RoundedCornerShape(14.dp)
+    val fg = color ?: MaterialTheme.colorScheme.onSurface
+    Row(modifier.height(48.dp).pressBounce(src).clip(shape).background(if (color != null) color.copy(alpha = .08f) else W.tile).border(1.dp, if (color != null) color.copy(alpha = .35f) else W.line2, shape)
+        .clickable(src, null) { tapFeedback(); onClick() }.padding(horizontal = 14.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+        if (icon != null) { Icon(icon, null, Modifier.size(17.dp), tint = fg); Spacer(Modifier.width(7.dp)) }
+        Text(text, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
-@Composable fun Tonal(text: String, modifier: Modifier = Modifier, icon: ImageVector? = null, onClick: () -> Unit) {
-    FilledTonalButton(onClick, modifier.height(44.dp), shape = RoundedCornerShape(14.dp)) { if (icon != null) { Icon(icon, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)) }; Text(text, maxLines = 1) }
-}
+@Composable fun Tonal(text: String, modifier: Modifier = Modifier, icon: ImageVector? = null, onClick: () -> Unit) = Secondary(text, modifier, icon, W.blueInk, onClick)
 
 @Composable fun Line(label: String, value: String, valueColor: Color = MaterialTheme.colorScheme.onSurface, bold: Boolean = false) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -148,52 +238,93 @@ fun lb(v: Double) = Js.toFixed(v, 2) + " lb"
     }
 }
 
-@Composable fun Empty(title: String, text: String = "", action: (@Composable () -> Unit)? = null) {
-    Column(Modifier.fillMaxWidth().padding(vertical = 28.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(title, fontWeight = FontWeight.Bold, fontSize = 16.sp); if (text.isNotEmpty()) Text(text, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, fontSize = 13.sp); action?.invoke()
+/** Estado vacío: icono, título y texto centrados (como "Aún no tienes notas"). */
+@Composable fun Empty(title: String, text: String = "", icon: ImageVector = Icons.Outlined.Description, action: (@Composable () -> Unit)? = null) {
+    Column(Modifier.fillMaxWidth().glass(day = isDay()).padding(vertical = 26.dp, horizontal = 18.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Icon(icon, null, Modifier.size(52.dp), tint = Color(0xFFCBD5E1))
+        Text(title, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, textAlign = TextAlign.Center); if (text.isNotEmpty()) Text(text, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, fontSize = 13.sp); action?.invoke()
     }
 }
 
+/** Inicial del cliente en recuadro (como en la web). */
 @Composable fun Avatar(name: String, color: Color = C.blue, size: Int = 42) {
-    Box(Modifier.size(size.dp).clip(RoundedCornerShape((size / 3).dp)).background(color.copy(alpha = .22f)), contentAlignment = Alignment.Center) {
-        Text(name.trim().take(1).uppercase().ifEmpty { "?" }, fontWeight = FontWeight.ExtraBold, color = color, fontSize = (size / 2.3).sp)
+    val shape = RoundedCornerShape((size * .3).dp)
+    Box(Modifier.size(size.dp).clip(shape).background(Color(148, 163, 184, 26)).border(1.dp, if (color == C.rose) C.rose.copy(alpha = .35f) else W.line2, shape), contentAlignment = Alignment.Center) {
+        Text(name.trim().take(1).uppercase().ifEmpty { "?" }, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface, fontSize = (size / 2.4).sp)
     }
 }
 
-/** Indicador circular de cobro ("agua"). */
+/** Icono en recuadro (.ic) de las tarjetas de la web. */
+@Composable fun IconTile(icon: ImageVector, tint: Color = Color(0xFFCBD5E1), size: Int = 40) {
+    val shape = RoundedCornerShape(12.dp)
+    Box(Modifier.size(size.dp).clip(shape).background(Color(148, 163, 184, 26)).border(1.dp, W.line, shape), contentAlignment = Alignment.Center) { Icon(icon, null, Modifier.size((size * .48).dp), tint = tint) }
+}
+
+/** Indicador "agua": el círculo se llena de azul hasta el % cobrado (sube al aparecer). */
 @Composable fun Gauge(pct: Double, label: String = "cobrado", size: Int = 150) {
-    val fill = (pct / 100).coerceIn(0.0, 1.0).toFloat()
+    val fill = drawIn((pct / 100).coerceIn(0.0, 1.0).toFloat(), 1300, 250)
     Box(Modifier.size(size.dp), contentAlignment = Alignment.Center) {
         Canvas(Modifier.size(size.dp)) {
             val r = this.size.minDimension / 2
-            drawCircle(C.blue.copy(alpha = .08f), r)
+            drawCircle(Color(15, 23, 42, 200), r)
             val top = this.size.height * (1 - fill)
             val path = androidx.compose.ui.graphics.Path().apply { addOval(androidx.compose.ui.geometry.Rect(Offset.Zero, this@Canvas.size)) }
-            clipPath(path) { drawRect(C.blue.copy(alpha = .75f), topLeft = Offset(0f, top), size = Size(this.size.width, this.size.height - top)) }
-            drawCircle(C.blue.copy(alpha = .35f), r, style = Stroke(3f))
+            clipPath(path) {
+                drawRect(Brush.verticalGradient(listOf(Color(0xFF60A5FA), Color(0xFF2563EB)), top, this.size.height), topLeft = Offset(0f, top), size = Size(this.size.width, this.size.height - top))
+                drawRect(Color.White.copy(alpha = .35f), topLeft = Offset(0f, top), size = Size(this.size.width, 2.5f))
+            }
+            drawCircle(W.blue.copy(alpha = .45f), r - 1.5f, style = Stroke(3f))
         }
-        Column(horizontalAlignment = Alignment.CenterHorizontally) { Text("${Math.round(pct)}%", fontSize = 26.sp, fontWeight = FontWeight.ExtraBold); Text(label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) { Text("${Math.round(pct)}%", fontSize = (size / 6).sp, fontWeight = FontWeight.ExtraBold, color = Color.White); Text(label, fontSize = 11.sp, color = Color.White.copy(alpha = .85f)) }
     }
 }
 
-/** Gráfica de barras sencilla (cobros por día, semana o mes). */
+/** Anillo de cobro del inicio (se dibuja en 1,1 s). */
+@Composable fun RingGauge(pct: Double, label: String = "cobrado", size: Int = 100) {
+    val k = drawIn((pct / 100).coerceIn(0.0, 1.0).toFloat())
+    Box(Modifier.size(size.dp), contentAlignment = Alignment.Center) {
+        Canvas(Modifier.size(size.dp)) {
+            val sw = this.size.minDimension * .085f; val inset = sw / 2 + 2f
+            val sz = Size(this.size.width - inset * 2, this.size.height - inset * 2)
+            drawArc(Color(148, 163, 184, 40), 0f, 360f, false, Offset(inset, inset), sz, style = Stroke(sw))
+            if (k > 0f) drawArc(Brush.sweepGradient(listOf(W.cyan, W.blue, Color(0xFF60A5FA), W.cyan)), -90f, 360f * k, false, Offset(inset, inset), sz, style = Stroke(sw, cap = StrokeCap.Round))
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) { Text("${Math.round(pct)}%", fontSize = (size / 4.6).sp, fontWeight = FontWeight.ExtraBold); Text(label, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+    }
+}
+
+/** Gráfica de barras: crecen desde abajo (sGrow). */
 @Composable fun Bars(items: List<Pair<String, Double>>, color: Color = C.blue, height: Int = 150) {
     val mx = max(1.0, items.maxOfOrNull { it.second } ?: 1.0)
-    Row(Modifier.fillMaxWidth().height(height.dp), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.Bottom) {
+    val k = drawIn(1f, 800, 200)
+    Row(Modifier.fillMaxWidth().height(height.dp), horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.Bottom) {
         items.forEach { (l, v) ->
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                 if (v > 0) Text("$" + Js.toFixed(v, 0), fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-                Box(Modifier.fillMaxWidth().height(max(2.0, (v / mx) * (height - 40)).dp).clip(RoundedCornerShape(4.dp)).background(if (v > 0) color else MaterialTheme.colorScheme.outline))
+                Box(Modifier.fillMaxWidth().height(max(2.0, (v / mx) * (height - 40) * k).dp).clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp, bottomStart = 2.dp, bottomEnd = 2.dp))
+                    .background(if (v > 0) Brush.verticalGradient(listOf(Color(0xFF60A5FA), color)) else SolidColor(Color(148, 163, 184, 40))))
                 Text(l, fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             }
         }
     }
 }
 
+/** Barra de progreso fina que crece al aparecer (0,9 s). */
 @Composable fun ProgressBar(k: Double, color: Color = C.green) {
-    Canvas(Modifier.fillMaxWidth().height(8.dp)) {
-        drawRoundRect(C.line, size = this.size, cornerRadius = CornerRadius(8f, 8f))
-        drawRoundRect(color, size = Size(this.size.width * k.coerceIn(0.0, 1.0).toFloat(), this.size.height), cornerRadius = CornerRadius(8f, 8f))
+    val v = drawIn(k.coerceIn(0.0, 1.0).toFloat(), 900, 300)
+    Canvas(Modifier.fillMaxWidth().height(6.dp)) {
+        drawRoundRect(Color(148, 163, 184, 36), size = this.size, cornerRadius = CornerRadius(this.size.height, this.size.height))
+        if (v > 0f) drawRoundRect(color, size = Size(this.size.width * v, this.size.height), cornerRadius = CornerRadius(this.size.height, this.size.height))
+    }
+}
+
+/** Barra segmentada (Estado de los pedidos). */
+@Composable fun SegBar(parts: List<Pair<Double, Color>>) {
+    val total = parts.sumOf { it.first }.let { if (it <= 0) 1.0 else it }
+    val k = drawIn(1f, 900, 300)
+    Row(Modifier.fillMaxWidth().height(10.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+        parts.filter { it.first > 0 }.forEach { (v, c) -> Box(Modifier.weight((v / total).toFloat()).fillMaxWidth().height(10.dp).graphicsLayer { scaleX = k; transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, .5f) }.clip(RoundedCornerShape(99.dp)).background(c)) }
+        if (parts.all { it.first <= 0 }) Box(Modifier.weight(1f).height(10.dp).clip(RoundedCornerShape(99.dp)).background(Color(148, 163, 184, 36)))
     }
 }
 
@@ -201,3 +332,4 @@ fun lb(v: Double) = Js.toFixed(v, 2) + " lb"
     if (bm == null) return
     Image(bm.asImageBitmap(), null, modifier.clip(RoundedCornerShape(12.dp)).let { if (onClick != null) it.clickable { onClick() } else it }, contentScale = ContentScale.Crop)
 }
+

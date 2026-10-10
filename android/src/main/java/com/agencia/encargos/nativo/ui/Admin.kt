@@ -397,6 +397,14 @@ fun SettingsScreen() {
             }
         }
         item {
+            SectionCard("Sonido y vibración") {
+                var snd by remember { mutableStateOf(com.agencia.encargos.nativo.util.Feedback.soundOn()) }
+                var hap by remember { mutableStateOf(com.agencia.encargos.nativo.util.Feedback.hapticsOn()) }
+                ToggleRow("Sonido de inicio de sesión", "Un sonido corto y discreto al entrar correctamente", snd) { snd = it; com.agencia.encargos.nativo.util.Feedback.set("loginSoundEnabled", it); if (it) com.agencia.encargos.nativo.util.Feedback.loginSound() }
+                ToggleRow("Vibración háptica", "Un toque muy breve al interactuar con la app", hap) { hap = it; com.agencia.encargos.nativo.util.Feedback.set("hapticFeedbackEnabled", it); if (it) com.agencia.encargos.nativo.util.Feedback.tap() }
+            }
+        }
+        item {
             SectionCard("Apariencia") {
                 ToggleRow("Modo día", "Colores claros", day) { on -> core.ls.set("encargos_aurora_mode", if (on) "day" else "night"); ui.act.recreate() }
             }

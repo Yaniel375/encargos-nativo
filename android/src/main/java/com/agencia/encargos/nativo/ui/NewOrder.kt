@@ -59,7 +59,7 @@ fun NewOrderScreen(forName: String?, forPhone: String?) {
     val buy = Js.num(core.buyRates()[type]); val gain = p * (lc - buy)
     val suggestions = if (name.length >= 2 && forName == null) core.clients().filter { it.name.lowercase().contains(name.trim().lowercase()) && it.name != name }.take(4) else emptyList()
 
-    Page {
+    Page(title = if (forName != null) "Nuevo encargo para $forName" else "Nuevo encargo", sub = "Completa los datos y guarda") {
         item {
             SectionCard("Cliente") {
                 Field(name, { name = it }, "Nombre del cliente")

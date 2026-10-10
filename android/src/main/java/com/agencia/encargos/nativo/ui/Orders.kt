@@ -69,7 +69,7 @@ fun OrdersScreen() {
     val words = Js.normSearch(q).split(Regex("\\s+")).filter { it.isNotEmpty() }
     val list = ad.filter { x -> val hay = Js.normSearch(listOf(x.str("name"), x.str("phone"), x.str("accessCode"), Js.str(x["orderNo"]), core.orderLabel(x), x.str("status"), x.str("shippingType"), x.str("note")).joinToString(" "))
         words.all { hay.contains(it) } && (f.isEmpty() || x["status"] == f) }
-    Page {
+    Page(right = "${ad.size} activos") {
         item { SearchBox(q, { q = it; limit = 30 }, "Buscar por cliente, teléfono, código o estado") }
         item { Choice(listOf("" to "Todos") + Encargos.STATES.map { it to it }, f) { f = it; limit = 30 } }
         item { Row { Text("${ad.size} activos", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f)); Text("Completados ›", color = C.blue, modifier = Modifier.clickable { ui.go(Screen.Completed) }) } }

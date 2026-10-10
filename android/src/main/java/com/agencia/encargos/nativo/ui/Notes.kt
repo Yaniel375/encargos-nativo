@@ -59,7 +59,7 @@ fun NotesScreen() {
     val list = all.filter { nq.isEmpty() || Js.normSearch(it.str("title") + " " + it.str("body")).contains(nq) }
     val owe = all.sumOf { Js.num(it["amount"]) }; val oweN = all.count { Js.num(it["amount"]) > 0 }
     if (editing != null || creating) { NoteEditor(editing) { editing = null; creating = false }; return }
-    Page {
+    Page(right = "${all.size} nota${if (all.size == 1) "" else "s"}") {
         if (owe > 0) item { SectionCard { Text("Te deben en notas", color = MaterialTheme.colorScheme.onSurfaceVariant); Text(money(owe), fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = C.rose); Text("$oweN nota${if (oweN == 1) "" else "s"} con monto", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
         item { Primary("Nueva nota", Modifier.fillMaxWidth(), Icons.Filled.Add) { creating = true } }
         if (all.isNotEmpty()) item { SearchBox(q, { q = it }, "Buscar en tus notas") }
@@ -91,7 +91,7 @@ fun NoteEditor(n: JObj?, close: () -> Unit) {
     var viewer by remember { mutableStateOf<Int?>(null) }
     androidx.activity.compose.BackHandler { close() }
     val pick = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> if (uri != null) ui.scope.launch { withContext(Dispatchers.IO) { Images.fromUri(ui.act, uri, 900, 55) }?.let { photos.add(it); ui.toast("📷 Foto agregada. Toca \"Guardar nota\" para guardarla.") } } }
-    Page {
+    Page(title = if (n == null) "Nueva nota" else "Editar nota") {
         item { Field(title, { title = it }, "Título") }
         item { Field(body, { body = it }, "Nota (puedes pegar enlaces https://…)", singleLine = false, minLines = 5) }
         val links = noteLinks(body)

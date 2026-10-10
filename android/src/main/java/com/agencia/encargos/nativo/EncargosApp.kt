@@ -55,6 +55,7 @@ class EncargosApp : Application() {
         storage = RoomStorage(EncargosDb.open(this))
         secrets = KeystoreSecrets(this)
         core = Encargos(storage, "ANDROID")
+        com.agencia.encargos.nativo.util.Feedback.init(this, core.ls)
         sync = TelegramSync(core, secrets, onApp = { onMain(it) })
         security = Security(core, secrets.deviceSecret())
         backup = Backup(core)

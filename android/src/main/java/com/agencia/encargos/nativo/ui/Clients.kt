@@ -37,7 +37,7 @@ fun ClientsScreen() {
     val all = core.activeClients()
     val words = Js.normSearch(q).split(Regex("\\s+")).filter { it.isNotEmpty() }
     val list = all.filter { c -> val hay = Js.normSearch(listOf(c.name, c.phone, c.orders.joinToString(" ") { listOf(it.str("accessCode"), Js.str(it["orderNo"]), it.str("status")).joinToString(" ") }).joinToString(" ")); words.all { hay.contains(it) } }
-    Page {
+    Page(right = "${all.size} activos") {
         item { SearchBox(q, { q = it; limit = 30 }, "Buscar cliente, teléfono o código") }
         item { Row { Text("${all.size} clientes activos", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f)); Text("Completados ›", color = C.blue, modifier = Modifier.clickable { ui.go(Screen.Completed) }) } }
         if (all.isEmpty()) item { Empty("Aún no tienes clientes", "Los clientes aparecen automáticamente al crear encargos.") { Primary("+ Nuevo encargo") { ui.root(Screen.NewOrder) } } }

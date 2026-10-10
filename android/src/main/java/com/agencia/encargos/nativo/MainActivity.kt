@@ -21,7 +21,7 @@ class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        enableEdgeToEdge(androidx.activity.SystemBarStyle.dark(android.graphics.Color.TRANSPARENT), androidx.activity.SystemBarStyle.dark(android.graphics.Color.TRANSPARENT))
         applyPrivacy()
         // "Pedir contraseña al abrir" desactivado y con acceso ya creado: entra directo
         if (!app.unlocked && app.security.hasCredentials() && !app.security.lockCfg().onOpen) app.unlocked = true
