@@ -481,7 +481,7 @@ fun SettingsScreen() {
             Row(Modifier.fillMaxWidth()) { UiScale.LEVELS.forEach { (lv, _) -> Text("${Math.round(lv * 100)}", fontSize = 11.sp, color = if (lv == pending) W.blueInk else W.mut, fontWeight = if (lv == pending) FontWeight.ExtraBold else FontWeight.Normal, textAlign = TextAlign.Center, modifier = Modifier.weight(1f)) } }
             // vista previa con el tamaño elegido (antes de aplicarlo)
             val d = androidx.compose.ui.platform.LocalDensity.current
-            androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(d.density / UiScale.value * pending, d.fontScale / UiScale.value * pending)) {
+            androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(d.density / UiScale.value * pending, d.fontScale)) {
                 Column(Modifier.fillMaxWidth().glass().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Vista previa", fontSize = 11.sp, color = W.mut)
                     Row(verticalAlignment = Alignment.CenterVertically) { Avatar("Ana", C.blue, 38); androidx.compose.foundation.layout.Spacer(Modifier.width(10.dp)); Column(Modifier.weight(1f)) { Text("Ana Gómez", fontWeight = FontWeight.ExtraBold); Text("2 encargos · Pedido", fontSize = 12.sp, color = W.mut) }; StatusChip("Pedido") }

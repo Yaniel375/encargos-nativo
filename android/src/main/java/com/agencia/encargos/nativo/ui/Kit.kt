@@ -130,9 +130,10 @@ private fun appShapes() = androidx.compose.material3.Shapes(extraSmall = Rounded
 
 @Composable fun EncargosTheme(day: Boolean = false, content: @Composable () -> Unit) {
     W.p = if (day) DAY else NIGHT   // tema central: lo leen todos los componentes
-    // tamaño de la interfaz: una sola escala para dp y sp (todo crece o se reduce en la misma proporción)
+    // tamaño de la interfaz: se escala solo la densidad; como sp = dp × fontScale, textos y medidas crecen en la misma proporción
+    // (y se respeta el tamaño de letra que el usuario eligió en Android)
     val base = androidx.compose.ui.platform.LocalDensity.current; val s = UiScale.value
-    androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(base.density * s, base.fontScale * s)) {
+    androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(base.density * s, base.fontScale)) {
         MaterialTheme(colorScheme = if (day) lightScheme() else darkScheme(), typography = manropeTypography(), shapes = appShapes(), content = content)
     }
 }

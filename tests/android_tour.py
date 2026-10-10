@@ -97,6 +97,13 @@ def hide_kb():
         if not kb_open(): return
         adb("shell", "input", "keyevent", "4"); time.sleep(0.8)  # ATRÁS con teclado abierto solo cierra el teclado
 
+def home():
+    # vuelve a Inicio con la barra inferior; si la app quedó en segundo plano, la trae al frente (sin reiniciarla)
+    hide_kb()
+    if not tap("Inicio", exact=True, wait=1.5, last=True):
+        adb("shell", "am", "start", "-n", f"{PKG}/.MainActivity"); time.sleep(3)
+        tap("Inicio", exact=True, wait=1.5, last=True)
+
 def crashed():
     out = adb("logcat", "-d", "-b", "crash")
     return PKG in out and "FATAL EXCEPTION" in out
@@ -138,8 +145,8 @@ for dest, row in [("respaldo", "Respaldo e importación"), ("seguridad", "Seguri
         for _ in range(3):
             if find(row, exact=True) is not None: break
             adb("shell", "input", "swipe", "540", "1500", "540", "700", "400"); time.sleep(1)
-        if tap(row, exact=True, wait=2.5): shot(dest); adb("shell", "input", "keyevent", "4"); time.sleep(1.2)
-    adb("shell", "input", "keyevent", "4"); time.sleep(1.2)
+        if tap(row, exact=True, wait=2.5): shot(dest)
+    home()
 if tap("Más", wait=1.5): shot("menu_perfil"); adb("shell", "input", "keyevent", "4"); time.sleep(1)
 if tap("Más", wait=1.2) and tap("Ajustes", wait=2.5):
     if tap("Precio por libra", wait=2): shot("ajustes_hoja_tarifas"); tap("Cerrar", exact=True, wait=1.2)
