@@ -1,0 +1,26 @@
+name: Traer fuente Manrope (OFL)
+
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/fuentes.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fuentes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Descargar Manrope de Google Fonts (licencia OFL)
+        run: |
+          mkdir -p tools/fonts
+          curl -fsSL -o tools/fonts/Manrope-VF.ttf "https://github.com/google/fonts/raw/main/ofl/manrope/Manrope%5Bwght%5D.ttf"
+          curl -fsSL -o tools/fonts/OFL.txt "https://github.com/google/fonts/raw/main/ofl/manrope/OFL.txt"
+          ls -la tools/fonts
+      - name: Guardar en el repositorio
+        run: |
+          git config user.name ci; git config user.email ci@local
+          git add tools/fonts && git commit -m "Fuente Manrope (OFL) para las apps nativas" && git push || echo "sin cambios"
