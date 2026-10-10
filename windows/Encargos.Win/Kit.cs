@@ -13,7 +13,7 @@ using Color = Windows.UI.Color;
 namespace Encargos.Win;
 
 /// <summary>Piezas de interfaz reutilizables (mismo aspecto y textos que la app Android).</summary>
-public static class K
+public static partial class K
 {
     static readonly Dictionary<uint, SolidColorBrush> _br = new();
     public static SolidColorBrush Br(uint argb) { if (!_br.TryGetValue(argb, out var b)) { b = new SolidColorBrush(ColorHelper.FromArgb((byte)(argb >> 24), (byte)(argb >> 16), (byte)(argb >> 8), (byte)argb)); _br[argb] = b; } return b; }

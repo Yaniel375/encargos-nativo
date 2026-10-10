@@ -84,35 +84,47 @@ public sealed class PaymentsPage : Screen
 /* ======================= Pendientes y fondos a favor ======================= */
 public sealed class PendingPage : Screen
 {
-    public override string Title => "Pendientes y fondos";
+    public override string Title => "Pendientes";
     public override string Nav => "pending";
+    public override string? Right => $"{Services.Stats.Pending().Pend.Count} por cobrar";
     int _age;
 
     public override void Build(StackPanel p)
     {
         var pd = Services.Stats.Pending(); int Days(JObj x) => Core.Attention.DaysSince(x["date"]);
         var shown = pd.Pend.Where(x => _age == 0 || Days(x) >= _age).ToList();
-        p.Children.Add(Cols(Kpi("Pendiente", "- " + Money(pd.PendTotal), Rose), Kpi("A favor", "+ " + Money(pd.FundsTotal), Green), Kpi("Pedidos", pd.Pend.Count.ToString())));
-        p.Children.Add(T("Saldos pendientes", 16, true));
+        var nCli = pd.Pend.Select(x => x.Str("name").Trim().ToLowerInvariant()).Distinct().Count();
+        p.Children.Add(Card(Cols(V(2, Muted("Por cobrar", 13), Big(Money(pd.PendTotal), Rose, 28), Muted($"{pd.Pend.Count} pedido{(pd.Pend.Count == 1 ? "" : "s")} · {nCli} cliente(s)")),
+                V(2, Muted("Fondos a favor", 13), Big(Money(pd.FundsTotal), Green, 28), Muted($"{pd.Funds.Count} pedido{(pd.Funds.Count == 1 ? "" : "s")}"))),
+            Progress(pd.PendTotal + pd.FundsTotal > 0 ? pd.PendTotal / (pd.PendTotal + pd.FundsTotal) : 0, Rose)));
+        p.Children.Add(DotHeader("Saldo pendiente", Rose, Money(pd.PendTotal)));
         p.Children.Add(Choice(new[] { ("0", "Todas"), ("15", $"+15 días ({pd.Pend.Count(x => Days(x) >= 15)})"), ("30", $"+30 días ({pd.Pend.Count(x => Days(x) >= 30)})") }, _age.ToString(), k => { _age = int.Parse(k); Redraw(); }));
         if (shown.Count == 0) p.Children.Add(Empty("🎉 No hay saldos pendientes."));
+        var cards = new List<UIElement>();
         foreach (var x in shown)
         {
-            var n = Days(x); var id = Js.Str(x["id"]);
-            p.Children.Add(ClickCard(() => S.Go(new OrderPage(id)),
-                Lead(Avatar(x.Str("name"), Rose), V(0, T(x.Str("name"), 15, true), Muted($"{x.Str("phone").IfEmpty("Sin teléfono")} • {x.Str("status")}")), V(0, Muted("Pendiente", 11), T("- " + Money(x["balance"]), 15, true, Rose))),
-                Chips(Chip(Core.Attention.Ago(x["date"]), n >= 30 ? Rose : Mut), Chip("Total " + Money(x["total"]), Blue)),
-                Cols(Btn("Cobrar", () => S.WhatsApp(x.Str("phone"), Core.ReminderOrder(x), x.Str("name")), true, Green), Btn("Registrar pago", () => S.Go(new EditOrderPage(id))))));
+            var n = Days(x); var id = Js.Str(x["id"]); double t = Js.Num(x["total"]), pdd = Js.Num(x["paid"]);
+            var name = T(x.Str("name"), 15.5, true, null, false, 1); name.FontWeight = Microsoft.UI.Text.FontWeights.ExtraBold;
+            var owe = V(0, Muted("Debe", 11), Big("- " + Money(x["balance"]), Rose, 20)); foreach (var c in owe.Children) ((FrameworkElement)c).HorizontalAlignment = HorizontalAlignment.Right;
+            cards.Add(ClickCard(() => S.Go(new OrderPage(id)),
+                Lead(Avatar(x.Str("name"), Rose), V(0, name, Muted(x.Str("phone").IfEmpty("Sin teléfono"))), owe),
+                Row(Chips(Chip(x.Str("status").IfEmpty("Pedido"), Status(x.Str("status"))), Chip(Core.Attention.Ago(x["date"]), n >= 30 ? Rose : Mut)), Muted($"Total {Money(t)} · Pagó {Money(pdd)}", 12)),
+                Progress(t > 0 ? pdd / t : 0),
+                Cols(CardBtn("Cobrar", "\uE8BD", () => S.WhatsApp(x.Str("phone"), Core.ReminderOrder(x), x.Str("name")), Green), CardBtn("Ficha", "\uE8A5", () => S.Go(new OrderPage(id))),
+                    CardBtn("Registrar pago", "\uE70F", () => S.Go(new EditOrderPage(id))))));
         }
-        p.Children.Add(T("Fondos a favor", 16, true));
-        if (pd.Funds.Count == 0) p.Children.Add(Empty("No hay fondos a favor."));
+        if (cards.Count > 0) p.Children.Add(Grid2(cards, S.ContentWidth < 760 ? 1 : 2));
+        p.Children.Add(DotHeader("Fondos a favor", Green, Money(pd.FundsTotal)));
+        if (pd.Funds.Count == 0) p.Children.Add(Empty("Ningún cliente tiene saldo a favor."));
+        var fcards = new List<UIElement>();
         foreach (var x in pd.Funds)
         {
             var id = Js.Str(x["id"]);
-            p.Children.Add(ClickCard(() => S.Go(new OrderPage(id)),
+            fcards.Add(ClickCard(() => S.Go(new OrderPage(id)),
                 Lead(Avatar(x.Str("name"), Green), V(0, T(x.Str("name"), 15, true), Muted(x.Str("phone").IfEmpty("Sin teléfono"))), T("+ " + Money(-Js.Num(x["balance"])), 15, true, Green)),
                 Muted("🟢 Este importe queda a favor del cliente.")));
         }
+        if (fcards.Count > 0) p.Children.Add(Grid2(fcards, S.ContentWidth < 760 ? 1 : 2));
     }
 }
 
