@@ -10,51 +10,73 @@ public sealed class HomePage : Screen
 {
     public override string Title => "Inicio";
     public override string Nav => "home";
-    bool _week = true; string _q = "";
+    string _q = "";
     StackPanel _results = new() { Spacing = 8 };
 
+    public override bool ShowTitle => false;
+
+    /// <summary>Misma composición que la app web en PC: saludo, buscador, "Por cobrar" con anillo, 4 accesos, estado de los pedidos y últimos pagos.</summary>
     public override void Build(StackPanel p)
     {
         _results = new StackPanel { Spacing = 8 };
-        var d = Services.Stats.GetDashboard(); var ps = Services.Stats.Payments();
-        var date = DateTime.Now.ToString("dddd, d 'de' MMMM 'de' yyyy", new CultureInfo("es-ES"));
-        p.Children.Add(V(2, H("¡Hola, " + Core.GreetName + "!", 26), Muted(char.ToUpper(date[0]) + date[1..], 13)));
+        var d = Services.Stats.GetDashboard(); var ps = Services.Stats.Payments(); var active = Core.ActiveOrders();
+        var hi = H("¡Hola, " + Core.GreetName + "!", 24); hi.Margin = new Thickness(2, 4, 0, 0);
+        p.Children.Add(hi);
         p.Children.Add(Search(_q, "Buscar clientes, encargos o notas", q => { _q = q; FillResults(); }));
         p.Children.Add(_results); FillResults();
 
-        p.Children.Add(Card(Lead(Gauge(ps.Pct, "cobrado", 128), V(4, Muted("Total cobrado", 13), Big(Money(ps.Collected), Green),
-            Muted("de " + Money(ps.Target) + (ps.GoalMode == "monthly" ? " (meta del mes)" : " esperado")), Link("Ver registro de pagos ›", () => S.Go(new PaymentsPage()))))));
-        p.Children.Add(Cols(Kpi("Clientes", d.Clients.ToString()), Kpi("Encargos", d.Count.ToString()), Kpi("Libras", Js.ToFixed(d.Pounds, 2)),
-            Kpi("Cobrado", Money(d.Paid), Green), Kpi("Pendiente", "- " + Money(d.Pending), Rose), Kpi("A favor", "+ " + Money(d.Funds), Teal)));
+        // .aHero: anillo + "Por cobrar"
+        var total = d.Paid + d.Pending; var pct = total > 0 ? d.Paid / total * 100 : 0;
+        Grid Leg(Brush c, string l, string v) { var g = Lead(Dot(c, 8), T(l, 13.5, false, Mut), T(v, 13.5, true, null, false)); g.ColumnSpacing = 8; return g; }
+        var hero = Card(Lead(Ring(pct, "cobrado", 100), V(2, T("Por cobrar", 12.5, true, Mut), Big(Money(d.Pending), null, 32), V(3, Leg(Green, "Cobrado", Money(d.Paid)), Leg(Br(0xFF64748Bu), "Pendiente", Money(d.Pending))))));
+        hero.Padding = new Thickness(20);
+        UIElement Stat(string glyph, string label, string value, Brush? vc, Action go)
+        {
+            var lab = T(label, 12.5, true, Mut, false);
+            var c = ClickCard(go, Lead(IconTile(glyph), V(1, lab, Big(value, vc, 18.5)), new FontIcon { Glyph = "", FontSize = 11, Foreground = Mut }));
+            c.Padding = new Thickness(0); ((Button)c.Child).Padding = new Thickness(12); return c;
+        }
+        var stats = new Grid { RowSpacing = 12, ColumnSpacing = 12 };
+        stats.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }); stats.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        stats.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); stats.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        var cells = new[] { Stat("", "Encargos", active.Count.ToString(), null, () => S.Root(new OrdersPage())), Stat("", "Clientes", d.Clients.ToString(), null, () => S.Root(new ClientsPage())),
+            Stat("", "Libras", Js.ToFixed(d.Pounds, 2) + " lb", null, () => S.Root(new StatsPage())), Stat("", "Fondos a favor", "+ " + Money(d.Funds), Green, () => S.Root(new PendingPage())) };
+        for (var i = 0; i < 4; i++) { var fe = (FrameworkElement)cells[i]; Grid.SetRow(fe, i / 2); Grid.SetColumn(fe, i % 2); stats.Children.Add(fe); }
+        var top = new Grid { ColumnSpacing = 12 };
+        top.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.25, GridUnitType.Star) }); top.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        top.Children.Add(hero); Grid.SetColumn(stats, 1); top.Children.Add(stats);
+        p.Children.Add(top);
 
-        var all = Core.Attention.Compute(); var n = Core.Attention.Badge(all);
-        p.Children.Add(Card("Requiere tu atención", Link("Abrir ›", () => S.Go(new AttentionPage())),
-            d.PendingOrders > 0 ? T($"🔴 {d.PendingOrders} pedido(s) con saldo pendiente.") : null,
-            d.Transit > 0 ? T($"🚚 {d.Transit} pedido(s) en tránsito.") : null,
-            d.Received > 0 ? T($"📦 {d.Received} pedido(s) recibidos.") : null,
-            d.PendingOrders == 0 && d.Transit == 0 && d.Received == 0 ? Muted("Todo está al día.", 14) : null,
-            n > 0 ? T($"{n} aviso(s) sin revisar en el Centro de atención", 13, false, Amber) : null));
+        // Estado de los pedidos + Últimos pagos
+        var ped = d.ByStatus.Count > 0 ? d.ByStatus[0].N : 0; var tra = (d.ByStatus.Count > 1 ? d.ByStatus[1].N : 0) + d.Received; var ent = d.ByStatus.Count > 2 ? d.ByStatus[2].N : 0;
+        var seg = new Grid { ColumnSpacing = 5, Height = 10 };
+        var parts = new[] { (ped, Blue), (tra, Br(0xFF64748Bu)), (ent, Green) }.Where(x => x.Item1 > 0).ToList(); var n = 0;
+        foreach (var (v, c) in parts) { seg.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(v, GridUnitType.Star) }); var bb = new Border { CornerRadius = new CornerRadius(5), Background = c }; Grid.SetColumn(bb, n++); seg.Children.Add(bb); }
+        if (parts.Count == 0) seg.Children.Add(new Border { CornerRadius = new CornerRadius(5), Background = Br(0x2494A3B8u) });
+        UIElement Col(string l, int v, Brush c, string? sub) { var s = V(2, Hs(6, Dot(c, 7), T(l, 12.5, true, Mut, false)), Big(v.ToString(), null, 22), sub != null ? Muted(sub, 10.5) : null); s.HorizontalAlignment = HorizontalAlignment.Center; foreach (var ch in s.Children) ((FrameworkElement)ch).HorizontalAlignment = HorizontalAlignment.Center; return s; }
+        var estado = IconCard("", "Estado de los pedidos", Link($"{active.Count} activos ›", () => S.Root(new OrdersPage())), seg,
+            Cols(Col("Pedido", ped, Blue, null), Col("En tránsito", tra, Br(0xFF94A3B8u), d.Received > 0 ? $"incluye {d.Received} recibido{(d.Received == 1 ? "" : "s")}" : null), Col("Entregado", ent, Green, null)));
+        var rows = new List<UIElement>();
+        var list = ps.List.Take(4).ToList();
+        if (list.Count == 0) rows.Add(Muted("Aún no hay pagos registrados.", 13));
+        var orders = Core.Orders();
+        for (var i = 0; i < list.Count; i++)
+        {
+            var it = list[i]; var x = orders.FirstOrDefault(o => Js.Str(o["id"]) == it.OrderId);
+            var done = x != null && Js.Num(x["total"]) > 0 && Js.Num(x["balance"]) <= 0.005;
+            var id = it.OrderId;
+            if (i > 0) rows.Add(new Border { Height = 1, Background = LineBr });
+            rows.Add(Click(Row(V(0, T(PayDate(it.P["date"]), 12.5, true), T(it.Client, 13.5, true, null, false, 1)), T(it.P.Str("method").IfEmpty("Efectivo"), 12, false, Mut, false), T(Money(it.P["amount"]), 15, true, null, false), done ? Chip("Completado", Green) : null), () => S.Go(new OrderPage(id))));
+        }
+        var pagos = IconCard("", "Últimos pagos", Link("Ver todos ›", () => S.Go(new PaymentsPage())), rows.ToArray());
+        p.Children.Add(Cols(estado, pagos));
+    }
 
-        var items = Services.Stats.Revenue(_week); var total = items.Sum(i => i.Value);
-        var revenue = Card("Ingresos", null,
-            Choice(new[] { ("w", "Últimos 7 días"), ("m", "Últimos 6 meses") }, _week ? "w" : "m", k => { _week = k == "w"; Redraw(); }),
-            Big(Money(total), null, 22), Muted("cobrado en " + (_week ? "los últimos 7 días" : "los últimos 6 meses")),
-            items.Any(i => i.Value > 0) ? (UIElement)Bars(items) : Muted("Aún no hay pagos en este periodo.", 13));
-        var nn = Math.Max(1, Core.Data.Count);
-        var byStatus = Card("Por estado", null, d.ByStatus.Select(s => (UIElement)V(4, Row(T(s.Label), T(s.N.ToString(), 14, true)),
-            Progress(s.N / (double)nn, s.Label == "Pedido" ? Amber : s.Label == "En tránsito" ? Blue : Green), Muted(Money(s.Total) + " en total"))).ToArray());
-        p.Children.Add(Cols(revenue, byStatus));
-
-        var debts = new List<UIElement>();
-        if (d.TopDebts.Count == 0) debts.Add(Muted("Nadie tiene saldo pendiente.", 14));
-        foreach (var (name, bal, cnt) in d.TopDebts)
-            debts.Add(Click(Lead(Avatar(name, Rose, 34), V(0, T(name, 14, true), Muted($"{cnt} encargo(s)")), T(Money(bal), 15, true, Rose)), () => S.Go(new ClientPage(name))));
-        if (d.Debtors > 5) debts.Add(Muted($"y {d.Debtors - 5} más"));
-        var recent = new List<UIElement>();
-        if (d.Recent.Count == 0) recent.Add(Muted("Sin actividad.", 14));
-        foreach (var x in d.Recent)
-            recent.Add(Click(V(0, T(x.Str("name"), 14, true), Muted($"{x.Str("status")} · {Js.Fmt(x["updated"] ?? x["date"])} · {Money(x["total"])}")), () => S.Go(new OrderPage(Js.Str(x["id"])))));
-        p.Children.Add(Cols(Card("Quién me debe", Link("Ver todos ›", () => S.Go(new PendingPage())), debts.ToArray()), Card("Actividad reciente", null, recent.ToArray())));
+    static string PayDate(object? v)
+    {
+        var t = Js.ParseDate(v); if (double.IsNaN(t)) return "";
+        var s = Js.Local(t).ToString("dd MMM yyyy", new CultureInfo("es-ES")).Replace(".", "");
+        return string.Join(" ", s.Split(' ').Select(w => w.Length > 0 ? char.ToUpper(w[0]) + w[1..] : w));
     }
 
     void FillResults()

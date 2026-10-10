@@ -255,6 +255,7 @@ public sealed class SettingsPage : Screen
         p.Children.Add(Cols(
             Card("Notificaciones", null, new[] { ("inapp", "Avisos dentro de la app"), ("pay", "Pagos"), ("order", "Encargos"), ("client", "Clientes"), ("system", "Sistema y seguridad"), ("important", "Avisos importantes") }
                 .Select(o => (UIElement)Toggle(o.Item2, "", Js.Truthy(cfg[o.Item1]), _ => Core.Notifs.ToggleCfg(o.Item1))).ToArray()),
+            Card("Sonido", null, Toggle("Sonido de inicio de sesión", "Un sonido corto y discreto al entrar correctamente", Sound.On(), on => { Sound.Set(on); if (on) Sound.Login(); })),
             Card("Apariencia", null, Toggle("Modo día", "Colores claros (se aplica al volver a abrir la app)", Core.Ls.Get("encargos_aurora_mode", "") == "day", on =>
             {
                 Core.Ls.Set("encargos_aurora_mode", on ? "day" : "night");
