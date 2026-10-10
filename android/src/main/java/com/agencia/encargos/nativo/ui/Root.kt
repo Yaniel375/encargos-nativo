@@ -285,11 +285,11 @@ private fun BottomNav(ui: Ui, modifier: Modifier) {
 const val AUTO_TITLE = "\u0000"
 
 /** Lista de la pantalla: título grande (como los paneles de la web), márgenes y entrada escalonada de cada tarjeta. */
-@Composable fun Page(title: String? = AUTO_TITLE, sub: String? = null, right: String? = null, content: LazyListScope.() -> Unit) {
+@Composable fun Page(title: String? = AUTO_TITLE, sub: String? = null, right: String? = null, extraBottom: androidx.compose.ui.unit.Dp = 0.dp, content: LazyListScope.() -> Unit) {
     val ui = LocalUi.current; val cur = ui.current
     val t = if (title == AUTO_TITLE) cur.title else title
     val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 84.dp
-    val bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 96.dp
+    val bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 96.dp + extraBottom
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = top, bottom = bottom), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         val sc = EnterScope(this)
         if (t != null) sc.item { PageTitle(t, sub, right, back = !isTabScreen(cur)) }

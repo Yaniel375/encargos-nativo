@@ -22,6 +22,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Spacer
@@ -62,7 +66,8 @@ fun NewOrderScreen(forName: String?, forPhone: String?) {
     val buy = Js.num(core.buyRates()[type]); val gain = p * (lc - buy)
     val suggestions = if (name.length >= 2 && forName == null) core.clients().filter { it.name.lowercase().contains(name.trim().lowercase()) && it.name != name }.take(4) else emptyList()
 
-    Page(title = if (forName != null) "Nuevo encargo para $forName" else "Nuevo encargo", sub = "Completa los datos y guarda") {
+    Box(Modifier.fillMaxSize()) {
+    Page(title = if (forName != null) "Nuevo encargo para $forName" else "Nuevo encargo", sub = "Completa los datos y guarda", extraBottom = 64.dp) {
         item {
             // Vista previa del encargo (como en la web): se actualiza mientras escribes
             SectionCard {
@@ -126,13 +131,17 @@ fun NewOrderScreen(forName: String?, forPhone: String?) {
                 if (p > 0) Line("Ganancia (${Js.toFixed(p, 2)} lb × (${money(lc)} − ${money(buy)}))", (if (gain < 0) "-" else "") + money(kotlin.math.abs(gain)), if (gain >= 0) C.green else C.rose)
             }
         }
-        item {
-            Primary("Guardar encargo", Modifier.fillMaxWidth(), Icons.Filled.Save) {
+    }
+
+    // barra fija "Guardar encargo · Limpiar" sobre la barra inferior (como en la web)
+    Row(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(start = 12.dp, end = 12.dp, bottom = 80.dp).fillMaxWidth()
+        .glass(RoundedCornerShape(18.dp), W.line2).padding(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Primary("Guardar encargo", Modifier.weight(1f), Icons.Filled.Save) {
                 core.createOrder(Encargos.NewOrder(name, phone, c, lc, p, f, method, status, type, photo))
                     .onSuccess { x -> core.ls.del("encargos_v4_draft"); ui.toast("✅ Encargo guardado correctamente."); ui.root(Screen.Orders); ui.go(Screen.Order(Js.str(x["id"]))) }
                     .onFailure { ui.toast(it.message ?: "No se pudo guardar.") }
             }
-        }
-        item { Secondary("Limpiar formulario", Modifier.fillMaxWidth()) { name = ""; phone = ""; cost = ""; pounds = ""; fund = ""; photo = ""; status = "Pedido"; type = "avion"; rate = Js.toFixed(core.rateOf("avion"), 2); core.ls.del("encargos_v4_draft") } }
+        Secondary("Limpiar", Modifier.height(52.dp)) { name = ""; phone = ""; cost = ""; pounds = ""; fund = ""; photo = ""; status = "Pedido"; type = "avion"; rate = Js.toFixed(core.rateOf("avion"), 2); core.ls.del("encargos_v4_draft") }
+    }
     }
 }
