@@ -142,8 +142,9 @@ for dest in ["Registro de pagos", "Estadísticas", "Ajustes"]:
 # lo que salió del menú sigue accesible desde Ajustes → Datos y seguridad
 for dest, row in [("respaldo", "Respaldo e importación"), ("seguridad", "Seguridad"), ("sincronización", "Sincronización (Telegram)")]:
     if tap("Más", wait=1.2) and tap("Ajustes", wait=2.5):
-        for _ in range(3):
-            if find(row, exact=True) is not None: break
+        for _ in range(5):
+            nd = find(row, exact=True)
+            if nd is not None and center(nd)[1] < 1550: break  # por encima de la barra inferior
             adb("shell", "input", "swipe", "540", "1500", "540", "700", "400"); time.sleep(1)
         if tap(row, exact=True, wait=2.5):
             shot(dest)
