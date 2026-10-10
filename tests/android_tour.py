@@ -99,9 +99,9 @@ def crashed():
 adb("logcat", "-c")
 adb("shell", "am", "start", "-W", "-n", f"{PKG}/.MainActivity"); time.sleep(8)
 shot("crear_acceso")
-def type_at(label, value):
+def type_at(label, value, exact=False):
     hide_kb()
-    if tap(label, wait=0.7):
+    if tap(label, exact=exact, wait=0.7):
         adb("shell", "input", "text", value.replace(" ", "%s")); time.sleep(0.4)
 type_at("Usuario", "prueba"); type_at("Contraseña (mínimo 6)", "clave123"); type_at("Repite la contraseña", "clave123"); hide_kb()
 shot("acceso_lleno")
@@ -133,7 +133,7 @@ say("— modo día —")
 adb("shell", "am", "start", "-S", "-W", "-n", f"{PKG}/.MainActivity", "--es", "tema", "dia"); time.sleep(8)
 shot("dia_acceso")
 if find("Iniciar sesión") is not None:
-    type_at("Usuario", "prueba"); type_at("Contraseña", "clave123"); hide_kb(); tap("Iniciar sesión", wait=5)
+    type_at("Contraseña", "clave123", exact=True); hide_kb(); tap("Iniciar sesión", wait=5)   # el usuario ya viene recordado
 shot("dia_inicio")
 adb("shell", "input", "swipe", "540", "1500", "540", "500", "500"); time.sleep(1.5); shot("dia_inicio_abajo")
 tap("Encargos", exact=True, wait=2, last=True); shot("dia_encargos")
