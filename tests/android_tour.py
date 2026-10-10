@@ -145,7 +145,11 @@ for dest, row in [("respaldo", "Respaldo e importación"), ("seguridad", "Seguri
         for _ in range(3):
             if find(row, exact=True) is not None: break
             adb("shell", "input", "swipe", "540", "1500", "540", "700", "400"); time.sleep(1)
-        if tap(row, exact=True, wait=2.5): shot(dest)
+        if tap(row, exact=True, wait=2.5):
+            shot(dest)
+            # al volver atrás, Ajustes debe seguir desplazado donde estaba (la fila sigue a la vista)
+            adb("shell", "input", "keyevent", "4"); time.sleep(1.8)
+            say(f"  al volver de {dest}, Ajustes conserva su posición: " + ("sí" if find(row, exact=True) is not None else "NO"))
     home()
 if tap("Más", wait=1.5): shot("menu_perfil"); adb("shell", "input", "keyevent", "4"); time.sleep(1)
 if tap("Más", wait=1.2) and tap("Ajustes", wait=2.5):

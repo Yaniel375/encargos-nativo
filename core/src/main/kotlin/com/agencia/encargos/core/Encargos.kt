@@ -314,7 +314,22 @@ class Encargos(val storage: Storage, val platform: String = "ANDROID") {
     class Client(val name: String, val phone: String, val orders: MutableList<JObj>, var paid: Double = 0.0, var pending: Double = 0.0, var funds: Double = 0.0, var pounds: Double = 0.0) {
         val key get() = name.trim().lowercase()
     }
-    fun clients(): List<Client> {
+    /* Vista calculada una sola vez por versión de los datos: las pantallas, el panel, las estadísticas y el centro de atención
+     * piden estas listas muchas veces; se recalculan solo cuando cambia [version] (es decir, tras guardar un cambio).
+     * Los resultados son idénticos a calcularlas cada vez. */
+    private var cacheVer = -1L
+    private var cClients: List<Client> = emptyList(); private var cActive: List<Client> = emptyList(); private var cDone: List<Client> = emptyList()
+    private var cActiveOrders: List<JObj> = emptyList(); private var cByKey: Map<String, Client> = emptyMap()
+    @Synchronized private fun view() {
+        if (cacheVer == version) return
+        val all = computeClients(); val done = all.filter { isCompletedClient(it) }; val doneKeys = done.map { it.key }.toSet()
+        cClients = all; cDone = done; cActive = all.filter { !isCompletedClient(it) }
+        cActiveOrders = orders().filter { !doneKeys.contains(it.str("name").trim().lowercase()) }
+        cByKey = all.associateBy { it.name.lowercase() }
+        cacheVer = version
+    }
+    fun clients(): List<Client> { view(); return cClients }
+    private fun computeClients(): List<Client> {
         val map = LinkedHashMap<String, Client>()
         orders().forEach { x ->
             val k = x.str("name").trim().lowercase()
@@ -327,10 +342,10 @@ class Encargos(val storage: Storage, val platform: String = "ANDROID") {
     /** Versión vigente de la app: cliente completado = todos sus encargos cancelados o pagados (total > 0 y saldo 0). */
     private fun settled(o: JObj) = o["status"] == "Cancelado" || (Js.num(o["total"]) > 0 && abs(Js.num(o["balance"])) < 0.005)
     fun isCompletedClient(c: Client?) = c != null && c.orders.isNotEmpty() && c.orders.all { settled(it) }
-    fun activeClients() = clients().filter { !isCompletedClient(it) }
-    fun completedClients() = clients().filter { isCompletedClient(it) }
-    fun activeOrders(): List<JObj> { val done = completedClients().map { it.key }.toSet(); return orders().filter { !done.contains(it.str("name").trim().lowercase()) } }
-    fun findClient(name: String): Client? = clients().firstOrNull { it.name.lowercase() == name.lowercase() }
+    fun activeClients(): List<Client> { view(); return cActive }
+    fun completedClients(): List<Client> { view(); return cDone }
+    fun activeOrders(): List<JObj> { view(); return cActiveOrders }
+    fun findClient(name: String): Client? { view(); return cByKey[name.lowercase()] ?: cClients.firstOrNull { it.name.lowercase() == name.lowercase() } }
 
     fun clientInfo(name: String): JObj = (ls.json("encargos_client_info") as? JObj)?.get(name.trim().lowercase()) as? JObj ?: JObj()
     fun saveClientInfo(name: String, address: String, note: String): Boolean {
