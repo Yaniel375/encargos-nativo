@@ -145,10 +145,10 @@ public sealed class StatsPage : Screen
         {
             var d = st.Pct(n, o);
             var txt = d == null ? "▲ nuevo" : Math.Abs(d.Value) < 0.5 ? "= igual que antes" : (d > 0 ? "▲ " : "▼ ") + Js.ToFixed(Math.Abs(d.Value), 0) + "% vs anterior";
-            return T(txt, 11, false, d == null || d > 0 ? Green : Math.Abs(d.Value) < 0.5 ? Mut : Rose);
+            return T(txt, 11, false, d == null ? BlueInk : Math.Abs(d.Value) < 0.5 ? Mut : d > 0 ? Green : Rose);
         }
         UIElement KpiD(string label, string value, Microsoft.UI.Xaml.Media.Brush? color, double n, double o) =>
-            new Border { Padding = new Thickness(12), CornerRadius = new CornerRadius(12), Background = Alpha(Mut, 0.08), Child = V(2, Muted(label), Big(value, color, 18), Delta(n, o)) };
+            V(4, Kpi(label, value, color), Delta(n, o));
         p.Children.Add(Choice(new[] { ("Week", "Semana"), ("Month", "Mes"), ("Year", "Año") }, _period.ToString(), k => { _period = Enum.Parse<Stats.Period>(k); _ref = Js.Today(); Redraw(); }));
         var prevB = Btn("‹", () => { _ref = st.Shift(_period, _ref, -1); Redraw(); }, false, null, null, false);
         var nextB = Btn("›", () => { _ref = st.Shift(_period, _ref, 1); Redraw(); }, false, null, null, false); nextB.IsEnabled = !isNow;
@@ -156,20 +156,20 @@ public sealed class StatsPage : Screen
         p.Children.Add(Lead(prevB, lbl, nextB));
         p.Children.Add(Card(Lead(Gauge(cur.Ventas > 0 ? cur.Cobrado / cur.Ventas * 100 : cur.Cobrado > 0 ? 100 : 0, "cobrado", 120),
             V(4, Muted("Dinero cobrado", 13), Big(Money(cur.Cobrado), Green, 22), Delta(cur.Cobrado, prev.Cobrado), Muted($"de {Money(cur.Ventas)} vendido"))), Bars(st.Buckets(_period, a, b), null, 120)));
-        p.Children.Add(Cols(KpiD("Ventas", Money(cur.Ventas), Blue, cur.Ventas, prev.Ventas), KpiD("Encargos", cur.Ord.Count.ToString(), Vio, cur.Ord.Count, prev.Ord.Count),
-            KpiD("Libras", Js.ToFixed(cur.Lb, 1) + " lb", Amber, cur.Lb, prev.Lb)));
-        p.Children.Add(Cols(KpiD("Ganancia", Signed(cur.Gan), cur.Gan >= 0 ? Green : Rose, cur.Gan, prev.Gan), KpiD("Gastos", Money(cur.Gastos), Rose, cur.Gastos, prev.Gastos),
+        p.Children.Add(Cols(KpiD("Ventas", Money(cur.Ventas), Blue, cur.Ventas, prev.Ventas), KpiD("Encargos", cur.Ord.Count.ToString(), null, cur.Ord.Count, prev.Ord.Count),
+            KpiD("Libras", Js.ToFixed(cur.Lb, 1) + " lb", null, cur.Lb, prev.Lb)));
+        p.Children.Add(Cols(KpiD("Ganancia", Signed(cur.Gan), cur.Gan >= 0 ? Green : Rose, cur.Gan, prev.Gan), KpiD("Gastos", Money(cur.Gastos), null, cur.Gastos, prev.Gastos),
             KpiD("Ganancia neta", Signed(cur.Neta), cur.Neta >= 0 ? Green : Rose, cur.Neta, prev.Neta)));
         var top = st.TopClients(cur); var mx = top.Count == 0 ? 1 : top.Max(t => t.Total);
         var topRows = new List<UIElement>(); if (top.Count == 0) topRows.Add(Muted("Sin encargos en este periodo.", 14));
-        foreach (var (n, t, c) in top) { topRows.Add(T(n, 14, true)); topRows.Add(Muted($"{Money(t)} · {c} encargo{(c == 1 ? "" : "s")}")); topRows.Add(Progress(t / mx, Vio)); }
+        foreach (var (n, t, c) in top) { topRows.Add(T(n, 14, true)); topRows.Add(Muted($"{Money(t)} · {c} encargo{(c == 1 ? "" : "s")}")); topRows.Add(Progress(t / mx, Blue)); }
         var ex = st.ExpensesIn(a, b); var exRows = new List<UIElement>();
         if (ex.Count == 0) exRows.Add(Muted("Anota transporte, aduana, empaques y otros gastos para ver tu ganancia neta real.", 13));
         foreach (var e in ex)
         {
             var e2 = e;
             exRows.Add(Click(Row(V(0, T(e.Str("concept"), 14, true), Muted((EncargosApp.EXP_CATS.FirstOrDefault(c => c.Item1 == e.Str("cat")).Item2 ?? "Otros") + " · " + DayLabel(e["date"]))),
-                T("-" + Money(e["amount"]), 14, true, Rose)), () => ExpenseDialog(e2)));
+                T("-" + Money(e["amount"]), 14, true)), () => ExpenseDialog(e2)));
         }
         p.Children.Add(Cols(Card("Mejores clientes", null, topRows.ToArray()), Card("Gastos del periodo", Link("+ Agregar", () => ExpenseDialog(null)), exRows.ToArray())));
         var ina = st.InactiveClients(); var inRows = new List<UIElement>();

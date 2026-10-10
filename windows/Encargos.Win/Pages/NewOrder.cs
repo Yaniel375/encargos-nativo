@@ -72,7 +72,7 @@ public sealed class NewOrderPage : Screen
     void DrawPhoto()
     {
         _photoBox.Children.Clear();
-        if (_photo.Length > 0) _photoBox.Children.Add(Media.Photo(_photo, double.NaN, 180, () => S.Ask("Quitar foto", "¿Quitar la foto de este encargo?", "Quitar", true, () => { _photo = ""; DrawPhoto(); })));
+        if (_photo.Length > 0) _photoBox.Children.Add(Media.Photo(_photo, double.NaN, 240, () => S.Ask("Quitar foto", "¿Quitar la foto de este encargo?", "Quitar", true, () => { _photo = ""; DrawPhoto(); })));
         _photoBox.Children.Add(Btn(_photo.Length == 0 ? "Agregar foto" : "Cambiar foto", async () => { var d = await Media.PickPhoto(); if (d != null) { _photo = d; DrawPhoto(); } }, false, null, ""));
     }
     void Suggest()

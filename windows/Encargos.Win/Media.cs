@@ -35,16 +35,40 @@ public static class Media
         return bmp;
     }
 
-    /// <summary>Miniatura (o foto grande) a partir de un data URL.</summary>
+    /// <summary>Foto a partir de un data URL. Se ve SIEMPRE entera (sin recortes ni deformaciones) dentro de su recuadro.</summary>
     public static Border Photo(string dataUrl, double w, double h, Action? onClick = null, int decode = 400)
     {
-        var img = new Image { Stretch = Stretch.UniformToFill };
-        var b = new Border { Width = w, Height = h, CornerRadius = new CornerRadius(10), Background = Alpha(Mut, 0.15), Child = img };
-        if (double.IsNaN(w)) { b.Width = double.NaN; img.Stretch = Stretch.Uniform; }
+        var img = new Image { Stretch = Stretch.Uniform };
+        var b = new Border { Width = w, Height = h, CornerRadius = new CornerRadius(10), Background = Alpha(Mut, 0.12), BorderBrush = LineBr, BorderThickness = new Thickness(1), Child = img };
+        if (double.IsNaN(w)) b.Width = double.NaN;
         _ = SetAsync(img, dataUrl, decode);
-        if (onClick != null) b.Tapped += (_, e) => { e.Handled = true; onClick(); };
+        if (onClick != null) { b.Tapped += (_, e) => { e.Handled = true; onClick(); }; b.PointerEntered += (_, _) => b.BorderBrush = Alpha(Blue, .6); b.PointerExited += (_, _) => b.BorderBrush = LineBr; }
         return b;
     }
+
+    /// <summary>Miniatura que muestra la foto entera: misma altura y ancho según su proporción real. Tocar abre el visor.</summary>
+    public static Border Thumb(string dataUrl, double h, int index, int count, Action onClick)
+    {
+        var img = new Image { Stretch = Stretch.Uniform };
+        var g = new Grid(); g.Children.Add(img);
+        if (count > 1) g.Children.Add(new Border { HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(5), CornerRadius = new CornerRadius(6), Padding = new Thickness(5, 1, 5, 2), Background = Br(0x8C000000u), Child = T($"{index + 1}/{count}", 10, true, White, false) });
+        g.Children.Add(new Border { HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(5), Width = 22, Height = 22, CornerRadius = new CornerRadius(11), Background = Br(0x8C000000u), Child = new FontIcon { Glyph = "\uE71E", FontSize = 11, Foreground = White } });
+        var b = new Border { Width = h, Height = h, CornerRadius = new CornerRadius(12), Background = Alpha(Mut, 0.12), BorderBrush = LineBr, BorderThickness = new Thickness(1), Child = g };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(b, $"Foto {index + 1} de {count}");
+        img.ImageOpened += (_, _) => { if (img.Source is BitmapImage bi && bi.PixelHeight > 0) b.Width = h * Math.Clamp((double)bi.PixelWidth / bi.PixelHeight, 0.35, 3); };
+        _ = SetAsync(img, dataUrl, 500);
+        b.Tapped += (_, e) => { e.Handled = true; onClick(); };
+        b.PointerEntered += (_, _) => b.BorderBrush = Alpha(Blue, .6); b.PointerExited += (_, _) => b.BorderBrush = LineBr;
+        return b;
+    }
+    /// <summary>Fila de miniaturas completas con desplazamiento horizontal.</summary>
+    public static FrameworkElement Strip(List<string> photos, double h, Action<int> onOpen)
+    {
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        for (var i = 0; i < photos.Count; i++) { var idx = i; row.Children.Add(Thumb(photos[i], h, i, photos.Count, () => onOpen(idx))); }
+        return new ScrollViewer { Content = row, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled, HorizontalScrollMode = ScrollMode.Enabled, VerticalScrollMode = ScrollMode.Disabled, Padding = new Thickness(0, 0, 0, 6) };
+    }
+
     static async Task SetAsync(Image img, string dataUrl, int decode) { var s = await Load(dataUrl, decode); if (s != null) img.Source = s; }
 
     /// <summary>Elegir una foto y comprimirla (JPEG, lado mayor maxDim) como data URL.</summary>
@@ -71,19 +95,40 @@ public static class Media
         catch (Exception e) { Services.Report(e); MainWindow.I.Toast("No se pudo leer esa imagen."); return null; }
     }
 
-    /// <summary>Visor de fotos con anterior/siguiente y eliminar.</summary>
-    public static async void Viewer(List<string> list, int start, Action<int>? onDelete)
+    /// <summary>Visor a pantalla completa: cada foto entera; se amplía con Ctrl + rueda, pellizcando o con doble clic,
+    /// y se pasa de una a otra con las flechas o deslizando. "Eliminar" solo aparece donde ya existía esa acción.</summary>
+    public static void Viewer(List<string> list, int start, Action<int>? onDelete)
     {
         if (list.Count == 0) return;
-        var i = Math.Clamp(start, 0, list.Count - 1);
-        var host = new Grid { Width = 760, Height = 520 };
-        void Show() { host.Children.Clear(); host.Children.Add(Photo(list[i], 760, 520, null, 1600)); }
-        Show();
-        var nav = Hs(8, list.Count > 1 ? Btn("‹ Anterior", () => { i = (i - 1 + list.Count) % list.Count; Show(); }, false, null, null, false) : null,
-            list.Count > 1 ? Btn("Siguiente ›", () => { i = (i + 1) % list.Count; Show(); }, false, null, null, false) : null);
-        var del = false;
-        await MainWindow.I.Dialog("Foto", V(10, host, nav), "Cerrar", null, null, onDelete != null ? "Eliminar foto" : null, () => del = true);
-        if (del && onDelete != null) onDelete(i);
+        var S = MainWindow.I;
+        var flip = new FlipView { Background = null, SelectedIndex = -1 };
+        var counter = T("", 15, true, White, false); counter.FontWeight = Microsoft.UI.Text.FontWeights.ExtraBold;
+        foreach (var src in list)
+        {
+            // la foto se centra dentro de un lienzo del tamaño exacto del área visible: se ve entera; al ampliar se recorre
+            var img = new Image { Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            var frame = new Grid { Children = { img } };
+            var sv = new ScrollViewer { ZoomMode = ZoomMode.Enabled, MinZoomFactor = 1, MaxZoomFactor = 5, HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden, VerticalScrollBarVisibility = ScrollBarVisibility.Hidden,
+                HorizontalScrollMode = ScrollMode.Auto, VerticalScrollMode = ScrollMode.Auto, Content = frame, Padding = new Thickness(0) };
+            sv.SizeChanged += (_, e) => { frame.Width = e.NewSize.Width; frame.Height = e.NewSize.Height; };
+            sv.DoubleTapped += (_, e) => { var p = e.GetPosition(img); if (sv.ZoomFactor > 1.01f) sv.ChangeView(0, 0, 1); else sv.ChangeView(p.X * 1.5, p.Y * 1.5, 2.5f); };
+            _ = SetAsync(img, src, 1800);
+            flip.Items.Add(sv);
+        }
+        void Count() => counter.Text = list.Count > 1 ? $"Foto {flip.SelectedIndex + 1} de {list.Count}" : "Foto";
+        flip.SelectionChanged += (_, _) => { Count(); foreach (var it in flip.Items) if (it is ScrollViewer z && z != flip.SelectedItem) z.ChangeView(0, 0, 1, true); };
+        var close = Btn("Cerrar", () => S.HideOverlay(), false, White, "\uE711", false);
+        var top = Row(counter, close); top.Margin = new Thickness(18, 14, 18, 8);
+        var hint = Muted("Ctrl + rueda, pellizca o doble clic para ampliar · flechas para cambiar de foto", 12); hint.Foreground = Br(0xB3FFFFFFu); hint.TextAlignment = TextAlignment.Center;
+        var del = onDelete != null ? Btn("Eliminar", () => { var i = flip.SelectedIndex; S.HideOverlay(); onDelete(i); }, false, Rose, "\uE74D", false) : null;
+        var bottom = Row(hint, del); bottom.Margin = new Thickness(18, 8, 18, 14);
+        var g = new Grid { Background = Br(0xF2020611u) };
+        g.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); g.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }); g.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        g.Children.Add(top); Grid.SetRow(flip, 1); g.Children.Add(flip); Grid.SetRow(bottom, 2); g.Children.Add(bottom);
+        g.KeyDown += (_, e) => { if (e.Key == Windows.System.VirtualKey.Escape) S.HideOverlay(); };
+        S.ShowOverlay(g);
+        flip.SelectedIndex = Math.Clamp(start, 0, list.Count - 1); Count();
+        flip.Focus(FocusState.Programmatic);
     }
 
     /* ---------- archivos ---------- */

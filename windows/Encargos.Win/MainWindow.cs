@@ -37,6 +37,24 @@ public sealed class MainWindow : Window
     public IntPtr Hwnd { get; }
     readonly Grid _root = new();
     readonly Grid _host = new();
+    readonly Canvas _stage = new();
+    /// <summary>Escala actual de "Adaptar a la pantalla" (1 = tamaño normal).</summary>
+    public double Fit { get; private set; } = 1;
+    public static bool FitAuto() => Services.Core.Ls.Get("encargos_win_fit", "") != "off";
+    /// <summary>Tamaño de diseño: la ventana inicial (1320×860). Más ancha → todo crece; más estrecha → se reduce un poco.</summary>
+    public static double FitFor(double w, double h) => !FitAuto() ? 1 : Math.Clamp(Math.Min(w / 1320.0, h / 640.0), 0.85, 1.6);
+    public void ApplyFit(double w, double h)
+    {
+        if (w <= 0 || h <= 0) return;
+        var s = FitFor(w, h); Fit = s;
+        _host.Width = w / s; _host.Height = h / s;
+        _host.RenderTransform = Math.Abs(s - 1) < 0.001 ? null : new ScaleTransform { ScaleX = s, ScaleY = s };
+    }
+    /// <summary>Capa a pantalla completa (visor de fotos) por encima de todo.</summary>
+    readonly Grid _overlay = new() { Visibility = Visibility.Collapsed };
+    public void ShowOverlay(UIElement content) { _overlay.Children.Clear(); _overlay.Children.Add(content); _overlay.Visibility = Visibility.Visible; Fx.EnterUp(content, 0); }
+    public void HideOverlay() { _overlay.Visibility = Visibility.Collapsed; _overlay.Children.Clear(); }
+    public void RefreshFit() => ApplyFit(_root.ActualWidth, _root.ActualHeight);
     readonly Grid _main = new();
     readonly StackPanel _side = new() { Spacing = 4 };
     readonly ScrollViewer _scroll = new() { HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
@@ -73,12 +91,16 @@ public sealed class MainWindow : Window
 
         K.Day = false; _root.RequestedTheme = ElementTheme.Dark; _root.Background = Bg;
         _root.Children.Add(MakeBg(false));
-        _root.Children.Add(_host);
+        // "Adaptar a la pantalla": la ventana se compone a su tamaño de diseño y se escala en proporción a la resolución,
+        // así al maximizar todo crece en su sitio en lugar de separarse (las ventanas emergentes y avisos no se escalan)
+        _stage.Children.Add(_host);
+        _root.Children.Add(_stage);
+        _root.SizeChanged += (_, e) => ApplyFit(e.NewSize.Width, e.NewSize.Height);
         _stack.Add(new HomePage());
         BuildMain();
         _busy.Child = new Border { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Padding = new Thickness(24), CornerRadius = new CornerRadius(18), Background = CardBg, BorderBrush = Line2, BorderThickness = new Thickness(1), Child = Hs(12, new ProgressRing { IsActive = true, Width = 28, Height = 28 }, _busyText) };
         _toast.Background = CardBg; _toast.BorderBrush = Line2; _toast.BorderThickness = new Thickness(1);
-        _root.Children.Add(_busy); _root.Children.Add(_toast);
+        _root.Children.Add(_busy); _root.Children.Add(_toast); _root.Children.Add(_overlay);
         Content = _root;
 
         // al cambiar el ancho de la ventana, el Inicio redistribuye sus tarjetas
@@ -130,6 +152,25 @@ public sealed class MainWindow : Window
                     await Snap(dir, $"{i++:00}_{name}", L);
                 }
             }
+            // fotos de muestra (marco rojo y esquinas marcadas: si se ven las 4 esquinas, la foto está completa) — solo en la carpeta de prueba
+            if (r.Ok)
+            {
+                var v = await TestPhoto(600, 1200, "VERTICAL"); var hz = await TestPhoto(1200, 600, "HORIZONTAL");
+                Services.Core.AddOrderPhoto(x!["id"], v); Services.Core.AddOrderPhoto(x["id"], hz);
+                foreach (var (name, page) in new (string, Screen)[] { ("ficha_encargo_fotos", new OrderPage(Js.Str(x["id"]))), ("ficha_cliente_fotos", new ClientPage("Cliente Prueba")) })
+                { LastRenderError = null; Go(page); await Task.Delay(1200); if (LastRenderError != null) { fails++; L($"ERROR en {name}: {LastRenderError}"); } await Snap(dir, $"{i++:00}_{name}", L); }
+                Media.Viewer(Services.Core.OrderPhotos(Services.Core.ById(x["id"])!), 0, null); await Task.Delay(1500); await Snap(dir, $"{i++:00}_visor_vertical", L);
+                HideOverlay(); Media.Viewer(Services.Core.OrderPhotos(Services.Core.ById(x["id"])!), 1, null); await Task.Delay(1500); await Snap(dir, $"{i++:00}_visor_horizontal", L); HideOverlay();
+            }
+            // acceso con PIN (PIN de prueba solo en la carpeta de prueba)
+            if (!Services.Security.PinOn()) Services.Security.SetPin("1234");
+            ShowLock(); await Task.Delay(2600); await Snap(dir, $"{i++:00}_acceso_pin", L); Unlock(false); await Task.Delay(800);
+            // ventana grande (como maximizada en 1920×1080): con "Adaptar a la pantalla" todo crece en su sitio
+            try { AppWindow.Resize(new Windows.Graphics.SizeInt32(1920, 1080)); } catch { }
+            await Task.Delay(1500); L($"ventana {_root.ActualWidth:0}×{_root.ActualHeight:0} · escala {Fit:0.00}");
+            foreach (var k in new[] { "home", "orders", "settings" }) { LastRenderError = null; Root(PageFor(k)); await Task.Delay(1200); if (LastRenderError != null) { fails++; L($"ERROR (grande) en {k}: {LastRenderError}"); } await Snap(dir, $"{i++:00}_grande_{k}", L); }
+            try { AppWindow.Resize(new Windows.Graphics.SizeInt32(1320, 860)); } catch { }
+            await Task.Delay(1200);
             // segunda vuelta: MODO DÍA (cambio inmediato, sin reiniciar)
             ApplyTheme(true); await Task.Delay(800);
             foreach (var k in new[] { "home", "orders", "clients", "new", "payments", "pending", "stats", "attention", "notifs", "settings" })
@@ -145,6 +186,25 @@ public sealed class MainWindow : Window
         catch (Exception e) { L("RESULTADO: ERROR " + e.GetType().Name + ": " + Services.Redact(e.Message) + "\n" + e.StackTrace); }
         await Task.Delay(500);
         Application.Current.Exit();
+    }
+    /// <summary>Foto de prueba para la autoprueba: fondo claro, recuadro azul, marco rojo y esquinas rojas.</summary>
+    static async Task<string> TestPhoto(int w, int h, string label)
+    {
+        var px = new byte[w * h * 4]; var m = Math.Min(w, h) / 8; var fr = 14;
+        for (var y = 0; y < h; y++) for (var xx = 0; xx < w; xx++)
+        {
+            var o = (y * w + xx) * 4; byte r = 226, g = 232, b = 240;
+            if (xx > w * .12 && xx < w * .88 && y > h * .12 && y < h * .88) { r = 37; g = 99; b = 235; }
+            var edge = xx < fr || y < fr || xx >= w - fr || y >= h - fr; var corner = (xx < m || xx >= w - m) && (y < m || y >= h - m);
+            if (edge || corner) { r = 225; g = 29; b = 72; }
+            px[o] = b; px[o + 1] = g; px[o + 2] = r; px[o + 3] = 255;
+        }
+        using var ms = new Windows.Storage.Streams.InMemoryRandomAccessStream();
+        var enc = await Windows.Graphics.Imaging.BitmapEncoder.CreateAsync(Windows.Graphics.Imaging.BitmapEncoder.JpegEncoderId, ms);
+        enc.SetPixelData(Windows.Graphics.Imaging.BitmapPixelFormat.Bgra8, Windows.Graphics.Imaging.BitmapAlphaMode.Ignore, (uint)w, (uint)h, 96, 96, px);
+        await enc.FlushAsync(); ms.Seek(0);
+        var bytes = new byte[ms.Size]; using (var rs = ms.AsStreamForRead()) { var n = 0; while (n < bytes.Length) { var k = await rs.ReadAsync(bytes.AsMemory(n)); if (k == 0) break; n += k; } }
+        _ = label; return "data:image/jpeg;base64," + Convert.ToBase64String(bytes);
     }
     async Task Snap(string dir, string name, Action<string> L)
     {
@@ -239,32 +299,38 @@ public sealed class MainWindow : Window
         if (BtnStyle != null) chip.Style = BtnStyle;
         // menú del perfil como en la referencia: cabecera con el usuario, accesos en cuadrícula, modo día/noche y bloquear
         var menu = new Flyout();
-        menu.FlyoutPresenterStyle = new Style(typeof(FlyoutPresenter)) { Setters = { new Setter(Control.PaddingProperty, new Thickness(10)), new Setter(Control.CornerRadiusProperty, new CornerRadius(18)), new Setter(Control.BackgroundProperty, CardBg), new Setter(Control.BorderBrushProperty, Line2), new Setter(Control.BorderThicknessProperty, new Thickness(1)) } };
-        // usuario y rol → Pagos · Estadísticas · Ajustes → separador → Modo día/noche → Bloquear app
+        menu.FlyoutPresenterStyle = new Style(typeof(FlyoutPresenter)) { Setters = { new Setter(Control.PaddingProperty, new Thickness(8)), new Setter(Control.CornerRadiusProperty, new CornerRadius(16)), new Setter(Control.BackgroundProperty, CardBg), new Setter(Control.BorderBrushProperty, Line2), new Setter(Control.BorderThicknessProperty, new Thickness(1)) } };
+        // usuario y rol → Pagos · Estadísticas · Ajustes → separador → Modo día/noche → Bloquear app (compacto, como en Android)
         // (Pendientes, Completados, Respaldo, Seguridad y Sincronización siguen en la barra lateral)
-        var mp = new StackPanel { Spacing = 4, Width = 300 };
-        var whoName = T(Services.Core.GreetName.IfEmpty("Mi cuenta"), 15.5, true, null, false, 1); whoName.FontWeight = FontWeights.ExtraBold;
-        var headBtn = Click(Lead(Avatar(Services.Core.GreetName.IfEmpty("E"), Blue, 40), V(0, whoName, Muted(Services.Security.UserName().IfEmpty("admin"), 12.5)), new FontIcon { Glyph = "\uE76C", FontSize = 13, Foreground = Mut }), () => { menu.Hide(); Go(new SettingsPage()); });
-        headBtn.Padding = new Thickness(8); Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(headBtn, "Ver perfil y ajustes");
+        var mp = new StackPanel { Spacing = 5, Width = 232 };
+        var whoName = T(Services.Core.GreetName.IfEmpty("Mi cuenta"), 13.5, true, null, false, 1); whoName.FontWeight = FontWeights.ExtraBold;
+        var headBtn = Click(Lead(Avatar(Services.Core.GreetName.IfEmpty("E"), Blue, 30), V(0, whoName, Muted(Services.Security.UserName().IfEmpty("admin"), 11)), new FontIcon { Glyph = "\uE76C", FontSize = 11, Foreground = Mut }), () => { menu.Hide(); Go(new SettingsPage()); });
+        headBtn.Padding = new Thickness(4); ((Grid)headBtn.Content).ColumnSpacing = 9; Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(headBtn, "Ver perfil y ajustes");
         mp.Children.Add(headBtn);
         var tiles = new List<UIElement>();
         foreach (var (k, l, gl, full) in new[] { ("payments", "Pagos", "\uE8C7", "Registro de pagos"), ("stats", "Estadísticas", "\uE9D2", "Estadísticas"), ("settings", "Ajustes", "\uE713", "Ajustes") })
         {
-            var key = k; var lab = T(l, 12.5, true, null, false); lab.HorizontalAlignment = HorizontalAlignment.Center;
-            var ic = new FontIcon { Glyph = gl, FontSize = 19, Foreground = Text, HorizontalAlignment = HorizontalAlignment.Center };
-            var tb = Click(V(6, ic, lab), () => { menu.Hide(); if (Top.Nav != key) Go(PageFor(key)); }); tb.Padding = new Thickness(4, 10, 4, 10);
+            var key = k; var lab = T(l, 10.5, true, null, false); lab.HorizontalAlignment = HorizontalAlignment.Center;
+            var ic = new FontIcon { Glyph = gl, FontSize = 16, Foreground = BlueInk, HorizontalAlignment = HorizontalAlignment.Center };
+            var tb = Click(V(3, ic, lab), () => { menu.Hide(); if (Top.Nav != key) Go(PageFor(key)); }); tb.Padding = new Thickness(2, 8, 2, 8);
             Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(tb, full);
-            tiles.Add(tb);
+            tiles.Add(new Border { Child = tb, CornerRadius = new CornerRadius(10), Background = Tile, BorderBrush = LineBr, BorderThickness = new Thickness(1) });
         }
-        mp.Children.Add(Grid2(tiles, 3));
-        mp.Children.Add(new Border { Height = 1, Background = LineBr, Margin = new Thickness(4, 6, 4, 6) });
-        var themeIc = IconTile(Day ? "\uE708" : "\uE706", 34);
-        var themeBtn = Click(Lead(themeIc, T(Day ? "Modo noche" : "Modo día", 14, true)), () => { menu.Hide(); var d = !K.Day; Services.Core.Ls.Set("encargos_aurora_mode", d ? "day" : "night"); Services.Post(() => ApplyTheme(d)); });
-        themeBtn.Padding = new Thickness(6); mp.Children.Add(themeBtn);
-        var lockIc = new Border { Width = 34, Height = 34, CornerRadius = new CornerRadius(12), Background = Alpha(Rose, .12), BorderBrush = Alpha(Rose, .35), BorderThickness = new Thickness(1), Child = new FontIcon { Glyph = "\uE72E", FontSize = 15, Foreground = Rose } };
-        var lockBtn = Click(Lead(lockIc, T("Bloquear app", 14, true, Rose)), () => { menu.Hide(); Services.Security.Log(true, "Bloqueo manual"); ShowLock(); });
-        lockBtn.Padding = new Thickness(6); Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(lockBtn, "Bloquear app"); mp.Children.Add(lockBtn);
-        menu.Content = mp;
+        var tg = Grid2(tiles, 3); tg.ColumnSpacing = 5; mp.Children.Add(tg);
+        mp.Children.Add(new Border { Height = 1, Background = LineBr, Margin = new Thickness(4, 2, 4, 2) });
+        Button MenuRow(string glyph, string text, Brush color, Brush tint, Brush bg, Action a)
+        {
+            var ic = new Border { Width = 26, Height = 26, CornerRadius = new CornerRadius(8), Background = bg, BorderBrush = Alpha((SolidColorBrush)tint, .25), BorderThickness = new Thickness(1), Child = new FontIcon { Glyph = glyph, FontSize = 12, Foreground = tint } };
+            var lab = T(text, 12.5, true, color, false); lab.FontWeight = FontWeights.SemiBold;
+            var g = Lead(ic, lab); g.ColumnSpacing = 9;
+            var b = Click(g, () => { menu.Hide(); a(); }); b.Padding = new Thickness(4); Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(b, text); return b;
+        }
+        mp.Children.Add(MenuRow(Day ? "\uE708" : "\uE706", Day ? "Modo noche" : "Modo día", Text, Text, Tile, () => { var d = !K.Day; Services.Core.Ls.Set("encargos_aurora_mode", d ? "day" : "night"); Services.Post(() => ApplyTheme(d)); }));
+        mp.Children.Add(MenuRow("\uE72E", "Bloquear app", Rose, Rose, Alpha(Rose, .10), () => { Services.Security.Log(true, "Bloqueo manual"); ShowLock(); }));
+        // el menú crece con "Adaptar a la pantalla" para no verse diminuto en ventanas grandes
+        menu.Opening += (_, _) => { if (menu.Content is Viewbox vb) { vb.Width = 232 * Fit; } };
+        mp.Width = 232;
+        menu.Content = new Viewbox { Child = mp, Width = 232, Stretch = Stretch.Uniform };
         chip.Flyout = menu; Grid.SetColumn(chip, 3); bar.Children.Add(Fx.Bounce(chip, .96));
         var header = new Border { Child = bar, Margin = new Thickness(16, 14, 16, 6), Padding = new Thickness(16, 9, 10, 9), CornerRadius = new CornerRadius(20), Background = Br(Day ? 0xE6FFFFFFu : 0xC7090D18u), BorderBrush = LineBr, BorderThickness = new Thickness(1) };
 
