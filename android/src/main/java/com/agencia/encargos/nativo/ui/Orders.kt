@@ -22,6 +22,9 @@ import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Send
@@ -72,43 +75,63 @@ fun OrdersScreen() {
     Page(right = "${ad.size} activos") {
         item { SearchBox(q, { q = it; limit = 30 }, "Buscar por cliente, teléfono, código o estado") }
         item { Choice(listOf("" to "Todos") + Encargos.STATES.map { it to it }, f) { f = it; limit = 30 } }
-        item { Row { Text("${ad.size} activos", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f)); Text("Completados ›", color = C.blue, modifier = Modifier.clickable { ui.go(Screen.Completed) }) } }
+        item { TopTiles(Triple("Total", money(ad.sumOf { Js.num(it["total"]) }), null), Triple("Cobrado", money(ad.sumOf { Js.num(it["paid"]) }), C.green),
+            Triple("Pendiente", money(ad.sumOf { kotlin.math.max(0.0, Js.num(it["balance"])) }), C.rose)) }
+        if (ad.isNotEmpty()) item { Text("Consejo: toca el estado de un encargo para pasarlo al siguiente.", fontSize = 12.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.fillMaxWidth()) }
         if (ad.isEmpty()) item { Empty("No hay encargos activos", "Los encargos culminados se guardan en Encargos completados.") { Primary("+ Nuevo encargo") { ui.root(Screen.NewOrder) } } }
         else if (list.isEmpty()) item { Empty("Sin resultados", "No hay encargos que coincidan con tu búsqueda o filtro.") { Secondary("Limpiar búsqueda") { q = ""; f = "" } } }
         list.take(limit).forEach { x -> item { OrderCard(x) } }
         if (list.size > limit) item { Secondary("Ver más (${list.size - limit} restantes)", Modifier.fillMaxWidth()) { limit += 30 } }
+        item { CompletedLink() }
     }
     @Suppress("UNUSED_VARIABLE") val u = v
+}
+
+/** Tarjeta "Encargos completados" al final de las listas (abre la pantalla de completados). */
+@Composable
+fun CompletedLink() {
+    val ui = LocalUi.current; val n = ui.core.completedClients().size
+    Column(Modifier.fillMaxWidth().glass(day = isDay())) {
+        NavRow(Icons.Filled.Check, "Encargos completados", "$n ${if (n == 1) "cliente" else "clientes"} con todo pagado", tint = C.green) { ui.go(Screen.Completed) }
+    }
 }
 
 @Composable
 fun OrderCard(x: JObj) {
     val ui = LocalUi.current; val core = ui.core
     val b = Js.num(x["balance"]); val id = Js.str(x["id"]); val g = core.profit(x)
+    val t = Js.num(x["total"]); val p = Js.num(x["paid"])
     var menu by remember { mutableStateOf(false) }
+    val st = x.str("status").ifEmpty { "Pedido" }; val nx = core.nextStatus(st)
     SectionCard(modifier = Modifier.clickable { ui.go(Screen.Order(id)) }) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Avatar(x.str("name"), C.status(x.str("status")))
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
-                Text(x.str("name"), fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text("${core.orderLabel(x)} · ${x.str("phone").ifEmpty { "Sin número" }} · ${Js.fmt(x["date"])}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                Text(x.str("name"), fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("${core.shippingLabel(core.typeOf(x))} · ${lb(Js.num(x["pounds"]))} · ${Js.fmt(x["date"])}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("${core.orderLabel(x)} · ${x.str("phone").ifEmpty { "Sin número" }}", fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            Box { IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, "Más") }; OrderMenu(x, menu) { menu = false } }
+            Spacer(Modifier.width(6.dp))
+            StatusChip(st, arrow = nx != null) { if (nx != null) advanceWithUndo(ui, x) else ui.toast("Este encargo ya está entregado.") }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            val nx = core.nextStatus(x.str("status").ifEmpty { "Pedido" })
-            StatusChip(x.str("status")) { if (nx != null) advanceWithUndo(ui, x) }
-            Chip(core.shippingName(core.typeOf(x)) + " · " + lb(Js.num(x["pounds"])), C.teal)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Kpi("Total", money(t), modifier = Modifier.weight(1f))
+            Kpi("Pagado", money(p), C.green, modifier = Modifier.weight(1f))
+            Kpi("Saldo", if (b > 0.005) "- " + money(b) else if (b < -0.005) "+ " + money(-b) else "$0.00", if (b > 0.005) C.rose else C.green, sub = if (b < -0.005) "a favor" else null, modifier = Modifier.weight(1f))
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
             if (Js.num(x["pounds"]) > 0) Chip("Ganancia " + (if (g < 0) "-" else "") + money(kotlin.math.abs(g)), if (g >= 0) C.green else C.rose)
+            Spacer(Modifier.weight(1f))
+            Text("Envío ${money(x["shipping"])}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
         }
-        Line("Costo del pedido", money(x["cost"])); Line("${core.shippingLabel(core.typeOf(x))} · ${Js.toFixed(Js.num(x["pounds"]), 2)} lb × ${money(x["lbCost"])}", money(x["shipping"]))
-        Line("Total", money(x["total"]), bold = true); Line("Pagado", money(x["paid"]), C.green)
-        Text(if (b > 0) "🔴 Pendiente - ${money(b)}" else if (b < 0) "🟢 Fondo a favor + ${money(-b)}" else "✓ Pagado completo", color = if (b > 0) C.rose else C.green, fontWeight = FontWeight.Bold)
+        ProgressBar(if (t > 0) p / t else 0.0)
         if (x.str("note").isNotEmpty()) Text("📝 " + x.str("note"), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Tonal("Editar", Modifier.weight(1f), Icons.Filled.Edit) { ui.go(Screen.EditOrder(Js.str(x["id"]))) }
-            Tonal("WhatsApp", Modifier.weight(1f), Icons.Filled.Chat) { ui.whatsapp(x.str("phone"), "", x.str("name")) }
+            CardBtn("Ficha", Icons.Outlined.Description, Modifier.weight(1f)) { ui.go(Screen.Order(id)) }
+            CardBtn("Editar", Icons.Filled.Edit, Modifier.weight(1f)) { ui.go(Screen.EditOrder(id)) }
+            CardBtn("WhatsApp", Icons.Filled.Chat, Modifier.weight(1.25f), tint = C.green) { ui.whatsapp(x.str("phone"), "", x.str("name")) }
+            Box { CardBtn(null, Icons.Filled.MoreHoriz, Modifier.width(44.dp), desc = "Más") { menu = true }; OrderMenu(x, menu) { menu = false } }
         }
     }
 }

@@ -9,6 +9,19 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.outlined.Storefront
+import androidx.compose.material.icons.outlined.LocalShipping
+import androidx.compose.material.icons.outlined.Sell
+import androidx.compose.material.icons.outlined.Chat
+import androidx.compose.material.icons.outlined.Phone
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.VolumeUp
+import androidx.compose.material.icons.outlined.WavingHand
+import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material.icons.outlined.Save
+import androidx.compose.material.icons.outlined.CloudSync
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Lock
@@ -319,97 +332,127 @@ fun SettingsScreen() {
     var warn by remember { mutableStateOf(core.transitWarn.toString()) }; var late by remember { mutableStateOf(core.transitLate.toString()) }
     val day = core.ls.get("encargos_aurora_mode", "") == "day"
     val keys = core.shippingRates.keys.toList()
+    var sheet by remember { mutableStateOf<String?>(null) }
+    val fb = com.agencia.encargos.nativo.util.Feedback
+    fun rateLine(m: Map<String, Any?>) = keys.joinToString(" · ") { k -> core.shippingName(k) + " " + money(m[k]) }
     Page {
         item {
-            SectionCard("Tu negocio") {
-                Field(biz, { biz = it }, "Nombre del negocio (aparece en recibos)")
-                Field(greet, { greet = it }, "Tu nombre (para el saludo)")
-                Field(cc, { s -> cc = s.filter { it.isDigit() }.take(4) }, "Código de país para WhatsApp", number = true, prefix = "+")
-                Primary("Guardar", Modifier.fillMaxWidth()) { core.businessName = biz.trim(); core.greetName = greet.trim(); core.phoneCC = cc.ifEmpty { "53" }; ui.toast("✅ Datos guardados.") }
+            SectionCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Avatar(core.greetName.ifEmpty { "E" }, C.blue, 64); androidx.compose.foundation.layout.Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) { Text(core.greetName.ifEmpty { "Tu nombre" }, fontSize = 19.sp, fontWeight = FontWeight.ExtraBold); Hint("Usuario: " + ui.app.security.userName().ifEmpty { "—" }) }
+                }
+                Secondary("Editar nombre del saludo", Modifier.fillMaxWidth()) { sheet = "greet" }
             }
         }
-        item {
-            SectionCard("Tarifas de envío (precio por libra)") {
-                keys.forEach { k ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Field(rates[k] ?: "", { rates[k] = it }, core.shippingLabel(k), Modifier.weight(1f), number = true, prefix = "$")
-                        if (k != "avion" && k != "barco") TextButton(onClick = { ui.ask("Eliminar tarifa", "¿Eliminar la tarifa \"${core.shippingLabel(k)}\"? Los encargos que ya la usan no cambian.", "Eliminar", true) { core.removeShippingRate(k); rates.remove(k) } }) { Text("Quitar", color = C.rose) }
-                    }
-                }
-                Primary("Guardar tarifas", Modifier.fillMaxWidth()) {
-                    val m = HashMap<String, Double>(); var bad = false
-                    keys.forEach { k -> val n = (rates[k] ?: "").replace(',', '.').toDoubleOrNull(); if (n == null || n < 0) bad = true else m[k] = n }
-                    if (bad) ui.toast("Revisa las tarifas: deben ser números de 0 en adelante.") else { core.setShippingRates(m); ui.toast("✅ Tarifas guardadas. Se aplican a los encargos nuevos.") }
-                }
-                Text("Agregar tarifa", fontWeight = FontWeight.Bold)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Field(newName, { newName = it }, "Nombre (ej. Express)", Modifier.weight(1.4f))
-                    Field(newPrice, { newPrice = it }, "Precio/lb", Modifier.weight(1f), number = true, prefix = "$")
-                }
-                Secondary("+ Agregar tarifa", Modifier.fillMaxWidth()) {
-                    val p = newPrice.replace(',', '.').toDoubleOrNull()
-                    if (newName.trim().isEmpty() || p == null || p < 0) ui.toast("Escribe un nombre y un precio válido.")
-                    else { val k = core.addShippingRate(newName, p); if (k != null) { rates[k] = Js.numberToString(p); buy[k] = buy[k] ?: "0"; newName = ""; newPrice = ""; ui.toast("✅ Tarifa agregada.") } else ui.toast("No se pudo agregar la tarifa.") }
-                }
-            }
-        }
-        item {
-            SectionCard("Lo que te cuesta a ti la libra") {
-                Hint("Se usa para calcular tu ganancia por encargo.")
-                keys.forEach { k -> Field(buy[k] ?: "", { buy[k] = it }, core.shippingLabel(k), number = true, prefix = "$") }
-                ToggleRow("Aplicar también a encargos activos", "Actualiza el costo en los encargos de clientes que aún no terminan", applyActive) { applyActive = it }
-                Primary("Guardar costos", Modifier.fillMaxWidth()) {
-                    val m = LinkedHashMap<String, Double>(); keys.forEach { k -> (buy[k] ?: "").replace(',', '.').toDoubleOrNull()?.let { if (it >= 0) m[k] = it } }
-                    core.saveBuyRates(m, applyActive); ui.toast("✅ Costos guardados.")
-                }
-            }
-        }
-        item {
-            SectionCard("Mensajes de WhatsApp") {
-                Hint("Puedes usar {nombre}, {total}, {pagado}, {saldo}, {libras} y {negocio}.")
-                Field(tArr, { tArr = it }, "Aviso de llegada", singleLine = false, minLines = 3)
-                Field(tRem, { tRem = it }, "Recordatorio de pago", singleLine = false, minLines = 3)
-                Field(tTh, { tTh = it }, "Agradecimiento", singleLine = false, minLines = 3)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Primary("Guardar mensajes", Modifier.weight(1f)) { core.saveTemplates(tArr, tRem, tTh); ui.toast("✅ Mensajes guardados.") }
-                    Secondary("Restaurar", Modifier.weight(1f)) { ui.ask("Restaurar mensajes", "¿Volver a los mensajes originales?", "Restaurar") { core.resetTemplates(); tArr = core.tpl("arrival"); tRem = core.tpl("reminder"); tTh = core.tpl("thanks") } }
-                }
-            }
-        }
-        item {
-            SectionCard("Alertas de tránsito") {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Field(warn, { s -> warn = s.filter { it.isDigit() } }, "Avisar a los (días)", Modifier.weight(1f), number = true)
-                    Field(late, { s -> late = s.filter { it.isDigit() } }, "Retrasado a los (días)", Modifier.weight(1f), number = true)
-                }
-                Secondary("Guardar alertas", Modifier.fillMaxWidth()) {
-                    core.saveTransitAlerts(warn.toIntOrNull() ?: core.transitWarn, late.toIntOrNull() ?: core.transitLate)
-                    warn = core.transitWarn.toString(); late = core.transitLate.toString(); ui.toast("✅ Alertas guardadas.")
-                }
-            }
-        }
-        item {
-            SectionCard("Notificaciones") {
-                val cfg = core.notifs.cfg()
-                listOf("inapp" to "Avisos dentro de la app", "pay" to "Pagos", "order" to "Encargos", "client" to "Clientes", "system" to "Sistema y seguridad", "important" to "Avisos importantes").forEach { (k, l) ->
-                    ToggleRow(l, "", Js.truthy(cfg[k])) { core.notifs.toggleCfg(k) }
-                }
-            }
-        }
-        item {
-            SectionCard("Sonido y vibración") {
-                var snd by remember { mutableStateOf(com.agencia.encargos.nativo.util.Feedback.soundOn()) }
-                var hap by remember { mutableStateOf(com.agencia.encargos.nativo.util.Feedback.hapticsOn()) }
-                ToggleRow("Sonido de inicio de sesión", "Un sonido corto y discreto al entrar correctamente", snd) { snd = it; com.agencia.encargos.nativo.util.Feedback.set("loginSoundEnabled", it); if (it) com.agencia.encargos.nativo.util.Feedback.loginSound() }
-                ToggleRow("Vibración háptica", "Un toque muy breve al interactuar con la app", hap) { hap = it; com.agencia.encargos.nativo.util.Feedback.set("hapticFeedbackEnabled", it); if (it) com.agencia.encargos.nativo.util.Feedback.tap() }
-            }
-        }
-        item {
-            SectionCard("Apariencia") {
-                ToggleRow("Modo día", "Colores claros", day) { on -> core.ls.set("encargos_aurora_mode", if (on) "day" else "night"); ui.act.recreate() }
-            }
-        }
+        item { RowGroup("Negocio y tarifas") {
+            NavRow(Icons.Outlined.Storefront, "Nombre del negocio", core.businessName.ifEmpty { "Sin nombre" }) { sheet = "biz" }; RowSep()
+            NavRow(Icons.Outlined.LocalShipping, "Precio por libra (lo que cobras)", rateLine(core.shippingRates)) { sheet = "rates" }; RowSep()
+            NavRow(Icons.Outlined.Sell, "Costo por libra (lo que te cobran)", rateLine(core.buyRates())) { sheet = "buy" }
+        } }
+        item { RowGroup("WhatsApp") {
+            NavRow(Icons.Outlined.Chat, "Mensajes de WhatsApp", "Llegada, recordatorio de pago y agradecimiento") { sheet = "tpl" }; RowSep()
+            NavRow(Icons.Outlined.Phone, "Código de país", "Se agrega a los números cortos", "+" + core.phoneCC) { sheet = "cc" }
+        } }
+        item { RowGroup("Notificaciones y alertas") {
+            val cfg = core.notifs.cfg(); val on = listOf("inapp", "pay", "order", "client", "system", "important").count { Js.truthy(cfg[it]) }
+            NavRow(Icons.Outlined.Notifications, "Notificaciones", "Avisos y categorías · $on de 6 activas") { sheet = "notif" }; RowSep()
+            NavRow(Icons.Outlined.LocalShipping, "Alertas de tránsito", "Avisar a los ${core.transitWarn} días · retrasado a los ${core.transitLate}") { sheet = "transit" }; RowSep()
+            NavRow(Icons.Outlined.VolumeUp, "Sonido y vibración", (if (fb.soundOn()) "Sonido al entrar" else "Sin sonido") + " · " + (if (fb.hapticsOn()) "vibración activada" else "sin vibración")) { sheet = "fb" }
+        } }
+        item { RowGroup("Apariencia") {
+            NavRow(Icons.Outlined.WavingHand, "Nombre del saludo", "\"¡Hola, ${core.greetName.ifEmpty { "…" }}!\"") { sheet = "greet" }; RowSep()
+            NavRow(Icons.Outlined.DarkMode, "Modo noche", if (!day) "Encendido · fondo oscuro" else "Apagado · colores claros", right = {
+                Switch(!day, { on -> core.ls.set("encargos_aurora_mode", if (on) "night" else "day"); ui.act.recreate() }) }, onClick = null)
+        } }
+        item { RowGroup("Datos y seguridad") {
+            val sec = ui.app.security
+            NavRow(Icons.Outlined.Shield, "Seguridad", (if (sec.pinOn()) "PIN activo" else "Sin PIN") + " · bloqueo y privacidad") { ui.go(Screen.Security) }; RowSep()
+            NavRow(Icons.Outlined.Save, "Respaldo e importación", "Respaldos, respaldo cifrado, importar y Excel") { ui.go(Screen.Backup) }; RowSep()
+            NavRow(Icons.Outlined.CloudSync, "Sincronización (Telegram)", ui.app.sync.status().text) { ui.go(Screen.Sync) }
+        } }
         item { Hint("Encargos nativo para Android · tus datos se guardan en este teléfono y, si lo activas, en tu propio bot de Telegram cifrados.") }
+    }
+    when (sheet) {
+        "biz" -> Sheet("Nombre del negocio", { sheet = null }) {
+            InfoBox("Aparece en los recibos y en los mensajes de WhatsApp.")
+            Field(biz, { biz = it }, "Nombre del negocio (aparece en recibos)")
+            Primary("Guardar", Modifier.fillMaxWidth()) { core.businessName = biz.trim(); ui.toast("✅ Datos guardados."); sheet = null }
+        }
+        "greet" -> Sheet("Nombre del saludo", { sheet = null }) {
+            Field(greet, { greet = it }, "Tu nombre (para el saludo)")
+            Primary("Guardar", Modifier.fillMaxWidth()) { core.greetName = greet.trim(); ui.toast("✅ Datos guardados."); sheet = null }
+        }
+        "cc" -> Sheet("Código de país", { sheet = null }) {
+            InfoBox("Se agrega a los números de 8 cifras al abrir WhatsApp.")
+            Field(cc, { s -> cc = s.filter { it.isDigit() }.take(4) }, "Código de país para WhatsApp", number = true, prefix = "+")
+            Primary("Guardar", Modifier.fillMaxWidth()) { core.phoneCC = cc.ifEmpty { "53" }; ui.toast("✅ Datos guardados."); sheet = null }
+        }
+        "rates" -> Sheet("Precios de envío por libra", { sheet = null }) {
+            InfoBox("Configura todos tus tipos de envío. Cada tipo puede tener su propio precio por libra. Al crear un encargo, el precio se selecciona automáticamente según el envío.")
+            keys.forEach { k ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Field(rates[k] ?: "", { rates[k] = it }, core.shippingLabel(k), Modifier.weight(1f), number = true, prefix = "$", suffix = "USD/lb")
+                    if (k != "avion" && k != "barco") TextButton(onClick = { ui.ask("Eliminar tarifa", "¿Eliminar la tarifa \"${core.shippingLabel(k)}\"? Los encargos que ya la usan no cambian.", "Eliminar", true) { core.removeShippingRate(k); rates.remove(k) } }) { Text("Quitar", color = C.rose) }
+                }
+            }
+            Text("Agregar otro tipo de envío", fontWeight = FontWeight.ExtraBold)
+            Field(newName, { newName = it }, "Nombre del envío (ej. Express)")
+            Field(newPrice, { newPrice = it }, "Precio · USD/lb", number = true, prefix = "$")
+            Secondary("Agregar tipo", Modifier.fillMaxWidth()) {
+                val p = newPrice.replace(',', '.').toDoubleOrNull()
+                if (newName.trim().isEmpty() || p == null || p < 0) ui.toast("Escribe un nombre y un precio válido.")
+                else { val k = core.addShippingRate(newName, p); if (k != null) { rates[k] = Js.numberToString(p); buy[k] = buy[k] ?: "0"; newName = ""; newPrice = ""; ui.toast("✅ Tarifa agregada.") } else ui.toast("No se pudo agregar la tarifa.") }
+            }
+            Primary("Guardar precios", Modifier.fillMaxWidth()) {
+                val m = HashMap<String, Double>(); var bad = false
+                core.shippingRates.keys.forEach { k -> val n = (rates[k] ?: "").replace(',', '.').toDoubleOrNull(); if (n == null || n < 0) bad = true else m[k] = n }
+                if (bad) ui.toast("Revisa las tarifas: deben ser números de 0 en adelante.") else { core.setShippingRates(m); ui.toast("✅ Tarifas guardadas. Se aplican a los encargos nuevos."); sheet = null }
+            }
+        }
+        "buy" -> Sheet("Lo que te cuesta a ti la libra", { sheet = null }) {
+            InfoBox("Se usa para calcular tu ganancia por encargo.")
+            keys.forEach { k -> Field(buy[k] ?: "", { buy[k] = it }, core.shippingLabel(k), number = true, prefix = "$", suffix = "USD/lb") }
+            ToggleRow("Aplicar también a encargos activos", "Actualiza el costo en los encargos de clientes que aún no terminan", applyActive) { applyActive = it }
+            Primary("Guardar costos", Modifier.fillMaxWidth()) {
+                val m = LinkedHashMap<String, Double>(); keys.forEach { k -> (buy[k] ?: "").replace(',', '.').toDoubleOrNull()?.let { if (it >= 0) m[k] = it } }
+                core.saveBuyRates(m, applyActive); ui.toast("✅ Costos guardados."); sheet = null
+            }
+        }
+        "tpl" -> Sheet("Mensajes de WhatsApp", { sheet = null }) {
+            InfoBox("Puedes usar {nombre}, {total}, {pagado}, {saldo}, {libras} y {negocio}.")
+            Field(tArr, { tArr = it }, "Aviso de llegada", singleLine = false, minLines = 3)
+            Field(tRem, { tRem = it }, "Recordatorio de pago", singleLine = false, minLines = 3)
+            Field(tTh, { tTh = it }, "Agradecimiento", singleLine = false, minLines = 3)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Secondary("Restaurar", Modifier.weight(1f)) { ui.ask("Restaurar mensajes", "¿Volver a los mensajes originales?", "Restaurar") { core.resetTemplates(); tArr = core.tpl("arrival"); tRem = core.tpl("reminder"); tTh = core.tpl("thanks") } }
+                Primary("Guardar mensajes", Modifier.weight(1.4f)) { core.saveTemplates(tArr, tRem, tTh); ui.toast("✅ Mensajes guardados."); sheet = null }
+            }
+        }
+        "transit" -> Sheet("Alertas de tránsito", { sheet = null }) {
+            InfoBox("El centro de atención te avisa cuando un encargo lleva muchos días en tránsito.")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Field(warn, { s -> warn = s.filter { it.isDigit() } }, "Avisar a los (días)", Modifier.weight(1f), number = true)
+                Field(late, { s -> late = s.filter { it.isDigit() } }, "Retrasado a los (días)", Modifier.weight(1f), number = true)
+            }
+            Primary("Guardar alertas", Modifier.fillMaxWidth()) {
+                core.saveTransitAlerts(warn.toIntOrNull() ?: core.transitWarn, late.toIntOrNull() ?: core.transitLate)
+                warn = core.transitWarn.toString(); late = core.transitLate.toString(); ui.toast("✅ Alertas guardadas."); sheet = null
+            }
+        }
+        "notif" -> Sheet("Notificaciones", { sheet = null }) {
+            var tick by remember { mutableStateOf(0) }
+            val cfg = core.notifs.cfg(); @Suppress("UNUSED_VARIABLE") val t = tick
+            listOf("inapp" to "Avisos dentro de la app", "pay" to "Pagos", "order" to "Encargos", "client" to "Clientes", "system" to "Sistema y seguridad", "important" to "Avisos importantes").forEach { (k, l) ->
+                ToggleRow(l, "", Js.truthy(cfg[k])) { core.notifs.toggleCfg(k); tick++ }
+            }
+        }
+        "fb" -> Sheet("Sonido y vibración", { sheet = null }) {
+            var snd by remember { mutableStateOf(fb.soundOn()) }
+            var hap by remember { mutableStateOf(fb.hapticsOn()) }
+            ToggleRow("Sonido de inicio de sesión", "Un sonido corto y discreto al entrar correctamente", snd) { snd = it; fb.set("loginSoundEnabled", it); if (it) fb.loginSound() }
+            ToggleRow("Vibración háptica", "Un toque muy breve al interactuar con la app", hap) { hap = it; fb.set("hapticFeedbackEnabled", it); if (it) fb.tap() }
+        }
     }
     @Suppress("UNUSED_VARIABLE") val u = v
 }

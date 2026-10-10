@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -39,23 +40,40 @@ fun ClientsScreen() {
     val list = all.filter { c -> val hay = Js.normSearch(listOf(c.name, c.phone, c.orders.joinToString(" ") { listOf(it.str("accessCode"), Js.str(it["orderNo"]), it.str("status")).joinToString(" ") }).joinToString(" ")); words.all { hay.contains(it) } }
     Page(right = "${all.size} activos") {
         item { SearchBox(q, { q = it; limit = 30 }, "Buscar cliente, teléfono o código") }
-        item { Row { Text("${all.size} clientes activos", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f)); Text("Completados ›", color = C.blue, modifier = Modifier.clickable { ui.go(Screen.Completed) }) } }
+        item { TopTiles(Triple("Clientes", "${all.size}", null), Triple("Por cobrar", money(all.sumOf { it.pending }), C.rose), Triple("A favor", money(all.sumOf { it.funds }), C.green)) }
         if (all.isEmpty()) item { Empty("Aún no tienes clientes", "Los clientes aparecen automáticamente al crear encargos.") { Primary("+ Nuevo encargo") { ui.root(Screen.NewOrder) } } }
         else if (list.isEmpty()) item { Empty("Sin resultados", "Ningún cliente coincide con tu búsqueda.") { Secondary("Limpiar búsqueda") { q = "" } } }
-        list.take(limit).forEach { c -> item {
-            SectionCard(modifier = Modifier.clickable { ui.go(Screen.Client(c.name)) }) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Avatar(c.name, if (c.pending > 0.005) C.rose else C.blue); Spacer(Modifier.width(10.dp))
-                    Column(Modifier.weight(1f)) { Text(c.name, fontWeight = FontWeight.Bold); Text("${c.phone.ifEmpty { "Sin teléfono" }} · ${c.orders.size} encargo(s)", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                    if (c.pending > 0.005) Text("- " + money(c.pending), color = C.rose, fontWeight = FontWeight.ExtraBold)
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Kpi("Libras", Js.toFixed(c.pounds, 2), modifier = Modifier.weight(1f)); Kpi("Cobrado", money(c.paid), C.green, modifier = Modifier.weight(1f)); Kpi("Pendiente", if (c.pending > 0) "- " + money(c.pending) else "$0.00", C.rose, modifier = Modifier.weight(1f)) }
-                if (c.funds > 0) Text("🟢 Fondo a favor + ${money(c.funds)}", color = C.green, fontWeight = FontWeight.Bold)
-            }
-        } }
+        list.take(limit).forEach { c -> item { ClientCard(c) } }
         if (list.size > limit) item { Secondary("Ver más (${list.size - limit} restantes)", Modifier.fillMaxWidth()) { limit += 30 } }
+        item { CompletedLink() }
     }
     @Suppress("UNUSED_VARIABLE") val u = v
+}
+
+@Composable
+fun ClientCard(c: com.agencia.encargos.core.Encargos.Client) {
+    val ui = LocalUi.current; val core = ui.core
+    val total = c.orders.sumOf { Js.num(it["total"]) }
+    val last = c.orders.maxByOrNull { Js.parseDate(it["date"]).let { d -> if (d.isNaN()) 0.0 else d } }
+    SectionCard(modifier = Modifier.clickable { ui.go(Screen.Client(c.name)) }) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Avatar(c.name, if (c.pending > 0.005) C.rose else C.blue); Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(c.name, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, maxLines = 1)
+                Text("${c.phone.ifEmpty { "Sin teléfono" }} · ${c.orders.size} ${if (c.orders.size == 1) "encargo" else "encargos"}${last?.let { " · " + it.str("status").ifEmpty { "Pedido" } } ?: ""}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Kpi("Libras", lb(c.pounds), modifier = Modifier.weight(1f)); Kpi("Cobrado", money(c.paid), C.green, modifier = Modifier.weight(1f)); Kpi("Pendiente", if (c.pending > 0.005) "- " + money(c.pending) else "$0.00", if (c.pending > 0.005) C.rose else C.green, modifier = Modifier.weight(1f)) }
+        Text("Pagó ${money(c.paid)} de ${money(total)}", fontSize = 12.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        ProgressBar(if (total > 0) c.paid / total else 0.0)
+        if (c.funds > 0) Text("🟢 Fondo a favor + ${money(c.funds)}", color = C.green, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            CardBtn("Ficha", Icons.Outlined.Description, Modifier.weight(1f)) { ui.go(Screen.Client(c.name)) }
+            if (c.pending > 0.005) CardBtn("Cobrar", Icons.Filled.Chat, Modifier.weight(1f), tint = C.green) { ui.whatsapp(c.phone, core.reminderClient(c), c.name) }
+            else CardBtn("WhatsApp", Icons.Filled.Chat, Modifier.weight(1f), tint = C.green) { ui.whatsapp(c.phone, "", c.name) }
+            CardBtn("Encargo", Icons.Filled.Add, Modifier.weight(1f)) { ui.go(Screen.NewFor(c.name, c.phone)) }
+        }
+    }
 }
 
 @Composable
