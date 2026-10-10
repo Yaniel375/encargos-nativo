@@ -97,7 +97,7 @@ public sealed class AuroraBg : Grid
         }
         Children.Add(_dots);
         SizeChanged += (_, e) => { foreach (var (el, x, y) in _dotEls) { Canvas.SetLeft(el, e.NewSize.Width * x); Canvas.SetTop(el, e.NewSize.Height * y); } };
-        Loaded += (_, _) => { try { sb.Begin(); } catch { } };
+        Loaded += (_, _) => { if (!Fx.Enabled) return; try { sb.Begin(); } catch { } };  // "efectos de animación" desactivados en Windows: fondo quieto
     }
 
     static RadialGradientBrush Blob(double cx, double cy, double rx, double ry, double a) => new()
@@ -139,6 +139,23 @@ public sealed class AuroraBg : Grid
 public static class Fx
 {
     public static readonly KeySpline Out = new() { ControlPoint1 = new Point(.2, .8), ControlPoint2 = new Point(.2, 1) };
+    /// <summary>Windows → Accesibilidad → Efectos de animación (equivale a prefers-reduced-motion).</summary>
+    public static bool Enabled { get; } = ReadEnabled();
+    static bool ReadEnabled() { try { return new Windows.UI.ViewManagement.UISettings().AnimationsEnabled; } catch { return true; } }
+
+    /// <summary>Cifra que "cuenta" hasta su valor en 0,7 s (transición numérica discreta).</summary>
+    public static void Count(TextBlock tb, double to, Func<double, string> fmt, double ms = 700)
+    {
+        tb.Text = fmt(Enabled ? 0 : to); if (!Enabled || !double.IsFinite(to)) { tb.Text = fmt(to); return; }
+        var q = tb.DispatcherQueue; if (q == null) { tb.Text = fmt(to); return; }
+        var t = q.CreateTimer(); t.Interval = TimeSpan.FromMilliseconds(16); var start = DateTime.UtcNow;
+        t.Tick += (_, _) =>
+        {
+            var k = Math.Min(1, (DateTime.UtcNow - start).TotalMilliseconds / ms); var e = 1 - Math.Pow(1 - k, 3);
+            tb.Text = fmt(k >= 1 ? to : to * e); if (k >= 1) t.Stop();
+        };
+        t.Start();
+    }
 
     public static CompositeTransform CT(UIElement e)
     {
@@ -157,7 +174,8 @@ public static class Fx
             t = k;
         }
         else t = new DoubleAnimation { From = from, To = to, Duration = TimeSpan.FromMilliseconds(ms), EasingFunction = ease, AutoReverse = autoReverse, EnableDependentAnimation = dependent };
-        t.BeginTime = TimeSpan.FromMilliseconds(delayMs);
+        t.BeginTime = TimeSpan.FromMilliseconds(Enabled || forever ? delayMs : 0);
+        if (!Enabled && !forever) t.Duration = new Duration(TimeSpan.FromMilliseconds(1));
         if (forever) t.RepeatBehavior = RepeatBehavior.Forever;
         Storyboard.SetTarget(t, target); Storyboard.SetTargetProperty(t, prop);
         return t;
@@ -199,6 +217,7 @@ public static class Fx
     /// <summary>Rebote al pulsar (transform .35s cubic-bezier(.34,1.56,.64,1)).</summary>
     public static T Bounce<T>(T e, double to = .97) where T : UIElement
     {
+        if (!Enabled) return e;
         void S(double v, double ms, bool spring) { var c = CT(e); var ease = spring ? (EasingFunctionBase)new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = .5 } : new QuadraticEase(); Run(null, Anim(c, "ScaleX", c.ScaleX, v, ms, 0, ease), Anim(c, "ScaleY", c.ScaleY, v, ms, 0, ease)); }
         e.AddHandler(UIElement.PointerPressedEvent, new PointerEventHandler((_, _) => S(to, 110, false)), true);
         e.AddHandler(UIElement.PointerReleasedEvent, new PointerEventHandler((_, _) => S(1, 380, true)), true);

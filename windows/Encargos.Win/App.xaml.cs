@@ -7,8 +7,8 @@ public partial class App : Application
     public static MainWindow? Window { get; private set; }
     public App()
     {
-        // El modo día/noche se elige antes de crear la interfaz (igual que en Android).
-        try { RequestedTheme = Services.DayMode() ? ApplicationTheme.Light : ApplicationTheme.Dark; } catch { }
+        // Base oscura; el modo día/noche lo aplica MainWindow.ApplyTheme al instante (sin reiniciar).
+        try { RequestedTheme = ApplicationTheme.Dark; } catch { }
         InitializeComponent();
         UnhandledException += (_, e) => { e.Handled = true; Services.Report(e.Exception); };
     }

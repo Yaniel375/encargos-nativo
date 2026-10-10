@@ -19,23 +19,30 @@ public static class K
     public static SolidColorBrush Br(uint argb) { if (!_br.TryGetValue(argb, out var b)) { b = new SolidColorBrush(ColorHelper.FromArgb((byte)(argb >> 24), (byte)(argb >> 16), (byte)(argb >> 8), (byte)argb)); _br[argb] = b; } return b; }
     public static SolidColorBrush Alpha(SolidColorBrush b, double a) { var c = b.Color; return new SolidColorBrush(Color.FromArgb((byte)(a * 255), c.R, c.G, c.B)); }
 
-    public static bool Day => Application.Current.RequestedTheme == ApplicationTheme.Light;
+    /// <summary>Tema vigente (día/noche). Lo cambia MainWindow.ApplyTheme sin reiniciar; todos los colores salen de aquí.</summary>
+    public static bool Day { get; set; }
     public static SolidColorBrush Blue => Br(Day ? 0xFF2563EBu : 0xFF3B82F6u);
-    public static SolidColorBrush Green => Br(Day ? 0xFF059669u : 0xFF34D399u);
+    public static SolidColorBrush Green => Br(Day ? 0xFF047857u : 0xFF34D399u);
     public static SolidColorBrush Rose => Br(Day ? 0xFFE11D48u : 0xFFFB7185u);
     public static SolidColorBrush Amber => Br(Day ? 0xFFD97706u : 0xFFFBBF24u);
     public static SolidColorBrush Vio => Br(Day ? 0xFF7C3AEDu : 0xFFA78BFAu);
-    public static SolidColorBrush Teal => Br(Day ? 0xFF0D9488u : 0xFF2DD4BFu);
-    public static SolidColorBrush Mut => Br(Day ? 0xFF64748Bu : 0xFF9AA6B8u);
+    public static SolidColorBrush Teal => Br(Day ? 0xFF0F766Eu : 0xFF2DD4BFu);
+    public static SolidColorBrush Mut => Br(Day ? 0xFF526079u : 0xFF9AA6B8u);
     public static SolidColorBrush Text => Br(Day ? 0xFF0F172Au : 0xFFF1F5F9u);
-    public static SolidColorBrush Bg => Br(Day ? 0xFFF4F6FBu : 0xFF020611u);
+    public static SolidColorBrush Bg => Br(Day ? 0xFFEEF2F8u : 0xFF020611u);
+    public static SolidColorBrush BtnBg => Br(Day ? 0x0A0F172Au : 0x0FFFFFFFu);
+    public static SolidColorBrush BtnLine => Br(Day ? 0x1A0F172Au : 0x1AFFFFFFu);
+    public static SolidColorBrush AvatarBg => Br(Day ? 0xFFE2E8F0u : 0xFF1E293Bu);
+    public static SolidColorBrush BadgeRing => Br(Day ? 0xFFFFFFFFu : 0xFF090D18u);
+    public static SolidColorBrush Track => Br(Day ? 0x1A0F172Au : 0x2894A3B8u);
+    public static SolidColorBrush White => Br(0xFFFFFFFFu);
     public static SolidColorBrush CardBg => Br(Day ? 0xFFFFFFFFu : 0xFF0E1628u);
     public static SolidColorBrush LineBr => Br(Day ? 0x1F0F172Au : 0x2494A3B8u);
     public static SolidColorBrush Line2 => Br(Day ? 0x330F172Au : 0x3D94A3B8u);
     public static SolidColorBrush Tile => Br(Day ? 0x0A0F172Au : 0x1494A3B8u);
     public static SolidColorBrush BlueInk => Br(Day ? 0xFF1D4ED8u : 0xFF93C5FDu);
     public static SolidColorBrush NavOff => Br(Day ? 0xFF64748Bu : 0xFF7C8BA5u);
-    public static SolidColorBrush Status(string? s) => s switch { "En tránsito" => Br(0xFF94A3B8u), "Recibido" => Br(0xFF7DD3FCu), "Entregado" => Green, "Cancelado" => Br(0xFF64748Bu), _ => Blue };
+    public static SolidColorBrush Status(string? s) => s switch { "En tránsito" => Br(Day ? 0xFF475569u : 0xFF94A3B8u), "Recibido" => Br(Day ? 0xFF0369A1u : 0xFF7DD3FCu), "Entregado" => Green, "Cancelado" => Br(0xFF64748Bu), _ => Blue };
 
     /// <summary>Vidrio de la web (.aCard): linear-gradient(160deg, rgba(30,41,59,.62), rgba(15,23,42,.72)).</summary>
     public static Brush Glass => Day ? Br(0xFFFFFFFFu) : new LinearGradientBrush { StartPoint = new Point(0.2, 0), EndPoint = new Point(0.8, 1),
@@ -124,7 +131,7 @@ public static class K
         var b = new Button { Content = content, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Stretch, Background = new SolidColorBrush(Colors.Transparent), BorderThickness = new Thickness(0), Padding = new Thickness(0), CornerRadius = new CornerRadius(12) };
         if (BtnStyle != null) b.Style = BtnStyle;
         b.Padding = new Thickness(0); b.HorizontalContentAlignment = HorizontalAlignment.Stretch;
-        b.Click += (_, _) => onClick(); return Fx.Bounce(b, .985);
+        b.Click += Once(onClick); return Fx.Bounce(b, .985);
     }
     public static Border ClickCard(Action onClick, params UIElement?[] children)
     {
@@ -134,6 +141,8 @@ public static class K
     }
 
     /* ---------- botones ---------- */
+    /// <summary>Evita que un doble clic registre dos veces la misma operación (700 ms).</summary>
+    public static RoutedEventHandler Once(Action a) { var last = DateTime.MinValue; return (_, _) => { var now = DateTime.UtcNow; if ((now - last).TotalMilliseconds < 700) return; last = now; a(); }; }
     /// <summary>Botón: principal (degradado azul, texto blanco) o secundario (vidrio gris con borde).</summary>
     public static Button Btn(string text, Action onClick, bool accent = false, Brush? color = null, string? glyph = null, bool stretch = true)
     {
@@ -147,7 +156,7 @@ public static class K
         else { b.Background = Tile; b.BorderBrush = Line2; b.BorderThickness = new Thickness(1); }
         b.HorizontalContentAlignment = HorizontalAlignment.Center;
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(b, text); // lectores de pantalla y pruebas automáticas
-        b.Click += (_, _) => onClick(); return Fx.Bounce(b);
+        b.Click += Once(onClick); return Fx.Bounce(b);
     }
     public static HyperlinkButton Link(string text, Action onClick, Brush? color = null)
     {
@@ -245,11 +254,13 @@ public static class K
     {
         pct = double.IsNaN(pct) ? 0 : pct; var fill = Math.Clamp(pct / 100, 0, 1);
         var g = new Grid { Width = size, Height = size };
-        var s1 = new GradientStop { Color = Color.FromArgb(204, 15, 23, 42), Offset = 1 }; var s2 = new GradientStop { Color = Color.FromArgb(255, 0x60, 0xA5, 0xFA), Offset = 1 };
-        var water = new LinearGradientBrush { StartPoint = new Point(.5, 0), EndPoint = new Point(.5, 1), GradientStops = { new GradientStop { Color = Color.FromArgb(204, 15, 23, 42), Offset = 0 }, s1, s2, new GradientStop { Color = Color.FromArgb(255, 0x25, 0x63, 0xEB), Offset = 1 } } };
+        var baseC = Day ? Color.FromArgb(255, 0xE2, 0xE8, 0xF0) : Color.FromArgb(204, 15, 23, 42);
+        var s1 = new GradientStop { Color = baseC, Offset = 1 }; var s2 = new GradientStop { Color = Color.FromArgb(255, 0x60, 0xA5, 0xFA), Offset = 1 };
+        var water = new LinearGradientBrush { StartPoint = new Point(.5, 0), EndPoint = new Point(.5, 1), GradientStops = { new GradientStop { Color = baseC, Offset = 0 }, s1, s2, new GradientStop { Color = Color.FromArgb(255, 0x25, 0x63, 0xEB), Offset = 1 } } };
         g.Children.Add(new Microsoft.UI.Xaml.Shapes.Ellipse { Fill = water, Stroke = Alpha(Blue, .45), StrokeThickness = 2.5 });
         g.Loaded += (_, _) => { var to = 1 - fill; var sb = new Storyboard(); sb.Children.Add(Fx.Anim(s1, "Offset", 1, to, 1300, 250, dependent: true)); sb.Children.Add(Fx.Anim(s2, "Offset", 1, to, 1300, 250, dependent: true)); sb.Completed += (_, _) => { s1.Offset = to; s2.Offset = to; }; sb.Begin(); };
-        var big = Big(Js.ToFixed(Math.Max(0, pct), 0) + "%", Br(0xFFFFFFFFu), size / 6); var lab = T(label, 11, false, Br(0xD9FFFFFFu), false);
+        var onWater = !Day || fill > .55;
+        var big = Big(Js.ToFixed(Math.Max(0, pct), 0) + "%", onWater ? White : Text, size / 6); var lab = T(label, 11, false, onWater ? Br(0xD9FFFFFFu) : Mut, false);
         var t = V(0, big, lab); t.HorizontalAlignment = HorizontalAlignment.Center; t.VerticalAlignment = VerticalAlignment.Center;
         foreach (var c in t.Children) ((FrameworkElement)c).HorizontalAlignment = HorizontalAlignment.Center;
         g.Children.Add(t); return g;
@@ -259,7 +270,7 @@ public static class K
     {
         pct = double.IsNaN(pct) ? 0 : Math.Clamp(pct, 0, 100);
         var g = new Grid { Width = size, Height = size };
-        var ring = new ProgressRing { IsIndeterminate = false, Minimum = 0, Maximum = 100, Value = 0, Width = size, Height = size, Foreground = Blue, Background = Br(Day ? 0x1A0F172Au : 0x2994A3B8u) };
+        var ring = new ProgressRing { IsIndeterminate = false, Minimum = 0, Maximum = 100, Value = 0, Width = size, Height = size, Foreground = Blue, Background = Track };
         g.Children.Add(ring);
         ring.Loaded += (_, _) => { var sb = new Storyboard(); sb.Children.Add(Fx.Anim(ring, "Value", 0, pct, 1100, 250, dependent: true)); sb.Completed += (_, _) => ring.Value = pct; sb.Begin(); };
         var t = V(0, Big(Js.ToFixed(pct, 0) + "%", null, size / 4.6), Muted(label, 11)); t.HorizontalAlignment = HorizontalAlignment.Center; t.VerticalAlignment = VerticalAlignment.Center;

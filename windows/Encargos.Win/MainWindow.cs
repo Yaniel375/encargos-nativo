@@ -40,8 +40,10 @@ public sealed class MainWindow : Window
     readonly Grid _main = new();
     readonly StackPanel _side = new() { Spacing = 4 };
     readonly ScrollViewer _scroll = new() { HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
-    readonly TextBlock _title = H("Inicio", 18);
-    readonly TextBlock _syncText = Muted("", 11.5);
+    TextBlock _title = H("Inicio", 18);
+    TextBlock _syncText = Muted("", 11.5);
+    AuroraBg? _aurora;
+    bool _narrow;
     readonly Border _toast = new() { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(250, 16, 16, 26), MaxWidth = 560, Visibility = Visibility.Collapsed, CornerRadius = new CornerRadius(16), Padding = new Thickness(14, 11, 12, 11) };
     readonly Border _busy = new() { Visibility = Visibility.Collapsed, Background = Alpha(Br(0xFF000000u), 0.35) };
     readonly TextBlock _busyText = T("", 14, true);
@@ -53,6 +55,8 @@ public sealed class MainWindow : Window
     long _hiddenAt;
     bool _unlocked;
     public Screen Top => _stack[^1];
+    /// <summary>Ancho útil del contenido (para distribuir las tarjetas en ventanas estrechas).</summary>
+    public double ContentWidth => _scroll.ActualWidth > 0 ? _scroll.ActualWidth : 1100;
 
     public MainWindow()
     {
@@ -67,15 +71,18 @@ public sealed class MainWindow : Window
         _tick = DispatcherQueue.CreateTimer(); _tick.Interval = TimeSpan.FromSeconds(45); _tick.IsRepeating = true; _tick.Tick += (_, _) => { if (_unlocked && Services.Sync.Enabled()) Services.Sync.SyncNow(); UpdateStatus(); };
         _toastTimer = DispatcherQueue.CreateTimer(); _toastTimer.IsRepeating = false; _toastTimer.Tick += (_, _) => HideToast();
 
-        _root.Background = Bg;
-        _root.Children.Add(Day ? new Grid { Background = new LinearGradientBrush { StartPoint = new Windows.Foundation.Point(0, 0), EndPoint = new Windows.Foundation.Point(0, 1), GradientStops = { new GradientStop { Color = Windows.UI.Color.FromArgb(255, 0xF4, 0xF6, 0xFB), Offset = 0 }, new GradientStop { Color = Windows.UI.Color.FromArgb(255, 0xE9, 0xEE, 0xF8), Offset = 1 } } } } : new AuroraBg());
+        K.Day = false; _root.RequestedTheme = ElementTheme.Dark; _root.Background = Bg;
+        _root.Children.Add(MakeBg(false));
         _root.Children.Add(_host);
+        _stack.Add(new HomePage());
         BuildMain();
         _busy.Child = new Border { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Padding = new Thickness(24), CornerRadius = new CornerRadius(18), Background = CardBg, BorderBrush = Line2, BorderThickness = new Thickness(1), Child = Hs(12, new ProgressRing { IsActive = true, Width = 28, Height = 28 }, _busyText) };
         _toast.Background = CardBg; _toast.BorderBrush = Line2; _toast.BorderThickness = new Thickness(1);
         _root.Children.Add(_busy); _root.Children.Add(_toast);
         Content = _root;
 
+        // al cambiar el ancho de la ventana, el Inicio redistribuye sus tarjetas
+        _scroll.SizeChanged += (_, e) => { var n = e.NewSize.Width < 900; if (n != _narrow) { _narrow = n; if (_unlocked && Top is HomePage) Render(true); } };
         Services.Core.OnChange(() => Services.Post(() => _renderTimer.Start()));
         Services.Core.Notifs.OnImportant = n => Services.Post(() => Toast("🔔 " + n.Str("title") + " · " + n.Str("text")));
         Services.Sync.OnState = () => Services.Post(() => { UpdateStatus(); if (Top is SyncPage or SyncDiagPage) _renderTimer.Start(); });
@@ -123,6 +130,16 @@ public sealed class MainWindow : Window
                     await Snap(dir, $"{i++:00}_{name}", L);
                 }
             }
+            // segunda vuelta: MODO DÍA (cambio inmediato, sin reiniciar)
+            ApplyTheme(true); await Task.Delay(800);
+            foreach (var k in new[] { "home", "orders", "clients", "new", "payments", "pending", "stats", "attention", "notifs", "settings" })
+            {
+                LastRenderError = null; Root(PageFor(k)); await Task.Delay(900);
+                if (LastRenderError != null) { fails++; L($"ERROR (día) en {k}: {LastRenderError}"); }
+                await Snap(dir, $"dia_{i++:00}_{k}", L);
+            }
+            if (r.Ok) { LastRenderError = null; Go(new OrderPage(Js.Str(x!["id"]))); await Task.Delay(900); await Snap(dir, $"dia_{i++:00}_ficha", L); }
+            ApplyTheme(false); await Task.Delay(300);
             L(fails == 0 ? "RESULTADO: OK" : $"RESULTADO: {fails} error(es)");
         }
         catch (Exception e) { L("RESULTADO: ERROR " + e.GetType().Name + ": " + Services.Redact(e.Message) + "\n" + e.StackTrace); }
@@ -149,9 +166,30 @@ public sealed class MainWindow : Window
         catch (Exception e) { L($"captura {name} falló: {e.GetType().Name} {e.Message}"); }
     }
 
+    /* ---------------- tema día / noche (inmediato, sin reiniciar) ---------------- */
+    UIElement MakeBg(bool day)
+    {
+        if (!day) return _aurora ??= new AuroraBg();
+        var g = new Grid { Background = new LinearGradientBrush { StartPoint = new Windows.Foundation.Point(0, 0), EndPoint = new Windows.Foundation.Point(0, 1), GradientStops = { new GradientStop { Color = Windows.UI.Color.FromArgb(255, 0xF4, 0xF6, 0xFB), Offset = 0 }, new GradientStop { Color = Windows.UI.Color.FromArgb(255, 0xE9, 0xEE, 0xF8), Offset = 1 } } } };
+        g.Children.Add(new Microsoft.UI.Xaml.Shapes.Rectangle { Fill = new RadialGradientBrush { Center = new Windows.Foundation.Point(.85, .08), GradientOrigin = new Windows.Foundation.Point(.85, .08), RadiusX = .6, RadiusY = .5, GradientStops = { new GradientStop { Color = Windows.UI.Color.FromArgb(26, 37, 99, 235), Offset = 0 }, new GradientStop { Color = Windows.UI.Color.FromArgb(0, 37, 99, 235), Offset = 1 } } } });
+        return g;
+    }
+    /// <summary>Aplica el tema a toda la ventana al instante: fondo, barra lateral, barra superior y pantalla actual.</summary>
+    public void ApplyTheme(bool day)
+    {
+        K.Day = day; _root.RequestedTheme = day ? ElementTheme.Light : ElementTheme.Dark; _root.Background = Bg;
+        _root.Children[0] = MakeBg(day);
+        _toast.Background = CardBg; _toast.BorderBrush = Line2;
+        if (_busy.Child is Border bb) { bb.Background = CardBg; bb.BorderBrush = Line2; }
+        BuildMain();
+        if (_unlocked) Render(true, true);
+    }
+
     /* ---------------- estructura: barra lateral + barra superior + contenido ---------------- */
     void BuildMain()
     {
+        _main.Children.Clear(); _main.ColumnDefinitions.Clear(); _side.Children.Clear(); _items.Clear();
+        _title = H("Inicio", 18); _syncText = Muted("", 11.5);
         _main.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(240) });
         _main.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
@@ -192,9 +230,9 @@ public sealed class MainWindow : Window
         var attn = HeadBtn("", "Centro de atención", 0, 0xFFF43F5Eu, () => Go(new AttentionPage())); Grid.SetColumn(attn, 1); bar.Children.Add(attn);
         var bell = HeadBtn("", "Notificaciones", 1, 0xFF3B82F6u, () => Go(new NotifsPage())); Grid.SetColumn(bell, 2); bar.Children.Add(bell);
         // chip de perfil con menú
-        var av = new Border { Width = 30, Height = 30, CornerRadius = new CornerRadius(10), Background = Br(0xFF1E293Bu), BorderBrush = Br(0x7360A5FAu), BorderThickness = new Thickness(1), Child = new TextBlock { Text = (Services.Core.GreetName.Trim() + "E")[..1].ToUpperInvariant(), FontFamily = Font, FontWeight = FontWeights.ExtraBold, FontSize = 14, Foreground = Br(0xFFE2E8F0u), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center } };
+        var av = new Border { Width = 30, Height = 30, CornerRadius = new CornerRadius(10), Background = AvatarBg, BorderBrush = Alpha(Blue, .45), BorderThickness = new Thickness(1), Child = new TextBlock { Text = (Services.Core.GreetName.Trim() + "E")[..1].ToUpperInvariant(), FontFamily = Font, FontWeight = FontWeights.ExtraBold, FontSize = 14, Foreground = Text, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center } };
         var who = V(0, T("Administrador", 12.5, true, null, false), Muted(Services.Security.UserName().IfEmpty("—"), 10.5));
-        var chip = new Button { Content = Hs(8, av, who, new FontIcon { Glyph = "", FontSize = 11, Foreground = Mut }), Padding = new Thickness(4, 4, 10, 4), CornerRadius = new CornerRadius(14), Background = Br(0x0FFFFFFFu), BorderBrush = Br(0x1AFFFFFFu), BorderThickness = new Thickness(1) };
+        var chip = new Button { Content = Hs(8, av, who, new FontIcon { Glyph = "", FontSize = 11, Foreground = Mut }), Padding = new Thickness(4, 4, 10, 4), CornerRadius = new CornerRadius(14), Background = BtnBg, BorderBrush = BtnLine, BorderThickness = new Thickness(1) };
         if (BtnStyle != null) chip.Style = BtnStyle;
         var menu = new MenuFlyout();
         foreach (var (k, l) in new[] { ("payments", "Registro de pagos"), ("pending", "Pendientes"), ("stats", "Estadísticas"), ("completed", "Encargos completados"), ("backup", "Respaldo"), ("security", "Seguridad"), ("sync", "Sincronización"), ("settings", "Ajustes") })
@@ -208,21 +246,20 @@ public sealed class MainWindow : Window
         body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); body.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         body.Children.Add(header); Grid.SetRow(_scroll, 1); body.Children.Add(_scroll);
         Grid.SetColumn(body, 1); _main.Children.Add(body);
-        _stack.Add(new HomePage());
     }
     Button? _back;
     Button HeadBtn(string glyph, string desc, int badgeIdx, uint badgeColor, Action onClick)
     {
         var g = new Grid { Width = 40, Height = 40 };
         g.Children.Add(new FontIcon { Glyph = glyph, FontSize = 16, Foreground = Text });
-        var b = new Button { Content = g, Width = 40, Height = 40, Padding = new Thickness(0), CornerRadius = new CornerRadius(14), Background = Br(0x0FFFFFFFu), BorderBrush = Br(0x1AFFFFFFu), BorderThickness = new Thickness(1) };
+        var b = new Button { Content = g, Width = 40, Height = 40, Padding = new Thickness(0), CornerRadius = new CornerRadius(14), Background = BtnBg, BorderBrush = BtnLine, BorderThickness = new Thickness(1) };
         if (BtnStyle != null) b.Style = BtnStyle;
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(b, desc);
         b.Click += (_, _) => onClick();
         if (badgeIdx >= 0)
         {
             var t = T("", 10, true, Br(0xFFFFFFFFu), false); t.FontWeight = FontWeights.ExtraBold; t.HorizontalAlignment = HorizontalAlignment.Center; t.VerticalAlignment = VerticalAlignment.Center;
-            var bd = new Border { MinWidth = 18, Height = 18, CornerRadius = new CornerRadius(9), Background = Br(badgeColor), BorderBrush = Br(0xFF090D18u), BorderThickness = new Thickness(2), Padding = new Thickness(3, 0, 3, 0), Child = t,
+            var bd = new Border { MinWidth = 18, Height = 18, CornerRadius = new CornerRadius(9), Background = Br(badgeColor), BorderBrush = BadgeRing, BorderThickness = new Thickness(2), Padding = new Thickness(3, 0, 3, 0), Child = t,
                 HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, -6, -6, 0), Visibility = Visibility.Collapsed };
             g.Children.Add(bd); _topBadges[badgeIdx] = (bd, t);
         }
@@ -297,6 +334,7 @@ public sealed class MainWindow : Window
     void ShowLock()
     {
         _unlocked = false; Services.Unlocked = false; Services.Security.Forget();
+        if (K.Day) ApplyTheme(false);   // el acceso va siempre sobre el fondo aurora (como la app web)
         _host.Children.Clear();
         var lv = new LockView(() => Unlock(true));
         _host.Children.Add(lv);
@@ -304,6 +342,7 @@ public sealed class MainWindow : Window
     void Unlock(bool fromLock)
     {
         _unlocked = true; Services.Unlocked = true;
+        if (Services.DayMode() != K.Day) ApplyTheme(Services.DayMode());
         _host.Children.Clear(); _host.Children.Add(_main);
         if (fromLock) { _main.Opacity = 0; var sb = new Microsoft.UI.Xaml.Media.Animation.Storyboard(); sb.Children.Add(Fx.Anim(_main, "Opacity", 0, 1, 420, 0)); sb.Completed += (_, _) => _main.Opacity = 1; sb.Begin(); }
         Render(true, true);

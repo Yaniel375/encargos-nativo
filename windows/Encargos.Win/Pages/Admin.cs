@@ -256,14 +256,10 @@ public sealed class SettingsPage : Screen
             Card("Notificaciones", null, new[] { ("inapp", "Avisos dentro de la app"), ("pay", "Pagos"), ("order", "Encargos"), ("client", "Clientes"), ("system", "Sistema y seguridad"), ("important", "Avisos importantes") }
                 .Select(o => (UIElement)Toggle(o.Item2, "", Js.Truthy(cfg[o.Item1]), _ => Core.Notifs.ToggleCfg(o.Item1))).ToArray()),
             Card("Sonido", null, Toggle("Sonido de inicio de sesión", "Un sonido corto y discreto al entrar correctamente", Sound.On(), on => { Sound.Set(on); if (on) Sound.Login(); })),
-            Card("Apariencia", null, Toggle("Modo día", "Colores claros (se aplica al volver a abrir la app)", Core.Ls.Get("encargos_aurora_mode", "") == "day", on =>
+            Card("Apariencia", null, Toggle("Modo día", "Colores claros; el cambio es inmediato y se recuerda", Core.Ls.Get("encargos_aurora_mode", "") == "day", on =>
             {
                 Core.Ls.Set("encargos_aurora_mode", on ? "day" : "night");
-                S.Ask("Modo " + (on ? "día" : "noche"), "El cambio se verá al cerrar y volver a abrir Encargos. ¿Reiniciar ahora?", "Reiniciar", false, () =>
-                {
-                    try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(Environment.ProcessPath!) { UseShellExecute = true }); } catch { }
-                    Application.Current.Exit();
-                });
+                Services.Post(() => S.ApplyTheme(on));
             }), Muted("Encargos para Windows · tus datos se guardan en este equipo y, si lo activas, cifrados en tu propio bot de Telegram.", 12))));
     }
 }
