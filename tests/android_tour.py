@@ -126,6 +126,15 @@ tap("Inicio", exact=True, wait=2, last=True); shot("inicio_con_datos")
 for dest in ["Registro de pagos", "Estadísticas", "Respaldo", "Seguridad", "Sincronización", "Ajustes"]:
     if tap("Más", wait=1.2) and tap(dest, wait=2.5): shot(dest.lower().replace(" ", "_"))
     adb("shell", "input", "keyevent", "4"); time.sleep(1.2)
+if tap("Más", wait=1.5): shot("menu_perfil"); adb("shell", "input", "keyevent", "4"); time.sleep(1)
+if tap("Más", wait=1.2) and tap("Ajustes", wait=2.5):
+    if tap("Precio por libra", wait=2): shot("ajustes_hoja_tarifas"); tap("Cerrar", exact=True, wait=1.2)
+    adb("shell", "input", "swipe", "540", "1500", "540", "500", "500"); time.sleep(1.2); shot("ajustes_abajo")
+    adb("shell", "input", "keyevent", "4"); time.sleep(1.2)
+if tap("Más", wait=1.2) and tap("Pendientes", wait=2.5): shot("pendientes"); adb("shell", "input", "keyevent", "4"); time.sleep(1.2)
+tap("Encargos", exact=True, wait=2, last=True)
+if tap("Opciones del encargo", wait=1.2): shot("menu_encargo"); adb("shell", "input", "keyevent", "4"); time.sleep(1)
+tap("Inicio", exact=True, wait=2, last=True)
 tap("Centro de atención", wait=2); shot("atencion"); adb("shell", "input", "keyevent", "4"); time.sleep(1)
 tap("Notificaciones", wait=2); shot("notificaciones")
 # ---------- segunda vuelta: MODO DÍA ----------

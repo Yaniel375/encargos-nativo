@@ -57,7 +57,7 @@ public static class OrderActions
         Add("🙏 Enviar agradecimiento", () => S.WhatsApp(x.Str("phone"), Core.ThanksOrder(x), x.Str("name")));
         f.Items.Add(new MenuFlyoutSeparator());
         Add("🗑️ Eliminar", () => Delete(x));
-        return new Button { Content = new FontIcon { Glyph = "" }, Flyout = f, Padding = new Thickness(8), Background = null, BorderThickness = new Thickness(0) };
+        var b = CardBtn(null, "\uE712", () => { }, null, "Opciones del encargo"); b.Flyout = f; b.MinWidth = 44; b.HorizontalAlignment = HorizontalAlignment.Left; return b;
     }
     public static void EditPhotoDelete(JObj x, int idx)
     {
@@ -154,7 +154,7 @@ public sealed class OrderPage : Screen
         p.Children.Add(Cols(Kpi("Pedido", Money(x["cost"])), Kpi("Envío", Money(x["shipping"]), null, $"{Js.ToFixed(Js.Num(x["pounds"]), 2)} × {Money(x["lbCost"])}"), Kpi("Total", Money(t), Blue),
             Kpi("Pagado", Money(pd), Green), Kpi(b < -0.005 ? "A favor" : "Saldo", b > 0.005 ? "-" + Money(b) : b < -0.005 ? "+" + Money(-b) : "$0.00", b > 0.005 ? Rose : Green),
             Kpi("Ganancia", Signed(g), g >= 0 ? Green : Rose, Money(Core.MarginOf(x)) + "/lb")));
-        p.Children.Add(Cols(Btn("Editar", () => S.Go(new EditOrderPage(_id)), true, null, ""), Btn("WhatsApp", () => S.WhatsApp(x.Str("phone"), "", x.Str("name")), true, Green, ""),
+        p.Children.Add(Cols(Btn("Editar", () => S.Go(new EditOrderPage(_id)), true, null, ""), Btn("WhatsApp", () => S.WhatsApp(x.Str("phone"), "", x.Str("name")), false, Green, ""),
             Btn("Enviar recibo", () => Media.Receipt(x), false, null, ""),
             b > 0.005 ? Btn("Recordar pago", () => S.WhatsApp(x.Str("phone"), Core.ReminderOrder(x), x.Str("name")), false, Rose) : Btn("Agradecer", () => S.WhatsApp(x.Str("phone"), Core.ThanksOrder(x), x.Str("name")))));
         p.Children.Add(Card("Nota interna", Link(x.Str("note").Length == 0 ? "Agregar" : "Editar", () => OrderActions.EditNote(x)),
