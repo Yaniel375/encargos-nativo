@@ -21,6 +21,8 @@ android {
         versionCode = 100 + run
         versionName = "1.0.$run"
         vectorDrawables { useSupportLibrary = true }
+        // Solo la copia de PRUEBA automática (nunca la que se publica) permite capturas de pantalla.
+        buildConfigField("boolean", "CAPTURE_TEST", if (System.getenv("ENCARGOS_CAPTURE_TEST") == "1") "true" else "false")
     }
 
     signingConfigs {

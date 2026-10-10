@@ -71,8 +71,16 @@ jobs:
           $exe = "$env:LOCALAPPDATA\Programs\Encargos Nativo\Encargos.exe"
           if (!(Test-Path $exe)) { "::error::No se instaló Encargos.exe"; exit 1 }
           Get-Process Encargos -ErrorAction SilentlyContinue | Stop-Process -Force
+          (New-Object -ComObject Shell.Application).MinimizeAll()
+          Start-Sleep 2
           $p = Start-Process $exe -PassThru
           Start-Sleep 25
+          Add-Type @"
+          using System; using System.Runtime.InteropServices;
+          public static class W { [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h); [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int c); }
+          "@
+          $p.Refresh(); if ($p.MainWindowHandle -ne 0) { [W]::ShowWindow($p.MainWindowHandle, 3) | Out-Null; [W]::SetForegroundWindow($p.MainWindowHandle) | Out-Null }
+          Start-Sleep 3
           Add-Type -AssemblyName System.Windows.Forms, System.Drawing
           $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
           $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height

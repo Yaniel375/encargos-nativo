@@ -28,7 +28,7 @@ class MainActivity : FragmentActivity() {
         setContent { EncargosTheme(day = app.core.ls.get("encargos_aurora_mode", "") == "day") { AppRoot(app, this) } }
     }
     /** Privacidad en recientes: oculta el contenido en la vista de apps recientes y bloquea capturas. */
-    fun applyPrivacy() { if (app.security.privacyOn()) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE) else window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE) }
+    fun applyPrivacy() { if (app.security.privacyOn() && !BuildConfig.CAPTURE_TEST) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE) else window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE) }
 
     fun afterUnlock() {
         // respaldo automático en Descargas/Encargos (diario o semanal)

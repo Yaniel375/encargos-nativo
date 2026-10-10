@@ -3,7 +3,7 @@ name: Android (APK)
 on:
   push:
     branches: [main]
-    paths: ["core/**", "android/**", "*.kts", "gradle.properties", ".github/workflows/android.yml"]
+    paths: ["core/**", "android/**", "tests/android_tour.py", "*.kts", "gradle.properties", ".github/workflows/android.yml"]
   workflow_dispatch:
 
 permissions:
@@ -70,35 +70,53 @@ jobs:
             sleep 10
           done
 
+      - name: Compilar copia de PRUEBA (permite capturas; no se publica)
+        env:
+          ENCARGOS_CAPTURE_TEST: "1"
+          ENCARGOS_KEYSTORE_PASSWORD: ${{ secrets.ENCARGOS_KEYSTORE_PASSWORD }}
+          ENCARGOS_KEY_ALIAS: ${{ secrets.ENCARGOS_KEY_ALIAS }}
+          ENCARGOS_KEY_PASSWORD: ${{ secrets.ENCARGOS_KEY_PASSWORD }}
+        run: gradle --no-daemon :app:assembleRelease
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Encargos-Android-prueba
+          path: android/build/outputs/apk/release/*.apk
+          retention-days: 3
+
   prueba-en-vivo:
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
-        with: { name: Encargos-Android, path: apk }
+        with: { name: Encargos-Android-prueba, path: apk }
       - name: Activar KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
-      - name: Abrir la app en un teléfono emulado y capturar pantallas
+      - name: Recorrer la app en un teléfono emulado (datos de prueba)
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 30
           arch: x86_64
           target: google_apis
+          profile: pixel_4
           disable-animations: true
           script: |
-            mkdir -p shots && adb logcat -c && adb install -r apk/*.apk && adb shell am start -W -n com.agencia.encargos.nativo/.MainActivity ; sleep 12 ; adb exec-out screencap -p > shots/android_1_inicio.png ; adb shell input tap 540 1500 ; sleep 3 ; adb exec-out screencap -p > shots/android_2.png ; adb logcat -d > shots/logcat.txt ; adb shell pidof com.agencia.encargos.nativo > shots/pid.txt || echo "NO" > shots/pid.txt
-      - name: Revisar cierres inesperados
+            adb install -r apk/*.apk
+            python3 tests/android_tour.py shots || echo FALLO > shots/FALLO
+      - name: Resultado
         run: |
-          grep -A40 "FATAL EXCEPTION" shots/logcat.txt | grep -v "^--$" > shots/crash.txt || true
-          grep -E "com.agencia.encargos|AndroidRuntime" shots/logcat.txt | tail -300 > shots/app_log.txt || true
-          rm -f shots/logcat.txt
-          if [ -s shots/crash.txt ]; then echo "::error title=La app se cerró::$(head -c 600 shots/crash.txt | tr '\n' ' ')"; else echo "::notice title=Android::La app abrió sin cerrarse (pid $(cat shots/pid.txt))"; fi
+          cat shots/recorrido.txt
+          if [ -f shots/FALLO ]; then echo "::error title=Android::$(tail -1 shots/recorrido.txt) $(head -c 500 shots/crash.txt | tr '\n' ' ')"; else echo "::notice title=Android::$(tail -1 shots/recorrido.txt)"; fi
+          grep -c "✗" shots/recorrido.txt | xargs -I{} echo "::notice title=Pasos no encontrados::{}"
       - name: Guardar capturas en la rama capturas-android
         if: always()
         env: { GH_TOKEN: "${{ github.token }}" }
         run: |
           cd shots && git init -q -b capturas-android && git add -A && git -c user.name=ci -c user.email=ci@local commit -qm "Capturas Android run ${{ github.run_number }}"
           git push -f "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}" capturas-android
+      - name: Fallar si la app se cerró
+        run: test ! -f shots/FALLO
