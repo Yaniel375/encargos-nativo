@@ -68,7 +68,6 @@ public sealed class MainWindow : Window
         _toastTimer = DispatcherQueue.CreateTimer(); _toastTimer.IsRepeating = false; _toastTimer.Tick += (_, _) => HideToast();
 
         _root.Background = Bg;
-        _root.FontFamily = Font;
         _root.Children.Add(Day ? new Grid { Background = new LinearGradientBrush { StartPoint = new Windows.Foundation.Point(0, 0), EndPoint = new Windows.Foundation.Point(0, 1), GradientStops = { new GradientStop { Color = Windows.UI.Color.FromArgb(255, 0xF4, 0xF6, 0xFB), Offset = 0 }, new GradientStop { Color = Windows.UI.Color.FromArgb(255, 0xE9, 0xEE, 0xF8), Offset = 1 } } } } : new AuroraBg());
         _root.Children.Add(_host);
         BuildMain();

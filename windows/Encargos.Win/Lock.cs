@@ -119,6 +119,13 @@ public sealed class LockView : Grid
         }
         if (!_usePass && !_setup) Focus(FocusState.Programmatic);
     }
+    static FrameworkElement Center(FrameworkElement e) { e.HorizontalAlignment = HorizontalAlignment.Center; return e; }
+    static Button KeyBtn(string text, bool glyph)
+    {
+        var b = new Button { Width = 68, Height = 68, CornerRadius = new CornerRadius(34), Content = glyph ? (object)new FontIcon { Glyph = text, FontSize = 20 } : T(text, 22, true), Background = Glass, BorderBrush = Line2, BorderThickness = new Thickness(1) };
+        if (BtnStyle != null) b.Style = BtnStyle;
+        return Fx.Bounce(b, .9);
+    }
     void OnKey(object sender, KeyRoutedEventArgs e)
     {
         if (_setup || _usePass) return;
