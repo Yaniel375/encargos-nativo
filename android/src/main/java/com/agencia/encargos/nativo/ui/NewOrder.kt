@@ -22,6 +22,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -60,6 +63,27 @@ fun NewOrderScreen(forName: String?, forPhone: String?) {
     val suggestions = if (name.length >= 2 && forName == null) core.clients().filter { it.name.lowercase().contains(name.trim().lowercase()) && it.name != name }.take(4) else emptyList()
 
     Page(title = if (forName != null) "Nuevo encargo para $forName" else "Nuevo encargo", sub = "Completa los datos y guarda") {
+        item {
+            // Vista previa del encargo (como en la web): se actualiza mientras escribes
+            SectionCard {
+                Text("VISTA PREVIA DEL ENCARGO", fontSize = 10.5.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.8.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Avatar(name.ifBlank { "?" }, C.blue, 44); Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(name.ifBlank { "Nuevo cliente" }, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+                        Text((phone.ifBlank { "Sin teléfono" }) + " · " + Js.toFixed(p, 1) + " lb", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    StatusChip(status)
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Kpi("Total", money(total), modifier = Modifier.weight(1f)); Kpi("Pagado", money(f), C.green, modifier = Modifier.weight(1f))
+                    Kpi("Saldo", if (bal < 0) "+ " + money(-bal) else money(bal), if (bal > 0) C.rose else C.green, modifier = Modifier.weight(1f))
+                }
+                ProgressBar(if (total > 0) (f / total).coerceIn(0.0, 1.0) else 0.0, C.green)
+                Row { Text("Pedido ${money(c)} + envío ${money(ship)}", Modifier.weight(1f), fontSize = 12.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(if (c <= 0) "Escribe el costo" else "Total ${money(total)}", fontSize = 12.5.sp, fontWeight = FontWeight.Bold) }
+            }
+        }
         item {
             SectionCard("Cliente") {
                 Field(name, { name = it }, "Nombre del cliente")
