@@ -11,12 +11,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,6 +38,7 @@ import kotlin.math.abs
 import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.MoneyOff
 import androidx.compose.material.icons.outlined.PersonOff
+import androidx.compose.material.icons.outlined.Receipt
 
 @Composable
 fun StatsScreen() {
@@ -117,7 +116,7 @@ fun ExpenseDialog(e: JObj?, dismiss: () -> Unit) {
     var amount by remember { mutableStateOf(e?.let { Js.numberToString(Js.num(it["amount"])) } ?: "") }
     var date by remember { mutableStateOf(e?.let { Js.local(Js.parseDate(it["date"])).toLocalDate().toString() } ?: LocalDate.now().toString()) }
     var cat by remember { mutableStateOf(e?.str("cat")?.ifEmpty { null } ?: "transporte") }
-    AlertDialog(onDismissRequest = dismiss, title = { Text(if (e == null) "🧾 Nuevo gasto" else "🧾 Editar gasto") },
+    AlertDialog(onDismissRequest = dismiss, icon = Icons.Outlined.Receipt, title = { Text(if (e == null) "Nuevo gasto" else "Editar gasto") },
         text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Field(concept, { concept = it }, "Concepto (ej. Taxi al aeropuerto)")
             Field(amount, { amount = it }, "Monto", number = true, prefix = "$")

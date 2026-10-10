@@ -28,14 +28,12 @@ import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Send
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -70,6 +68,7 @@ import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.Scale
 import androidx.compose.material.icons.outlined.Summarize
 import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
+import androidx.compose.material.icons.outlined.Receipt
 
 /* ======================= Lista de encargos activos ======================= */
 @Composable
@@ -190,7 +189,7 @@ fun pickDate(ui: Ui, x: JObj) {
 @Composable
 fun NoteDialog(initial: String, dismiss: () -> Unit, save: (String) -> Unit) {
     var t by remember { mutableStateOf(initial) }
-    AlertDialog(onDismissRequest = dismiss, title = { Text("📝 Nota interna") },
+    AlertDialog(onDismissRequest = dismiss, icon = Icons.Outlined.EditNote, title = { Text("Nota interna") },
         text = { Column { Text("Solo para ti: el cliente nunca la ve.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Field(t, { t = it }, "Nota del encargo", singleLine = false, minLines = 3) } },
         confirmButton = { TextButton(onClick = { save(t) }) { Text("Guardar") } }, dismissButton = { TextButton(onClick = dismiss) { Text("Cancelar") } })
 }
@@ -212,7 +211,7 @@ fun ReceiptDialog(x: JObj, dismiss: () -> Unit) {
         }
         dismiss()
     }
-    AlertDialog(onDismissRequest = dismiss, title = { Text("Enviar recibo") },
+    AlertDialog(onDismissRequest = dismiss, icon = Icons.Outlined.Receipt, title = { Text("Enviar recibo") },
         text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Recibo de ${x.str("name")} · ${money(x["total"])}", color = MaterialTheme.colorScheme.onSurfaceVariant)
             Primary("Enviar como imagen", Modifier.fillMaxWidth()) { make("png") }

@@ -59,12 +59,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Backspace
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Key
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -307,7 +305,7 @@ fun AuthSheet(a: AuthReq, onDone: (Boolean) -> Unit) {
             if (ok) { sec.ok("pin"); onDone(true) } else { msg = sec.fail("pin"); pin = "" }
         }
     }
-    AlertDialog(onDismissRequest = { onDone(false) }, shape = RoundedCornerShape(22.dp), title = { Text("🔒 Confirma tu identidad", fontWeight = FontWeight.ExtraBold) },
+    AlertDialog(onDismissRequest = { onDone(false) }, shape = RoundedCornerShape(22.dp), icon = Icons.Outlined.Lock, title = { Text("Confirma tu identidad") },
         text = {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(a.reason, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -319,6 +317,6 @@ fun AuthSheet(a: AuthReq, onDone: (Boolean) -> Unit) {
                 if (msg.isNotEmpty()) Text(msg, color = W.rose)
             }
         },
-        confirmButton = { if (!usePin) TextButton(onClick = { if (sec.checkPassword(sec.userName(), pass)) { sec.ok("password"); onDone(true) } else { msg = sec.fail("password"); pass = "" } }) { Text("Confirmar") } },
+        confirmButton = if (usePin) null else { { TextButton(onClick = { if (sec.checkPassword(sec.userName(), pass)) { sec.ok("password"); onDone(true) } else { msg = sec.fail("password"); pass = "" } }) { Text("Confirmar") } } },
         dismissButton = { TextButton(onClick = { onDone(false) }) { Text("Cancelar") } })
 }

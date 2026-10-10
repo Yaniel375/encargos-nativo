@@ -12,11 +12,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -44,6 +42,7 @@ import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.LocalShipping
 import androidx.compose.material.icons.outlined.Payments
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Notifications
 
 /* ======================= Centro de atención ======================= */
 @Composable
@@ -100,8 +99,8 @@ fun AttentionScreen() {
             }
         }
     }
-    if (hist) AlertDialog(onDismissRequest = { hist = false }, confirmButton = { TextButton(onClick = { hist = false }) { Text("Cerrar") } }, title = { Text("Historial de actividad") },
-        text = { androidx.compose.foundation.lazy.LazyColumn { att.activity().forEach { a -> item { ActivityRow(a) } } } })
+    if (hist) AlertDialog(onDismissRequest = { hist = false }, confirmButton = { TextButton(onClick = { hist = false }) { Text("Cerrar") } }, icon = Icons.Outlined.History, title = { Text("Historial de actividad") },
+        text = { Column { att.activity().forEach { a -> ActivityRow(a) } } })
 }
 
 @Composable private fun ActivityRow(a: JObj) {
@@ -175,21 +174,22 @@ fun NotifsScreen() {
     }
     detail?.let { n ->
         val ord = (n["ref"] as? JObj)?.get("order")?.let { ui.core.byId(it) }; val client = (n["ref"] as? JObj)?.str("client").orEmpty(); val panel = (n["ref"] as? JObj)?.str("panel").orEmpty()
-        AlertDialog(onDismissRequest = { detail = null }, title = { Text(n.str("title")) },
+        AlertDialog(onDismissRequest = { detail = null }, icon = Icons.Outlined.Notifications, title = { Text(n.str("title")) },
             text = { Column(verticalArrangement = Arrangement.spacedBy(6.dp)) { Text(n.str("text"))
                 if (client.isNotEmpty()) Line("Cliente", client); (n["data"] as? JObj)?.let { d -> if (d["amount"] != null) Line("Monto", money(kotlin.math.abs(Js.num(d["amount"])))); if (d.str("method").isNotEmpty()) Line("Método", d.str("method")); if (d.str("status").isNotEmpty()) Line("Estado", (if (d.str("from").isNotEmpty()) d.str("from") + " → " else "") + d.str("status")) }
-                Line("Fecha", Js.fmt(n["t"])) } },
-            confirmButton = { Row {
-                if (ord != null) TextButton(onClick = { detail = null; ui.go(Screen.Order(Js.str(ord["id"]))) }) { Text(if (n.str("cat") == "pay") "Ver pago" else "Ver pedido") }
-                if (client.isNotEmpty() && ui.core.findClient(client) != null) TextButton(onClick = { detail = null; ui.go(Screen.Client(client)) }) { Text("Ver cliente") }
-                if (panel.isNotEmpty()) TextButton(onClick = { detail = null; ui.go(if (panel == "backup") Screen.Backup else if (panel == "security") Screen.Security else Screen.Orders) }) { Text("Abrir") }
-            } }, dismissButton = { TextButton(onClick = { detail = null }) { Text("Cerrar") } })
+                Line("Fecha", Js.fmt(n["t"]))
+                // accesos directos: botones secundarios a lo ancho, como en el resto de la app
+                if (ord != null) Secondary(if (n.str("cat") == "pay") "Ver pago" else "Ver pedido", Modifier.fillMaxWidth()) { detail = null; ui.go(Screen.Order(Js.str(ord["id"]))) }
+                if (client.isNotEmpty() && ui.core.findClient(client) != null) Secondary("Ver cliente", Modifier.fillMaxWidth()) { detail = null; ui.go(Screen.Client(client)) }
+                if (panel.isNotEmpty()) Secondary("Abrir", Modifier.fillMaxWidth()) { detail = null; ui.go(if (panel == "backup") Screen.Backup else if (panel == "security") Screen.Security else Screen.Orders) }
+            } },
+            confirmButton = { TextButton(onClick = { detail = null }) { Text("Cerrar") } })
     }
     if (cfg) {
         val c = nf.cfg()
-        AlertDialog(onDismissRequest = { cfg = false }, title = { Text("Notificaciones") }, confirmButton = { TextButton(onClick = { cfg = false }) { Text("Listo") } },
+        AlertDialog(onDismissRequest = { cfg = false }, icon = Icons.Outlined.Notifications, title = { Text("Notificaciones") }, confirmButton = { TextButton(onClick = { cfg = false }) { Text("Listo") } },
             text = { Column { listOf("inapp" to "Avisos dentro de la app", "important" to "Notificaciones importantes", "pay" to "Pagos", "order" to "Pedidos", "client" to "Clientes", "system" to "Sistema (respaldos, importaciones y seguridad)").forEach { (k, l) ->
-                Row(verticalAlignment = Alignment.CenterVertically) { Text(l, Modifier.weight(1f)); Switch(Js.truthy(c[k]), { nf.toggleCfg(k) }) } } } })
+                Row(verticalAlignment = Alignment.CenterVertically) { Text(l, Modifier.weight(1f), fontWeight = FontWeight.SemiBold); Switch(Js.truthy(c[k]), { nf.toggleCfg(k) }) } } } })
     }
     @Suppress("UNUSED_VARIABLE") val u = v
 }

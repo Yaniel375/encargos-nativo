@@ -63,7 +63,6 @@ import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.TrackChanges
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -106,6 +105,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Info
 
 /* ======================= Navegación ======================= */
 sealed class Screen(val title: String) {
@@ -161,6 +162,7 @@ fun AppRoot(app: EncargosApp, act: FragmentActivity) {
     val snack = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val ui = remember { Ui(app, act, snack, scope) }
+    remember { Profile.photo = app.core.ls.get(Profile.KEY, ""); 0 }   // foto de perfil guardada en este dispositivo
     val v by app.version.collectAsState()
     val sv by app.syncVersion.collectAsState()
     val notice by app.notices.collectAsState()
@@ -235,7 +237,8 @@ private fun Header(ui: Ui, app: EncargosApp, lock: () -> Unit, modifier: Modifie
             Row(Modifier.pressBounce(src, .94f).height(40.dp).clip(sh).background(W.btnBg).border(1.dp, W.btnLine, sh).clickable(src, null) { tapFeedback(); menu = true }.padding(start = 3.dp, end = 4.dp),
                 verticalAlignment = Alignment.CenterVertically) {
                 val ash = RoundedCornerShape(11.dp)
-                Box(Modifier.size(33.dp).clip(ash).background(W.avatarBg).border(1.dp, W.blue.copy(alpha = .45f), ash), contentAlignment = Alignment.Center) {
+                if (Profile.photo.isNotEmpty()) ProfilePic(app.core.greetName.ifEmpty { "E" }, 33, W.blue.copy(alpha = .45f))
+                else Box(Modifier.size(33.dp).clip(ash).background(W.avatarBg).border(1.dp, W.blue.copy(alpha = .45f), ash), contentAlignment = Alignment.Center) {
                     Text(app.core.greetName.trim().take(1).uppercase().ifEmpty { "E" }, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, color = W.tx)
                 }
                 Icon(Icons.Filled.KeyboardArrowDown, "Más", Modifier.size(18.dp), tint = W.mut)
@@ -259,7 +262,7 @@ private fun ProfileMenu(ui: Ui, app: EncargosApp, lock: () -> Unit, close: () ->
         // cabecera compacta: avatar, nombre y usuario; la flecha abre los ajustes (su destino actual)
         val src0 = remember { MutableInteractionSource() }
         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(src0, null) { act { ui.go(Screen.Settings) } }.padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Avatar(core.greetName.ifEmpty { "E" }, C.blue, 30); Spacer(Modifier.width(8.dp))
+            ProfilePic(core.greetName.ifEmpty { "E" }, 30); Spacer(Modifier.width(8.dp))
             Column(Modifier.weight(1f)) {
                 Text(core.greetName.ifEmpty { "Mi cuenta" }, fontWeight = FontWeight.ExtraBold, fontSize = 13.5.sp, color = W.tx, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(app.security.userName().ifEmpty { "admin" }, fontSize = 11.sp, color = W.mut, maxLines = 1)
@@ -412,12 +415,12 @@ const val AUTO_TITLE = "\u0000"
 
 @Composable fun Dialogs(ui: Ui) {
     ui.confirm?.let { c ->
-        AlertDialog(onDismissRequest = { ui.confirm = null }, shape = RoundedCornerShape(22.dp), title = { Text(c.title, fontWeight = FontWeight.ExtraBold) }, text = { Text(c.text, color = MaterialTheme.colorScheme.onSurfaceVariant) },
-            confirmButton = { Primary(c.ok, color = if (c.danger) C.rose else C.blue) { ui.confirm = null; c.onOk() } },
-            dismissButton = { Secondary("Cancelar") { ui.confirm = null } })
+        AlertDialog(onDismissRequest = { ui.confirm = null }, shape = RoundedCornerShape(22.dp), icon = if (c.danger) Icons.Outlined.Delete else Icons.Outlined.Info, title = { Text(c.title.dropWhile { !it.isLetterOrDigit() && it != '¿' && it != '¡' }.trim()) }, text = { Text(c.text, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+            confirmButton = { Primary(c.ok, Modifier.fillMaxWidth().height(48.dp), color = if (c.danger) C.rose else C.blue) { ui.confirm = null; c.onOk() } },
+            dismissButton = { Secondary("Cancelar", Modifier.fillMaxWidth().height(48.dp)) { ui.confirm = null } })
     }
     ui.auth?.let { a -> AuthSheet(a) { ok -> ui.auth = null; if (ok) a.onOk() } }
-    ui.busy?.let { b -> AlertDialog(onDismissRequest = {}, shape = RoundedCornerShape(22.dp), confirmButton = {}, title = { Text(b, fontWeight = FontWeight.ExtraBold) },
+    ui.busy?.let { b -> AlertDialog(onDismissRequest = {}, title = { Text(b, fontWeight = FontWeight.ExtraBold) },
         text = { Row(verticalAlignment = Alignment.CenterVertically) { CircularProgressIndicator(color = W.blue, strokeWidth = 3.dp, modifier = Modifier.size(26.dp)); Spacer(Modifier.width(14.dp)); Text("Un momento…") } }) }
 }
 

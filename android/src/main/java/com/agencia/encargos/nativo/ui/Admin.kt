@@ -50,11 +50,9 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Upload
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
@@ -90,6 +88,12 @@ import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.SyncProblem
 import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.border
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.outlined.PhotoCamera
 
 /* ---------------- piezas comunes ---------------- */
 
@@ -113,7 +117,7 @@ private fun timeLabel(t: Any?): String = if (Js.num(t) > 0) Js.fmt(t) else "—"
 @Composable
 fun PasswordDialog(title: String, text: String, confirm: Boolean, ok: String, dismiss: () -> Unit, onOk: (String) -> Unit) {
     var a by remember { mutableStateOf("") }; var b by remember { mutableStateOf("") }; var err by remember { mutableStateOf("") }
-    AlertDialog(onDismissRequest = dismiss, title = { Text(title) },
+    AlertDialog(onDismissRequest = dismiss, icon = Icons.Outlined.Lock, title = { Text(title) },
         text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(text, fontSize = 13.sp)
             Field(a, { a = it; err = "" }, "Contraseña", password = true)
@@ -290,7 +294,7 @@ fun SecurityScreen() {
         } }
         item { Hint("El PIN se guarda con sal y hash iterado; las huellas nunca salen del sistema Android. Ningún respaldo incluye tu PIN ni tu contraseña.") }
     }
-    if (lockSheet) Sheet("Bloqueo automático", { lockSheet = false }) {
+    if (lockSheet) Sheet("Bloqueo automático", { lockSheet = false }, Icons.Outlined.Schedule) {
         val opts = listOf("0" to "Al salir", "1" to "1 min", "5" to "5 min", "15" to "15 min", "30" to "30 min", "never" to "Nunca")
         val l2 = sec.lockCfg(); val sel = if (!l2.on) "never" else Js.numberToString(l2.minutes)
         Choice(opts, sel) { k -> sec.setLock(if (k == "never") null else k.toDouble()); refresh() }
@@ -305,7 +309,7 @@ fun SecurityScreen() {
 @Composable
 private fun PinDialog(dismiss: () -> Unit, onOk: (String) -> Unit) {
     var a by remember { mutableStateOf("") }; var b by remember { mutableStateOf("") }; var err by remember { mutableStateOf("") }
-    AlertDialog(onDismissRequest = dismiss, title = { Text("🔢 PIN") },
+    AlertDialog(onDismissRequest = dismiss, icon = Icons.Outlined.Pin, title = { Text("PIN") },
         text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Hint("Elige un PIN de 4 a 6 números.")
             Field(a, { s -> a = s.filter { it.isDigit() }.take(6); err = "" }, "PIN nuevo", number = true, password = true)
@@ -319,7 +323,7 @@ private fun PinDialog(dismiss: () -> Unit, onOk: (String) -> Unit) {
 @Composable
 private fun CredentialsDialog(user0: String, dismiss: () -> Unit, onOk: (String, String) -> Unit) {
     var u by remember { mutableStateOf(user0) }; var a by remember { mutableStateOf("") }; var b by remember { mutableStateOf("") }; var err by remember { mutableStateOf("") }
-    AlertDialog(onDismissRequest = dismiss, title = { Text("👤 Usuario y contraseña") },
+    AlertDialog(onDismissRequest = dismiss, icon = Icons.Outlined.Person, title = { Text("Usuario y contraseña") },
         text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Field(u, { u = it; err = "" }, "Usuario")
             Field(a, { a = it; err = "" }, "Contraseña nueva", password = true)
@@ -333,14 +337,14 @@ private fun CredentialsDialog(user0: String, dismiss: () -> Unit, onOk: (String,
 @Composable
 private fun WipeDialog(dismiss: () -> Unit, onOk: (Boolean) -> Unit) {
     var t by remember { mutableStateOf("") }; var reset by remember { mutableStateOf(false) }
-    AlertDialog(onDismissRequest = dismiss, title = { Text("⚠️ Borrar datos") },
+    AlertDialog(onDismissRequest = dismiss, icon = Icons.Outlined.Delete, title = { Text("Borrar datos") },
         text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Se eliminarán los encargos, pagos, notas y gastos de ESTE dispositivo. Esta acción no se puede deshacer.", fontSize = 13.sp)
             Hint("Los respaldos de Telegram no se borran.")
             ToggleRow("Restablecer también el acceso", "Borra usuario, contraseña y PIN", reset) { reset = it }
             Field(t, { t = it }, "Escribe ELIMINAR para confirmar")
         } },
-        confirmButton = { TextButton(enabled = t.trim() == "ELIMINAR", onClick = { onOk(reset); dismiss() }) { Text("Borrar todo", color = if (t.trim() == "ELIMINAR") C.rose else MaterialTheme.colorScheme.onSurfaceVariant) } },
+        confirmButton = { TextButton(enabled = t.trim() == "ELIMINAR", tone = C.rose, onClick = { onOk(reset); dismiss() }) { Text("Borrar todo") } },
         dismissButton = { TextButton(onClick = dismiss) { Text("Cancelar") } })
 }
 
@@ -363,14 +367,32 @@ fun SettingsScreen() {
     var sheet by remember { mutableStateOf<String?>(null) }
     val fb = com.agencia.encargos.nativo.util.Feedback
     fun rateLine(m: Map<String, Any?>) = keys.joinToString(" · ") { k -> core.shippingName(k) + " " + money(m[k]) }
+    // foto de perfil: se elige de la galería, se reduce (400 px) y se guarda solo en este dispositivo
+    val pickPhoto = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) ui.scope.launch {
+            val d = withContext(Dispatchers.IO) { com.agencia.encargos.nativo.util.Images.fromUri(ui.act, uri, 400, 80) }
+            if (d != null) { core.ls.set(Profile.KEY, d); Profile.photo = d; ui.toast("✅ Foto de perfil actualizada.") } else ui.toast("No se pudo leer la imagen.")
+        }
+    }
     Page {
         item {
             SectionCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Avatar(core.greetName.ifEmpty { "E" }, C.blue, 64); androidx.compose.foundation.layout.Spacer(Modifier.width(14.dp))
+                    Box(Modifier.clip(RoundedCornerShape(20.dp)).clickable { tapFeedback(); pickPhoto.launch("image/*") }) {
+                        ProfilePic(core.greetName.ifEmpty { "E" }, 64)
+                        Box(Modifier.align(Alignment.BottomEnd).size(22.dp).clip(CircleShape).background(W.blue).border(2.dp, W.menu, CircleShape), contentAlignment = Alignment.Center) {
+                            Icon(Icons.Outlined.PhotoCamera, "Cambiar foto de perfil", Modifier.size(12.dp), tint = Color.White) }
+                    }
+                    androidx.compose.foundation.layout.Spacer(Modifier.width(14.dp))
                     Column(Modifier.weight(1f)) { Text(core.greetName.ifEmpty { "Tu nombre" }, fontSize = 19.sp, fontWeight = FontWeight.ExtraBold); Hint("Usuario: " + ui.app.security.userName().ifEmpty { "—" }) }
                 }
-                Secondary("Editar nombre del saludo", Modifier.fillMaxWidth()) { sheet = "greet" }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Secondary(if (Profile.photo.isEmpty()) "Agregar foto" else "Cambiar foto", Modifier.weight(1f), Icons.Outlined.PhotoCamera) { pickPhoto.launch("image/*") }
+                    if (Profile.photo.isNotEmpty()) Secondary("Quitar foto", Modifier.weight(1f), Icons.Outlined.Delete, C.rose) {
+                        ui.ask("Quitar foto de perfil", "¿Quitar tu foto de perfil? Volverá a mostrarse tu inicial.", "Quitar", true) { core.ls.set(Profile.KEY, ""); Profile.photo = ""; ui.toast("Foto de perfil quitada.") }
+                    }
+                }
+                Secondary("Editar nombre del saludo", Modifier.fillMaxWidth(), Icons.Outlined.WavingHand) { sheet = "greet" }
             }
         }
         item { RowGroup("Negocio y tarifas") {
@@ -403,21 +425,21 @@ fun SettingsScreen() {
         item { Hint("Encargos nativo para Android · tus datos se guardan en este teléfono y, si lo activas, en tu propio bot de Telegram cifrados.") }
     }
     when (sheet) {
-        "biz" -> Sheet("Nombre del negocio", { sheet = null }) {
+        "biz" -> Sheet("Nombre del negocio", { sheet = null }, Icons.Outlined.Storefront) {
             InfoBox("Aparece en los recibos y en los mensajes de WhatsApp.")
             Field(biz, { biz = it }, "Nombre del negocio (aparece en recibos)")
             Primary("Guardar", Modifier.fillMaxWidth()) { core.businessName = biz.trim(); ui.toast("✅ Datos guardados."); sheet = null }
         }
-        "greet" -> Sheet("Nombre del saludo", { sheet = null }) {
+        "greet" -> Sheet("Nombre del saludo", { sheet = null }, Icons.Outlined.WavingHand) {
             Field(greet, { greet = it }, "Tu nombre (para el saludo)")
             Primary("Guardar", Modifier.fillMaxWidth()) { core.greetName = greet.trim(); ui.toast("✅ Datos guardados."); sheet = null }
         }
-        "cc" -> Sheet("Código de país", { sheet = null }) {
+        "cc" -> Sheet("Código de país", { sheet = null }, Icons.Outlined.Phone) {
             InfoBox("Se agrega a los números de 8 cifras al abrir WhatsApp.")
             Field(cc, { s -> cc = s.filter { it.isDigit() }.take(4) }, "Código de país para WhatsApp", number = true, prefix = "+")
             Primary("Guardar", Modifier.fillMaxWidth()) { core.phoneCC = cc.ifEmpty { "53" }; ui.toast("✅ Datos guardados."); sheet = null }
         }
-        "rates" -> Sheet("Precios de envío por libra", { sheet = null }) {
+        "rates" -> Sheet("Precios de envío por libra", { sheet = null }, Icons.Outlined.LocalShipping) {
             InfoBox("Configura todos tus tipos de envío. Cada tipo puede tener su propio precio por libra. Al crear un encargo, el precio se selecciona automáticamente según el envío.")
             keys.forEach { k ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -439,7 +461,7 @@ fun SettingsScreen() {
                 if (bad) ui.toast("Revisa las tarifas: deben ser números de 0 en adelante.") else { core.setShippingRates(m); ui.toast("✅ Tarifas guardadas. Se aplican a los encargos nuevos."); sheet = null }
             }
         }
-        "buy" -> Sheet("Lo que te cuesta a ti la libra", { sheet = null }) {
+        "buy" -> Sheet("Lo que te cuesta a ti la libra", { sheet = null }, Icons.Outlined.Sell) {
             InfoBox("Se usa para calcular tu ganancia por encargo.")
             keys.forEach { k -> Field(buy[k] ?: "", { buy[k] = it }, core.shippingLabel(k), number = true, prefix = "$", suffix = "USD/lb") }
             ToggleRow("Aplicar también a encargos activos", "Actualiza el costo en los encargos de clientes que aún no terminan", applyActive) { applyActive = it }
@@ -448,7 +470,7 @@ fun SettingsScreen() {
                 core.saveBuyRates(m, applyActive); ui.toast("✅ Costos guardados."); sheet = null
             }
         }
-        "tpl" -> Sheet("Mensajes de WhatsApp", { sheet = null }) {
+        "tpl" -> Sheet("Mensajes de WhatsApp", { sheet = null }, Icons.Outlined.Chat) {
             InfoBox("Puedes usar {nombre}, {total}, {pagado}, {saldo}, {libras} y {negocio}.")
             Field(tArr, { tArr = it }, "Aviso de llegada", singleLine = false, minLines = 3)
             Field(tRem, { tRem = it }, "Recordatorio de pago", singleLine = false, minLines = 3)
@@ -458,7 +480,7 @@ fun SettingsScreen() {
                 Primary("Guardar mensajes", Modifier.weight(1.4f)) { core.saveTemplates(tArr, tRem, tTh); ui.toast("✅ Mensajes guardados."); sheet = null }
             }
         }
-        "transit" -> Sheet("Alertas de tránsito", { sheet = null }) {
+        "transit" -> Sheet("Alertas de tránsito", { sheet = null }, Icons.Outlined.LocalShipping) {
             InfoBox("El centro de atención te avisa cuando un encargo lleva muchos días en tránsito.")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Field(warn, { s -> warn = s.filter { it.isDigit() } }, "Avisar a los (días)", Modifier.weight(1f), number = true)
@@ -469,14 +491,14 @@ fun SettingsScreen() {
                 warn = core.transitWarn.toString(); late = core.transitLate.toString(); ui.toast("✅ Alertas guardadas."); sheet = null
             }
         }
-        "notif" -> Sheet("Notificaciones", { sheet = null }) {
+        "notif" -> Sheet("Notificaciones", { sheet = null }, Icons.Outlined.Notifications) {
             var tick by remember { mutableStateOf(0) }
             val cfg = core.notifs.cfg(); @Suppress("UNUSED_VARIABLE") val t = tick
             listOf("inapp" to "Avisos dentro de la app", "pay" to "Pagos", "order" to "Encargos", "client" to "Clientes", "system" to "Sistema y seguridad", "important" to "Avisos importantes").forEach { (k, l) ->
                 ToggleRow(l, "", Js.truthy(cfg[k])) { core.notifs.toggleCfg(k); tick++ }
             }
         }
-        "scale" -> Sheet("Tamaño de la interfaz", { sheet = null }) {
+        "scale" -> Sheet("Tamaño de la interfaz", { sheet = null }, Icons.Outlined.FormatSize) {
             var pending by remember { mutableStateOf(UiScale.value) }
             InfoBox("Cambia el tamaño visual de toda la app: textos, iconos, botones, tarjetas, menús, ventanas y gráficas. No cambia tus datos ni tus importes. Se aplica al soltar el control y se recuerda al volver a abrir la app.")
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -502,7 +524,7 @@ fun SettingsScreen() {
                 Primary("Listo", Modifier.weight(1f)) { if (UiScale.value != pending) { UiScale.value = pending; core.ls.set(UiScale.KEY, pending.toString()) }; sheet = null }
             }
         }
-        "fb" -> Sheet("Sonido y vibración", { sheet = null }) {
+        "fb" -> Sheet("Sonido y vibración", { sheet = null }, Icons.Outlined.VolumeUp) {
             var snd by remember { mutableStateOf(fb.soundOn()) }
             var hap by remember { mutableStateOf(fb.hapticsOn()) }
             ToggleRow("Sonido de inicio de sesión", "Un sonido corto y discreto al entrar correctamente", snd) { snd = it; fb.set("loginSoundEnabled", it); if (it) fb.loginSound() }
@@ -600,15 +622,15 @@ fun SyncScreen() {
             }
         }
     }
-    if (needStart) AlertDialog(onDismissRequest = { needStart = false }, title = { Text("Falta un paso") },
+    if (needStart) AlertDialog(onDismissRequest = { needStart = false }, icon = Icons.Outlined.Info, title = { Text("Falta un paso") },
         text = { Text("Abre tu bot en Telegram y envíale /start. Después vuelve aquí y toca \"Conectar\" otra vez.") },
         confirmButton = { TextButton(onClick = { needStart = false }) { Text("Entendido") } })
-    if (existing) AlertDialog(onDismissRequest = { existing = false }, title = { Text("Este bot ya tiene datos") },
+    if (existing) AlertDialog(onDismissRequest = { existing = false }, icon = Icons.Outlined.CloudSync, title = { Text("Este bot ya tiene datos") },
         text = { Text("Ya hay un respaldo de Encargos en este bot. Para ver esos datos aquí, usa el código de enlace de tu otro dispositivo.\n\nSi ya no tienes ese dispositivo, puedes empezar de nuevo con este bot: se creará un respaldo nuevo con los datos de este teléfono. El respaldo anterior no se borra.") },
         confirmButton = { TextButton(onClick = { existing = false; tok = "" }) { Text("Usaré el código") } },
         dismissButton = { TextButton(onClick = { existing = false; ui.io("Creando sincronización…") { val ok = sync.freshStart(); withContext(Dispatchers.Main) { tok = ""; ui.toast(if (ok) "✅ Sincronización nueva activada." else sync.lastErr.ifEmpty { "No se pudo activar." }) } } }) { Text("Empezar de nuevo", color = C.amber) } })
     shownCode?.let { c ->
-        AlertDialog(onDismissRequest = { shownCode = null }, title = { Text("🔑 Código para enlazar") },
+        AlertDialog(onDismissRequest = { shownCode = null }, icon = Icons.Outlined.Key, title = { Text("Código para enlazar") },
             text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Hint("Cópialo y pégalo en el otro dispositivo. No lo envíes por chats ni lo publiques.")
                 Text(c, fontFamily = FontFamily.Monospace, fontSize = 11.sp, maxLines = 6)

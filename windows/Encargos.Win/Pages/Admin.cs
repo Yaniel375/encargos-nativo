@@ -218,8 +218,13 @@ public sealed class SettingsPage : Screen
         string RateLine(Func<string, object?> get) => string.Join(" · ", keys.Select(k => Core.ShippingName(k) + " " + Money(get(k))));
         var buyR = Core.BuyRates();
         var nm = H(Core.GreetName.IfEmpty("Tu nombre"), 19);
-        p.Children.Add(Card(Lead(Avatar(Core.GreetName.IfEmpty("E"), Blue, 64), V(2, nm, Muted("Usuario: " + Services.Security.UserName().IfEmpty("—"), 13))),
-            Btn("Editar nombre del saludo", Greet, false, null, null, false)));
+        var hasPhoto = Media.ProfilePhoto.Length > 0;
+        var pic = Click(Media.ProfilePic(Core.GreetName.IfEmpty("E"), 64), ChangePhoto); pic.CornerRadius = new CornerRadius(20); pic.HorizontalAlignment = HorizontalAlignment.Left;
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(pic, "Cambiar foto de perfil");
+        p.Children.Add(Card(Lead(pic, V(2, nm, Muted("Usuario: " + Services.Security.UserName().IfEmpty("—"), 13))),
+            Cols(Btn(hasPhoto ? "Cambiar foto" : "Agregar foto", ChangePhoto, false, null, "\uE722"),
+                hasPhoto ? Btn("Quitar foto", () => S.Ask("Quitar foto de perfil", "¿Quitar tu foto de perfil? Volverá a mostrarse tu inicial.", "Quitar", true, () => { Core.Ls.Set(Media.ProfileKey, ""); S.RefreshProfile(); S.Toast("Foto de perfil quitada."); Redraw(); }), false, Rose, "\uE74D") : null,
+                Btn("Editar nombre del saludo", Greet, false, null, "\uE76E"))));
         var cfg = Core.Notifs.Cfg(); var on = new[] { "inapp", "pay", "order", "client", "system", "important" }.Count(k => Js.Truthy(cfg[k]));
         var day = Core.Ls.Get("encargos_aurora_mode", "") == "day";
         var sec = Services.Security;
@@ -259,10 +264,15 @@ public sealed class SettingsPage : Screen
         if (await S.Dialog("Nombre del negocio", V(10, InfoBox("Aparece en los recibos y en los mensajes de WhatsApp."), Box("Nombre del negocio (aparece en recibos)", v, x => v = x)), "Guardar"))
         { Core.BusinessName = v.Trim(); S.Toast("✅ Datos guardados."); Redraw(); }
     }
+    /// <summary>Foto de perfil: se guarda solo en este equipo.</summary>
+    async void ChangePhoto()
+    {
+        if (await Media.PickProfile()) { S.RefreshProfile(); S.Toast("✅ Foto de perfil actualizada."); Redraw(); }
+    }
     async void Greet()
     {
         var v = Core.GreetName;
-        if (await S.Dialog("Nombre del saludo", Box("Tu nombre (para el saludo)", v, x => v = x), "Guardar")) { Core.GreetName = v.Trim(); S.Toast("✅ Datos guardados."); Redraw(); }
+        if (await S.Dialog("Nombre del saludo", Box("Tu nombre (para el saludo)", v, x => v = x), "Guardar")) { Core.GreetName = v.Trim(); S.RefreshProfile(); S.Toast("✅ Datos guardados."); Redraw(); }
     }
     async void CountryCode()
     {

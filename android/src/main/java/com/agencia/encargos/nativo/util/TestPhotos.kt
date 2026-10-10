@@ -27,6 +27,8 @@ object TestPhotos {
         return "data:image/jpeg;base64," + Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
     }
     fun seed(core: Encargos) {
+        // foto de perfil de prueba (solo en la copia de prueba automática)
+        if (core.ls.get("encargos_profile_photo", "").isEmpty()) core.ls.set("encargos_profile_photo", make(400, 400, "PERFIL"))
         val x = core.orders().firstOrNull { it.str("name") == "Cliente Prueba" } ?: return
         if (core.orderPhotos(x).isNotEmpty()) return
         val v = make(600, 1200, "VERTICAL"); val h = make(1200, 600, "HORIZONTAL"); val s = make(800, 800, "CUADRADA")

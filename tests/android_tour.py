@@ -235,6 +235,18 @@ home()
 tap("Notas", exact=True, wait=2, last=True); shot("notas_con_fotos")
 if tap("Foto 1 de 3", wait=2): shot("visor_nota"); tap("Cerrar", exact=True, wait=1.2)
 home()
+# ---------- foto de perfil y ventanas con el estilo de la app (foto de prueba, solo en la copia de prueba) ----------
+say("— perfil y ventanas —")
+if tap("Más", wait=1.5): shot("menu_con_foto"); adb("shell", "input", "keyevent", "4"); time.sleep(1)
+if tap("Más", wait=1.2) and tap("Ajustes", wait=2.5):
+    shot("ajustes_perfil_foto")
+    if tap("Quitar foto", exact=True, wait=1.5): shot("ventana_confirmar"); tap("Cancelar", exact=True, wait=1.2)
+    if tap("Nombre del negocio", exact=True, wait=2): shot("ventana_nombre_negocio"); tap("Cerrar", exact=True, wait=1.2)
+    adb("shell", "input", "keyevent", "4"); time.sleep(1.2)
+if tap("Más", wait=1.2) and tap("Registro de pagos", wait=2.5):
+    if tap("Meta ›", wait=2): shot("ventana_meta"); tap("Cancelar", exact=True, wait=1.2)
+    adb("shell", "input", "keyevent", "4"); time.sleep(1.2)
+home()
 for esc, tag in [("1.05", "105"), ("0.8", "80")]:
     say(f"— escala {tag} % —")
     relaunch(["--es", "tema", "noche", "--es", "escala", esc])
