@@ -124,18 +124,19 @@ fun LockScreen(onUnlocked: () -> Unit) {
     LaunchedEffect(granted) { if (granted) { glowK.animateTo(1f, tween(380)); glowK.animateTo(.55f, tween(900)) } }
 
     Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(2, 6, 17, 64), Color(2, 6, 17, 115)))).imePadding()) {
-        Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 22.dp),
-            horizontalAlignment = Alignment.CenterHorizontally) {
-            Spacer(Modifier.height(54.dp))
+        androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
+        val minH = maxHeight
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).heightIn(min = minH).padding(horizontal = 24.dp, vertical = 20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
             // logo con brillo
             Box(Modifier.graphicsLayer { translationY = (1 - move.value) * introY; alpha = logo.value; scaleX = .8f + .2f * logo.value; scaleY = .8f + .2f * logo.value }
                 .glow(NIGHT.blue, 26.dp, 6.dp, .45f * logo.value)) {
-                Image(painterResource(R.mipmap.ic_launcher), null, Modifier.size(64.dp).clip(RoundedCornerShape(18.dp)).border(1.dp, Color(96, 165, 250, 90), RoundedCornerShape(18.dp)))
+                Image(painterResource(R.mipmap.ic_launcher), null, Modifier.size(52.dp).clip(RoundedCornerShape(15.dp)).border(1.dp, Color(96, 165, 250, 90), RoundedCornerShape(15.dp)))
             }
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(10.dp))
             Column(Modifier.graphicsLayer { translationY = (1 - move.value) * introY * .9f; alpha = move.value }, horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Encargos", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.4).sp, color = Color(0xFFE8EEF8))
-                Text("Tu negocio, en orden.", fontSize = 14.sp, color = NIGHT.mut)
+                Text("Encargos", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.4).sp, color = Color(0xFFE8EEF8))
+                Text("Tu negocio, en orden.", fontSize = 13.sp, color = NIGHT.mut)
             }
             Spacer(Modifier.height(12.dp))
             // chip "Acceso seguro" → "Acceso autorizado"
@@ -145,25 +146,25 @@ fun LockScreen(onUnlocked: () -> Unit) {
                 Icon(if (granted) Icons.Filled.Check else Icons.Outlined.Lock, null, Modifier.size(13.dp), tint = chipCol); Spacer(Modifier.width(6.dp))
                 Text(if (granted) "Acceso autorizado" else "Acceso seguro", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = chipCol)
             }
-            Spacer(Modifier.height(18.dp))
-            // ----- tarjeta -----
-            val cardShape = RoundedCornerShape(26.dp)
-            Column(Modifier.widthIn(max = 460.dp).fillMaxWidth().graphicsLayer { alpha = card.value; translationY = (1 - card.value) * 60f + 0f; translationX = shake.value * density }
+            Spacer(Modifier.height(16.dp))
+            // ----- tarjeta (compacta y centrada) -----
+            val cardShape = RoundedCornerShape(22.dp)
+            Column(Modifier.widthIn(max = 360.dp).fillMaxWidth().graphicsLayer { alpha = card.value; translationY = (1 - card.value) * 60f + 0f; translationX = shake.value * density }
                 .let { if (glowK.value > 0f) it.glow(green, 18.dp, 0.dp, .35f * glowK.value) else it }
                 .clip(cardShape).background(Brush.linearGradient(listOf(Color(17, 24, 39, 214), Color(10, 15, 28, 224)))).border(1.dp, lerpColor(NIGHT.line2, green.copy(alpha = .75f), glowK.value), cardShape)
-                .padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(70.dp).clip(CircleShape).background(Color(15, 23, 42, 160)).border(2.dp, lerpColor(Color(59, 130, 246, 150), green, glowK.value), CircleShape), contentAlignment = Alignment.Center) {
-                        Icon(if (granted) Icons.Filled.Check else Icons.Outlined.Lock, null, Modifier.size(26.dp), tint = if (granted) green else Color(0xFF60A5FA))
+                .padding(horizontal = 18.dp, vertical = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                // encabezado centrado: candado pequeño, saludo y una línea de ayuda
+                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(Modifier.size(46.dp).clip(CircleShape).background(Color(15, 23, 42, 160)).border(1.5.dp, lerpColor(Color(59, 130, 246, 150), green, glowK.value), CircleShape), contentAlignment = Alignment.Center) {
+                        Icon(if (granted) Icons.Filled.Check else Icons.Outlined.Lock, null, Modifier.size(20.dp), tint = if (granted) green else Color(0xFF60A5FA))
                     }
-                    Spacer(Modifier.width(14.dp))
-                    Column {
-                        Text(if (setup) "Bienvenido," else "Hola,", fontSize = 16.sp, color = Color(0xFFE2E8F0))
-                        Text(if (setup) "Crea tu acceso" else greet, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.3).sp)
-                        Text(if (setup) "Elige un usuario y una contraseña para proteger tus datos. No hay contraseña por defecto." else if (!usePass) "Escribe tu PIN para entrar." else "Escribe tu usuario y contraseña para entrar.",
-                            fontSize = 13.sp, color = NIGHT.mut)
-                    }
+                    Spacer(Modifier.height(10.dp))
+                    Text(if (setup) "Crea tu acceso" else "Hola, $greet", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.2).sp, color = Color(0xFFF1F5F9), textAlign = TextAlign.Center)
+                    Spacer(Modifier.height(3.dp))
+                    Text(if (setup) "Elige un usuario y una contraseña para proteger tus datos. No hay contraseña por defecto." else if (!usePass) "Escribe tu PIN para entrar." else "Escribe tu usuario y contraseña para entrar.",
+                        fontSize = 12.5.sp, color = NIGHT.mut, textAlign = TextAlign.Center)
                 }
+                Spacer(Modifier.height(2.dp))
                 if (setup || usePass) {
                     LgField(Icons.Outlined.Person, "Usuario", user, { user = it; msg = "" }, placeholder = "admin")
                     LgField(Icons.Outlined.Lock, if (setup) "Contraseña (mínimo 6)" else "Contraseña", pass, { pass = it; msg = "" }, password = true, placeholder = "Contraseña")
@@ -195,17 +196,18 @@ fun LockScreen(onUnlocked: () -> Unit) {
                                  else Box(Modifier.size(68.dp).clip(CircleShape).clickable { usePass = true; msg = "" }, contentAlignment = Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally) { Icon(Icons.Filled.Key, null, tint = NIGHT.mut); Text("Clave", fontSize = 11.sp, color = NIGHT.mut) } } })
                     Text("Entrar con usuario y contraseña", Modifier.align(Alignment.CenterHorizontally).clickable { usePass = true; msg = "" }.padding(4.dp), color = NIGHT.blue, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 }
-                if (msg.isNotEmpty()) Text(msg, color = NIGHT.rose, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Outlined.Shield, null, Modifier.size(15.dp), tint = NIGHT.mut); Spacer(Modifier.width(7.dp))
-                    Text("Tus datos se guardan solo en este teléfono", fontSize = 12.sp, color = NIGHT.mut)
+                if (msg.isNotEmpty()) Text(msg, color = NIGHT.rose, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Outlined.Shield, null, Modifier.size(14.dp), tint = NIGHT.mut); Spacer(Modifier.width(6.dp))
+                    Text("Tus datos se guardan solo en este teléfono", fontSize = 11.5.sp, color = NIGHT.mut)
                 }
             }
-            Spacer(Modifier.height(40.dp))
-            Column(Modifier.graphicsLayer { alpha = card.value }.padding(bottom = 18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Spacer(Modifier.height(22.dp))
+            Column(Modifier.graphicsLayer { alpha = card.value }, horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(Modifier.width(22.dp).height(3.dp).clip(RoundedCornerShape(2.dp)).background(NIGHT.blue)); Spacer(Modifier.height(10.dp))
-                Text("Encargos  •  Rápido  •  Seguro  •  Siempre contigo", fontSize = 11.5.sp, color = Color(0xFF7C8BA5))
+                Text("Encargos  •  Rápido  •  Seguro  •  Siempre contigo", fontSize = 11.sp, color = Color(0xFF7C8BA5))
             }
+        }
         }
     }
 }
@@ -218,15 +220,15 @@ private fun LgField(icon: androidx.compose.ui.graphics.vector.ImageVector, label
     val src = remember { MutableInteractionSource() }; val focused by src.collectIsFocusedAsState()
     var show by remember { mutableStateOf(false) }
     val bd by animateColorAsState(if (focused) NIGHT.blue.copy(alpha = .8f) else NIGHT.line2, tween(200), label = "lgf")
-    val sh = RoundedCornerShape(16.dp)
+    val sh = RoundedCornerShape(14.dp)
     BasicTextField(value, onChange, Modifier.fillMaxWidth(), singleLine = true, interactionSource = src, cursorBrush = SolidColor(NIGHT.blue),
         textStyle = TextStyle(color = NIGHT.tx, fontFamily = Manrope, fontSize = 15.sp, fontWeight = FontWeight.SemiBold),
         visualTransformation = if (password && !show) PasswordVisualTransformation() else VisualTransformation.None,
         keyboardOptions = KeyboardOptions(keyboardType = if (password) KeyboardType.Password else KeyboardType.Text),
         decorationBox = { inner ->
-            Row(Modifier.fillMaxWidth().clip(sh).background(Color(30, 41, 59, 110)).border(1.dp, bd, sh).padding(horizontal = 10.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(40.dp).clip(CircleShape).background(NIGHT.btnBg).border(1.dp, NIGHT.btnLine, CircleShape), contentAlignment = Alignment.Center) { Icon(icon, null, Modifier.size(19.dp), tint = Color(0xFFCBD5E1)) }
-                Spacer(Modifier.width(12.dp))
+            Row(Modifier.fillMaxWidth().clip(sh).background(Color(30, 41, 59, 110)).border(1.dp, bd, sh).padding(horizontal = 10.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(34.dp).clip(CircleShape).background(NIGHT.btnBg).border(1.dp, NIGHT.btnLine, CircleShape), contentAlignment = Alignment.Center) { Icon(icon, null, Modifier.size(17.dp), tint = Color(0xFFCBD5E1)) }
+                Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
                     Text(label, fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, color = NIGHT.mut)
                     Box { if (value.isEmpty()) Text(placeholder, color = Color(0xFF64748B), fontSize = 15.sp); inner() }
@@ -243,8 +245,8 @@ private fun GoButton(text: String, working: Boolean, granted: Boolean, onClick: 
     val src = remember { MutableInteractionSource() }; val sh = RoundedCornerShape(14.dp)
     val c1 by animateColorAsState(if (granted) Color(0xFF34D399) else NIGHT.blueTop, tween(320), label = "g1")
     val c2 by animateColorAsState(if (granted) Color(0xFF059669) else NIGHT.blueDeep, tween(320), label = "g2")
-    Row(Modifier.height(52.dp).pressBounce(src).glow(if (granted) NIGHT.green else NIGHT.blue, 14.dp, 8.dp, .5f).clip(sh).background(Brush.linearGradient(listOf(c1, c2)))
-        .clickable(src, null) { tapFeedback(); onClick() }.padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().height(48.dp).pressBounce(src).glow(if (granted) NIGHT.green else NIGHT.blue, 14.dp, 8.dp, .5f).clip(sh).background(Brush.linearGradient(listOf(c1, c2)))
+        .clickable(src, null) { tapFeedback(); onClick() }.padding(horizontal = 20.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
         if (working) { CircularProgressIndicator(Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp); Spacer(Modifier.width(10.dp)) }
         else { Icon(if (granted) Icons.Filled.Check else Icons.AutoMirrored.Filled.Login, null, Modifier.size(18.dp), tint = Color.White); Spacer(Modifier.width(8.dp)) }
         Text(text, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, color = Color.White)

@@ -168,6 +168,10 @@ if find("Iniciar sesión") is not None:
     type_at("Contraseña", "clave123", exact=True); hide_kb(); tap("Iniciar sesión", wait=5)   # el usuario ya viene recordado
 shot("dia_inicio")
 adb("shell", "input", "swipe", "540", "1500", "540", "500", "500"); time.sleep(1.5); shot("dia_inicio_abajo")
+for _ in range(4):
+    if find("Últimos pagos") is not None and center(find("Últimos pagos"))[1] < 1000: break
+    adb("shell", "input", "swipe", "540", "1500", "540", "700", "450"); time.sleep(1.2)
+shot("dia_ultimos_pagos")
 tap("Encargos", exact=True, wait=2, last=True); shot("dia_encargos")
 if tap("Cliente Prueba", wait=2): shot("dia_ficha"); adb("shell", "input", "keyevent", "4"); time.sleep(1)
 tap("Clientes", exact=True, wait=2, last=True); shot("dia_clientes")
