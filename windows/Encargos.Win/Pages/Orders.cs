@@ -159,7 +159,7 @@ public sealed class OrderPage : Screen
             b > 0.005 ? Btn("Recordar pago", () => S.WhatsApp(x.Str("phone"), Core.ReminderOrder(x), x.Str("name")), false, Rose) : Btn("Agradecer", () => S.WhatsApp(x.Str("phone"), Core.ThanksOrder(x), x.Str("name")))));
         p.Children.Add(IconCard("\uE70B", "Nota interna", Link(x.Str("note").Length == 0 ? "Agregar" : "Editar", () => OrderActions.EditNote(x)),
             x.Str("note").Length == 0 ? Muted("Solo para ti: el cliente nunca la ve.", 14) : T(x.Str("note"))));
-        p.Children.Add(Card($"Fotos ({photos.Count})", Link("Agregar foto", async () => { var d = await Media.PickPhoto(900, 0.55); if (d != null && Core.AddOrderPhoto(x["id"], d)) S.Toast("✅ Foto guardada."); }),
+        p.Children.Add(IconCard("\uEB9F", $"Fotos ({photos.Count})", Link("Agregar foto", async () => { var d = await Media.PickPhoto(900, 0.55); if (d != null && Core.AddOrderPhoto(x["id"], d)) S.Toast("✅ Foto guardada."); }),
             photos.Count == 0 ? (UIElement)Muted("Todavía no hay fotos de esta compra.", 14)
             : photos.Count == 1 ? Media.Photo(photos[0], double.NaN, 320, () => OrderActions.ViewPhotos(x, 0), 1200)
             : Media.Strip(photos, 140, i => OrderActions.ViewPhotos(x, i))));

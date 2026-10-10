@@ -437,7 +437,7 @@ public sealed class SyncDiagPage : Screen
             Muted("El token y la llave de cifrado nunca se muestran aquí.", 12)));
         var conf = sync.Conflicts();
         if (conf.Count > 0)
-            p.Children.Add(Card($"Conflictos resueltos ({conf.Count})", null, new UIElement[] { Muted("Cuando dos dispositivos cambian lo mismo, gana el cambio más reciente. Los pagos nunca se pierden.", 13) }
+            p.Children.Add(IconCard("\uE895", $"Conflictos resueltos ({conf.Count})", null, new UIElement[] { Muted("Cuando dos dispositivos cambian lo mismo, gana el cambio más reciente. Los pagos nunca se pierden.", 13) }
                 .Concat(conf.Take(20).Select(c => (UIElement)T("• " + c.Str("entity") + " · ganó " + (c.Str("kept") == "local" ? "este equipo" : "otro dispositivo (" + c.Str("remoteDevice") + ")") + " · " + AdminUtil.TimeLabel(c["t"]), 12))).ToArray()));
         var log = sync.LogEntries().Take(60).ToList();
         p.Children.Add(IconCard("\uE8A5", "Registro", null, log.Count == 0 ? new UIElement[] { Muted("Sin registros.", 14) } :
