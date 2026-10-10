@@ -239,10 +239,7 @@ fun OrderScreen(id: String) {
         item {
             if (st == "Cancelado") SectionCard { Text("Este encargo está cancelado.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
             else SectionCard("Estado del pedido", action = { if (nx != null) Text("Pasar a $nx ›", color = C.blue, modifier = Modifier.clickable { advanceWithUndo(ui, x) }) }) {
-                val idx = Encargos.FLOW.indexOf(st)
-                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Encargos.FLOW.forEachIndexed { i, s -> Chip((if (i < idx) "✓ " else "${i + 1}. ") + s, if (i <= idx) C.status(s) else MaterialTheme.colorScheme.outline) }
-                }
+                StatusStepper(Encargos.FLOW, st)
             }
         }
         item {
@@ -257,7 +254,7 @@ fun OrderScreen(id: String) {
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Primary("Editar", Modifier.weight(1f), Icons.Filled.Edit) { ui.go(Screen.EditOrder(id)) }; Primary("WhatsApp", Modifier.weight(1f), Icons.Filled.Chat, color = C.green) { ui.whatsapp(x.str("phone"), "", x.str("name")) } }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Primary("Editar", Modifier.weight(1f), Icons.Filled.Edit) { ui.go(Screen.EditOrder(id)) }; Secondary("WhatsApp", Modifier.weight(1f).height(52.dp), Icons.Filled.Chat, color = C.green) { ui.whatsapp(x.str("phone"), "", x.str("name")) } }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Secondary("Enviar recibo", Modifier.weight(1f), Icons.Filled.Send) { receipt = true }
                     if (b > 0.005) Secondary("Recordar pago", Modifier.weight(1f), color = C.rose) { ui.whatsapp(x.str("phone"), core.reminderOrder(x), x.str("name")) }

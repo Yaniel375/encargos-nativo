@@ -9,6 +9,24 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Key
+import androidx.compose.material.icons.outlined.Pin
+import androidx.compose.material.icons.outlined.Fingerprint
+import androidx.compose.material.icons.outlined.Login
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.GppMaybe
+import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.VerifiedUser
+import androidx.compose.material.icons.outlined.Autorenew
+import androidx.compose.material.icons.outlined.Event
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.TableChart
+import androidx.compose.material.icons.outlined.Mail
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material.icons.outlined.LocalShipping
@@ -144,45 +162,45 @@ fun BackupScreen() {
     }
 
     val last = (app.core.ls.get("encargos_last_backup", "0") ?: "0").toDoubleOrNull() ?: 0.0
+    val core = app.core
+    fun exportJson() = ui.requireAuth("Confirma tu identidad para exportar") { val s = bk.exportJson(); startSave(bk.fileName(), s.toByteArray(Charsets.UTF_8), "✅ Respaldo guardado.") }
     Page {
         item {
-            SectionCard("Último respaldo") {
-                Text(if (last > 0) Js.fmt(last) else "Todavía no has hecho un respaldo.", fontWeight = FontWeight.Bold)
-                Hint("Guarda una copia de tus encargos, pagos, notas y gastos. Puedes guardarla en Drive, enviarla por WhatsApp o dejarla en el teléfono.")
-            }
-        }
-        item {
-            SectionCard("Exportar") {
-                Primary("Guardar respaldo (.json)", Modifier.fillMaxWidth(), Icons.Filled.Download) {
-                    ui.requireAuth("Confirma tu identidad para exportar") {
-                        val s = bk.exportJson(); startSave(bk.fileName(), s.toByteArray(Charsets.UTF_8), "✅ Respaldo guardado.")
-                    }
+            SectionCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconTile(Icons.Outlined.VerifiedUser, C.green, 48); androidx.compose.foundation.layout.Spacer(Modifier.width(14.dp))
+                    Column { Text("Tus datos están guardados", fontSize = 17.sp, fontWeight = FontWeight.ExtraBold); Hint("Se guardan solos en este teléfono") }
                 }
-                Secondary("Guardar respaldo cifrado (con contraseña)", Modifier.fillMaxWidth(), Icons.Filled.Lock) { ui.requireAuth("Confirma tu identidad para exportar") { askEnc = true } }
-                Secondary("Exportar a Excel (.csv)", Modifier.fillMaxWidth()) {
-                    ui.requireAuth("Confirma tu identidad para exportar") {
-                        startSave(bk.fileName("encargos_", ".csv"), bk.csv().toByteArray(Charsets.UTF_8), "✅ Archivo CSV guardado.")
-                    }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("Encargos" to core.orders().size, "Clientes" to core.clients().size, "Pagos" to core.orders().sumOf { core.payments(it).size }, "Notas" to core.notes().size).forEach { (l, n) ->
+                        Kpi(l, "$n", modifier = Modifier.weight(1f)) }
                 }
-                Hint("El respaldo cifrado solo se puede abrir con la contraseña que elijas. Si la olvidas, no se puede recuperar.")
             }
         }
         item {
-            SectionCard("Importar") {
-                Secondary("Abrir archivo de respaldo", Modifier.fillMaxWidth(), Icons.Filled.Upload) { open.launch(arrayOf("application/json", "application/octet-stream", "text/plain", "*/*")) }
-                Hint("Acepta respaldos .json normales y cifrados de Encargos (web, Android o PC).")
-            }
-        }
-        item {
-            SectionCard("Respaldo automático") {
-                Choice(listOf("daily" to "Diario", "weekly" to "Semanal", "off" to "Desactivado"), bk.autoMode) { bk.autoMode = it }
+            SectionCard("Respaldo automático", icon = Icons.Outlined.Autorenew) {
+                Choice(listOf("off" to "Desactivado", "daily" to "Cada día", "weekly" to "Cada semana"), bk.autoMode) { bk.autoMode = it }
                 Hint(if (bk.autoMode == "off") "No se guardarán copias automáticas." else "Al abrir la app se guarda una copia en Descargas/Encargos " + (if (bk.autoMode == "weekly") "una vez por semana." else "una vez al día.") +
-                        if (bk.lastAuto > 0) " Última: " + Js.fmt(bk.lastAuto) else "")
+                        if (bk.lastAuto > 0) " Última: " + Js.fmt(bk.lastAuto) else " Todavía no se ha hecho ningún respaldo automático.")
                 Secondary("Hacer copia automática ahora", Modifier.fillMaxWidth()) {
                     val payload = bk.autoDue(true) ?: return@Secondary
                     ui.io { val ok = Files.saveToDownloads(ui.act, "respaldo_auto_" + Js.nowIso().take(10) + ".json", payload.toByteArray(), "application/json")
                         withContext(Dispatchers.Main) { if (ok) { bk.autoDone(); ui.toast("✅ Copia guardada en Descargas/Encargos.") } else ui.toast("No se pudo guardar la copia.") } }
                 }
+            }
+        }
+        item { Column(Modifier.fillMaxWidth().glass()) { NavRow(Icons.Outlined.Event, "Último respaldo", if (last > 0) Js.fmt(last) else "Aún no has hecho ningún respaldo · Te recomendamos hacer uno.", tint = C.amber, onClick = null) } }
+        item { ActionCard(Icons.Filled.Download, "Respaldar datos", "Guarda un archivo con todos tus encargos, clientes, pagos, notas y gastos.", primary = true) { exportJson() } }
+        item { ActionCard(Icons.Outlined.Lock, "Respaldo cifrado", "Protegido con una contraseña que tú eliges. Sin ella no se puede abrir.") { ui.requireAuth("Confirma tu identidad para exportar") { askEnc = true } } }
+        item { ActionCard(Icons.Filled.Upload, "Importar respaldo", "Recupera tus datos desde un archivo .json normal o cifrado (web, Android o PC). Reemplaza los datos actuales.") { open.launch(arrayOf("application/json", "application/octet-stream", "text/plain", "*/*")) } }
+        item { ActionCard(Icons.Outlined.TableChart, "Exportar a Excel (.csv)", "Una hoja con todos los encargos para abrir en Excel.") {
+            ui.requireAuth("Confirma tu identidad para exportar") { startSave(bk.fileName("encargos_", ".csv"), bk.csv().toByteArray(Charsets.UTF_8), "✅ Archivo CSV guardado.") } } }
+        item {
+            SectionCard("Consejos") {
+                IconLabel(Icons.Outlined.Autorenew, "Haz un respaldo cada semana o después de muchos cambios.")
+                IconLabel(Icons.Outlined.Mail, "Envía el archivo a tu correo o a la nube, por si pierdes el teléfono.")
+                IconLabel(Icons.Filled.Upload, "Para recuperar todo en otro teléfono, usa Importar respaldo.")
+                IconLabel(Icons.Outlined.Lock, "El respaldo cifrado solo se abre con su contraseña. Si la olvidas, no se puede recuperar.")
             }
         }
     }
@@ -212,48 +230,40 @@ fun SecurityScreen() {
     var pinDlg by remember { mutableStateOf(false) }; var credDlg by remember { mutableStateOf(false) }; var wipeDlg by remember { mutableStateOf(false) }
     val lock = sec.lockCfg()
     val act = ui.act as? MainActivity
-    Page {
+    var lockSheet by remember { mutableStateOf(false) }
+    val bioAvail = Bio.available(ui.act)
+    val score = listOf(sec.pinOn(), lock.on, sec.sensitiveOn()).count { it }
+    val (lvl, lvlColor) = when (score) { 3 -> "Protección completa" to C.green; 0 -> "Sin protección" to C.rose; else -> "Protección parcial" to C.amber }
+    Page(sub = "Protege la información de tu negocio.") {
         item {
-            SectionCard("Acceso") {
-                Line("Usuario", sec.userName().ifEmpty { "—" })
-                Secondary("Cambiar usuario y contraseña", Modifier.fillMaxWidth()) { ui.requireAuth("Confirma tu identidad", true) { credDlg = true } }
-            }
-        }
-        item {
-            SectionCard("PIN y huella") {
-                if (sec.pinOn()) {
-                    Line("PIN", "Activo · ${sec.pinLen()} dígitos", C.green)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Secondary("Cambiar PIN", Modifier.weight(1f)) { ui.requireAuth("Confirma tu identidad", true) { pinDlg = true } }
-                        Secondary("Desactivar", Modifier.weight(1f), color = C.rose) { ui.requireAuth("Confirma tu identidad", true) { sec.disablePin(); refresh(); ui.toast("PIN desactivado.") } }
-                    }
-                    if (Bio.available(ui.act)) ToggleRow("Desbloquear con huella", "Usa la huella o el rostro de este teléfono", sec.bioOn()) { on ->
-                        if (on) Bio.prompt(ui.act) { ok -> if (ok) { sec.setBio(true); refresh(); ui.toast("✅ Huella activada.") } }
-                        else { sec.setBio(false); refresh() }
-                    } else Hint("Este teléfono no tiene huella configurada.")
-                } else {
-                    Hint("Con un PIN entras más rápido sin escribir tu contraseña.")
-                    Primary("Crear PIN", Modifier.fillMaxWidth()) { ui.requireAuth("Confirma tu identidad", true) { pinDlg = true } }
+            SectionCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    androidx.compose.foundation.layout.Box(Modifier.size(12.dp).clip(androidx.compose.foundation.shape.CircleShape).background(lvlColor)); androidx.compose.foundation.layout.Spacer(Modifier.width(10.dp))
+                    Text(lvl, fontSize = 19.sp, fontWeight = FontWeight.ExtraBold)
                 }
+                StatRow("PIN", if (sec.pinOn()) "Activo · ${sec.pinLen()} dígitos" else "Desactivado", if (sec.pinOn()) C.green else MaterialTheme.colorScheme.onSurface)
+                StatRow("Huella / biometría", if (!bioAvail) "No disponible" else if (sec.bioOn()) "Activa" else "Desactivada")
+                StatRow("Bloqueo automático", if (lock.on) sec.lockLabel(lock.minutes) else "Nunca")
+                StatRow("Acciones sensibles", if (sec.sensitiveOn()) "✓ Protegidas" else "Sin proteger", if (sec.sensitiveOn()) C.green else C.amber)
+                StatRow("Última actividad", sec.logEntries().firstOrNull()?.let { timeLabel(it["t"]) } ?: "—")
             }
         }
-        item {
-            SectionCard("Bloqueo automático") {
-                val opts = listOf("0" to "Al salir", "1" to "1 min", "5" to "5 min", "15" to "15 min", "30" to "30 min", "never" to "Nunca")
-                val sel = if (!lock.on) "never" else Js.numberToString(lock.minutes)
-                Choice(opts, sel) { k -> sec.setLock(if (k == "never") null else k.toDouble()); refresh() }
-                Hint(if (lock.on) "Se pedirá tu PIN o contraseña tras " + sec.lockLabel(lock.minutes).lowercase() + " fuera de la app." else "La app no se bloqueará sola.")
-                ToggleRow("Pedir acceso al abrir la app", "", lock.onOpen) { sec.setLockOnOpen(it); refresh() }
-            }
-        }
-        item {
-            SectionCard("Privacidad") {
-                ToggleRow("Ocultar en apps recientes", "Oculta el contenido en la vista de recientes y bloquea capturas de pantalla", sec.privacyOn()) { sec.setPrivacy(it); act?.applyPrivacy(); refresh() }
-                ToggleRow("Proteger acciones sensibles", "Pide tu identidad para eliminar, importar o exportar", sec.sensitiveOn()) { on ->
-                    if (on) { sec.setSensitive(true); refresh() } else ui.requireAuth("Confirma tu identidad", true) { sec.setSensitive(false); refresh() }
-                }
-            }
-        }
+        item { RowGroup("Acceso") {
+            NavRow(Icons.Outlined.Key, "Bloqueo con PIN", if (sec.pinOn()) "Activo · ${sec.pinLen()} dígitos" else "Crea un PIN de 4 a 6 números", right = {
+                Switch(sec.pinOn(), { on -> ui.requireAuth("Confirma tu identidad", true) { if (on) pinDlg = true else { sec.disablePin(); refresh(); ui.toast("PIN desactivado.") } } }) }, onClick = null)
+            if (sec.pinOn()) { RowSep(); NavRow(Icons.Outlined.Pin, "Cambiar PIN", "Elige un PIN nuevo") { ui.requireAuth("Confirma tu identidad", true) { pinDlg = true } } }
+            if (sec.pinOn() && bioAvail) { RowSep(); NavRow(Icons.Outlined.Fingerprint, "Desbloquear con huella", "Usa la huella o el rostro de este teléfono", right = {
+                Switch(sec.bioOn(), { on -> if (on) Bio.prompt(ui.act) { ok -> if (ok) { sec.setBio(true); refresh(); ui.toast("✅ Huella activada.") } } else { sec.setBio(false); refresh() } }) }, onClick = null) }
+            RowSep()
+            NavRow(Icons.Outlined.Login, "Pedir desbloqueo al abrir", "Siempre que abres la app", right = { Switch(lock.onOpen, { sec.setLockOnOpen(it); refresh() }) }, onClick = null); RowSep()
+            NavRow(Icons.Outlined.Schedule, "Bloqueo automático", if (lock.on) "Después de " + sec.lockLabel(lock.minutes).lowercase() + " fuera de la app" else "La app no se bloqueará sola", if (lock.on) sec.lockLabel(lock.minutes) else "Nunca") { lockSheet = true }; RowSep()
+            NavRow(Icons.Outlined.Person, "Usuario y contraseña", "Usuario: ${sec.userName().ifEmpty { "—" }} · acceso de respaldo si olvidas el PIN") { ui.requireAuth("Confirma tu identidad", true) { credDlg = true } }
+        } }
+        item { RowGroup("Protección de datos") {
+            NavRow(Icons.Outlined.GppMaybe, "Proteger acciones sensibles", "Eliminar, importar, exportar y cambios críticos", right = { Switch(sec.sensitiveOn(), { on ->
+                if (on) { sec.setSensitive(true); refresh() } else ui.requireAuth("Confirma tu identidad", true) { sec.setSensitive(false); refresh() } }) }, onClick = null); RowSep()
+            NavRow(Icons.Outlined.VisibilityOff, "Ocultar en apps recientes", "Oculta el contenido en recientes y bloquea capturas de pantalla", right = { Switch(sec.privacyOn(), { sec.setPrivacy(it); act?.applyPrivacy(); refresh() }) }, onClick = null)
+        } }
         item {
             SectionCard("Actividad de seguridad") {
                 val log = sec.logEntries().take(15)
@@ -261,12 +271,16 @@ fun SecurityScreen() {
                 log.forEach { e -> Row { Text(if (Js.truthy(e["ok"])) "✅ " else "⚠️ "); Column(Modifier.weight(1f)) { Text(e.str("text"), fontSize = 13.sp); Hint(timeLabel(e["t"])) } } }
             }
         }
-        item {
-            SectionCard("Zona de peligro") {
-                Hint("Borra los datos de este dispositivo. Haz un respaldo antes.")
-                Secondary("Borrar datos de este dispositivo", Modifier.fillMaxWidth(), color = C.rose) { ui.requireAuth("Confirma tu identidad", true) { wipeDlg = true } }
-            }
-        }
+        item { RowGroup("Zona de peligro") {
+            NavRow(Icons.Outlined.Delete, "Eliminar todos los datos", "Requiere confirmar tu identidad y escribir ELIMINAR", tint = C.rose, titleColor = C.rose) { ui.requireAuth("Confirma tu identidad", true) { wipeDlg = true } }
+        } }
+        item { Hint("El PIN se guarda con sal y hash iterado; las huellas nunca salen del sistema Android. Ningún respaldo incluye tu PIN ni tu contraseña.") }
+    }
+    if (lockSheet) Sheet("Bloqueo automático", { lockSheet = false }) {
+        val opts = listOf("0" to "Al salir", "1" to "1 min", "5" to "5 min", "15" to "15 min", "30" to "30 min", "never" to "Nunca")
+        val l2 = sec.lockCfg(); val sel = if (!l2.on) "never" else Js.numberToString(l2.minutes)
+        Choice(opts, sel) { k -> sec.setLock(if (k == "never") null else k.toDouble()); refresh() }
+        Hint(if (l2.on) "Se pedirá tu PIN o contraseña tras " + sec.lockLabel(l2.minutes).lowercase() + " fuera de la app." else "La app no se bloqueará sola.")
     }
     if (pinDlg) PinDialog({ pinDlg = false }) { pin -> sec.setPin(pin).onSuccess { ui.toast("✅ PIN guardado."); refresh() }.onFailure { ui.toast(it.message ?: "") } }
     if (credDlg) CredentialsDialog(sec.userName(), { credDlg = false }) { u, p -> sec.setCredentials(u, p).onSuccess { ui.toast("✅ Usuario y contraseña actualizados."); refresh() }.onFailure { ui.toast(it.message ?: "") } }

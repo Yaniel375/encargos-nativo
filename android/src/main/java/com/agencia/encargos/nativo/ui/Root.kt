@@ -359,8 +359,10 @@ const val AUTO_TITLE = "\u0000"
 
 @Composable fun PageTitle(title: String, sub: String? = null, right: String? = null, back: Boolean = false) {
     val ui = LocalUi.current
+    // las fichas (encargo, cliente, editar) se presentan como en la referencia: título y botón "Cerrar" a la derecha
+    val sheetLike = back && (ui.current is Screen.Order || ui.current is Screen.EditOrder || ui.current is Screen.Client)
     Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        if (back) {
+        if (back && !sheetLike) {
             val src = remember { MutableInteractionSource() }; val sh = RoundedCornerShape(12.dp)
             Box(Modifier.pressBounce(src, .9f).size(36.dp).clip(sh).background(W.btnBg).border(1.dp, W.btnLine, sh).clickable(src, null) { tapFeedback(); ui.back() }, contentAlignment = Alignment.Center) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver", Modifier.size(19.dp), tint = MaterialTheme.colorScheme.onSurface)
@@ -372,6 +374,7 @@ const val AUTO_TITLE = "\u0000"
             if (sub != null) Text(sub, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (right != null) Text(right, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (sheetLike) { Spacer(Modifier.width(8.dp)); Secondary("Cerrar", Modifier.height(38.dp)) { ui.back() } }
     }
 }
 

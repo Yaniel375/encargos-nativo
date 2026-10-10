@@ -8,6 +8,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -137,25 +141,39 @@ fun PendingScreen() {
     val days = { x: JObj -> core.attention.daysSince(x["date"]) }
     val shown = p.pend.filter { age == 0 || days(it) >= age }
     Page(right = "${p.pend.size} por cobrar") {
-        item { Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Kpi("Pendiente", "- " + money(p.pendTotal), C.rose, modifier = Modifier.weight(1f)); Kpi("A favor", "+ " + money(p.fundsTotal), C.green, modifier = Modifier.weight(1f)); Kpi("Pedidos", "${p.pend.size}", modifier = Modifier.weight(1f)) } }
-        item { Text("Saldos pendientes", fontWeight = FontWeight.Bold, fontSize = 16.sp) }
+        item {
+            SectionCard {
+                Row {
+                    Column(Modifier.weight(1f)) { Hint("Por cobrar"); Text(money(p.pendTotal), fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = C.rose)
+                        Hint("${p.pend.size} pedido${if (p.pend.size == 1) "" else "s"} · ${p.pend.map { it.str("name").trim().lowercase() }.distinct().size} cliente(s)") }
+                    Column(Modifier.weight(1f)) { Hint("Fondos a favor"); Text(money(p.fundsTotal), fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = C.green); Hint("${p.funds.size} pedido${if (p.funds.size == 1) "" else "s"}") }
+                }
+                ProgressBar(if (p.pendTotal + p.fundsTotal > 0) p.pendTotal / (p.pendTotal + p.fundsTotal) else 0.0, C.rose)
+            }
+        }
+        item { DotHeader("Saldo pendiente", C.rose, money(p.pendTotal)) }
         item { Choice(listOf("0" to "Todas", "15" to "+15 días (${p.pend.count { days(it) >= 15 }})", "30" to "+30 días (${p.pend.count { days(it) >= 30 }})"), age.toString()) { age = it.toInt() } }
         if (shown.isEmpty()) item { Empty("🎉 No hay saldos pendientes.") }
         shown.forEach { x -> item {
-            val n = days(x)
-            SectionCard(modifier = Modifier.clickable { ui.go(Screen.Order(Js.str(x["id"]))) }) {
+            val n = days(x); val id = Js.str(x["id"]); val t = Js.num(x["total"]); val pd = Js.num(x["paid"])
+            SectionCard(modifier = Modifier.clickable { ui.go(Screen.Order(id)) }) {
                 Row(verticalAlignment = Alignment.CenterVertically) { Avatar(x.str("name"), C.rose); Spacer(Modifier.width(10.dp))
-                    Column(Modifier.weight(1f)) { Text(x.str("name"), fontWeight = FontWeight.Bold); Text("${x.str("phone").ifEmpty { "Sin teléfono" }} • ${x.str("status")}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                    Column(horizontalAlignment = Alignment.End) { Text("Pendiente", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text("- " + money(x["balance"]), color = C.rose, fontWeight = FontWeight.ExtraBold) } }
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { Chip(core.attention.ago(x["date"]), if (n >= 30) C.rose else C.mut); Chip("Total " + money(x["total"]), C.blue) }
+                    Column(Modifier.weight(1f)) { Text(x.str("name"), fontWeight = FontWeight.ExtraBold, fontSize = 15.5.sp); Text(x.str("phone").ifEmpty { "Sin teléfono" }, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    Column(horizontalAlignment = Alignment.End) { Text("Debe", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text("- " + money(x["balance"]), color = C.rose, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp) } }
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    StatusChip(x.str("status")); Chip(core.attention.ago(x["date"]), if (n >= 30) C.rose else C.mut)
+                    Spacer(Modifier.weight(1f)); Text("Total ${money(t)} · Pagó ${money(pd)}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                }
+                ProgressBar(if (t > 0) pd / t else 0.0)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Primary("Cobrar", Modifier.weight(1f), color = C.green) { ui.whatsapp(x.str("phone"), core.reminderOrder(x), x.str("name")) }
-                    Secondary("Registrar pago", Modifier.weight(1f)) { ui.go(Screen.EditOrder(Js.str(x["id"]))) }
+                    CardBtn("Cobrar", Icons.Filled.Chat, Modifier.weight(1f), tint = C.green) { ui.whatsapp(x.str("phone"), core.reminderOrder(x), x.str("name")) }
+                    CardBtn("Ficha", Icons.Outlined.Description, Modifier.weight(1f)) { ui.go(Screen.Order(id)) }
+                    CardBtn("Registrar pago", Icons.Filled.Edit, Modifier.weight(1.3f)) { ui.go(Screen.EditOrder(id)) }
                 }
             }
         } }
-        item { Text("Fondos a favor", fontWeight = FontWeight.Bold, fontSize = 16.sp) }
-        if (p.funds.isEmpty()) item { Empty("No hay fondos a favor.") }
+        item { DotHeader("Fondos a favor", C.green, money(p.fundsTotal)) }
+        if (p.funds.isEmpty()) item { Empty("Ningún cliente tiene saldo a favor.") }
         p.funds.forEach { x -> item {
             SectionCard(modifier = Modifier.clickable { ui.go(Screen.Order(Js.str(x["id"]))) }) {
                 Row(verticalAlignment = Alignment.CenterVertically) { Avatar(x.str("name"), C.green); Spacer(Modifier.width(10.dp)); Column(Modifier.weight(1f)) { Text(x.str("name"), fontWeight = FontWeight.Bold); Text(x.str("phone").ifEmpty { "Sin teléfono" }, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
