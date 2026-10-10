@@ -34,8 +34,10 @@ def center(nd):
     a, b, c, d = map(int, re.findall(r"\d+", nd.get("bounds")))
     return (a + c) // 2, (b + d) // 2
 
-def find(text, cls=None, exact=False):
-    for nd in nodes():
+def find(text, cls=None, exact=False, last=False):
+    ns = nodes()
+    if last: ns = list(reversed(ns))
+    for nd in ns:
         t = (nd.get("text") or "") + " " + (nd.get("content-desc") or "")
         ok = (t.strip() == text) if exact else (text.lower() in t.lower())
         if ok and (cls is None or cls in (nd.get("class") or "")): return nd
@@ -45,8 +47,8 @@ def find(text, cls=None, exact=False):
             if cls in (nd.get("class") or "") and any(text.lower() in ((c.get("text") or "") + (c.get("content-desc") or "")).lower() for c in nd.iter("node")): return nd
     return None
 
-def tap(text, cls=None, exact=False, wait=1.5):
-    nd = find(text, cls, exact)
+def tap(text, cls=None, exact=False, wait=1.5, last=False):
+    nd = find(text, cls, exact, last)
     if nd is None: say(f"  ✗ no encontré '{text}'"); return False
     x, y = center(nd); adb("shell", "input", "tap", str(x), str(y)); time.sleep(wait); say(f"  ✓ toqué '{text}'"); return True
 
@@ -72,7 +74,7 @@ shot("crear_acceso")
 type_in("Usuario", "prueba"); type_in("mínimo 6", "clave123"); type_in("Repite", "clave123"); hide_kb()
 tap("Crear acceso", wait=5)
 shot("inicio")
-tap("Nuevo", exact=True, wait=2); shot("nuevo_encargo")
+tap("Nuevo", exact=True, wait=2, last=True); shot("nuevo_encargo")
 type_in("Nombre del cliente", "Cliente Prueba"); type_in("Teléfono", "55512345"); hide_kb()
 type_in("Costo del pedido", "40"); type_in("Libras", "3"); hide_kb()
 shot("nuevo_encargo_lleno")
@@ -82,12 +84,12 @@ for _ in range(4):
         shot("resumen_antes_de_guardar"); tap("Guardar encargo", wait=3); break
     adb("shell", "input", "swipe", "540", "1500", "540", "500", "400"); time.sleep(1.2)
 shot("guardado")
-tap("Encargos", exact=True, wait=2); shot("encargos")
+tap("Encargos", exact=True, wait=2, last=True); shot("encargos")
 say("  encargo visible: " + ("sí" if find("Cliente Prueba") is not None else "NO"))
 if tap("Cliente Prueba", wait=2): shot("ficha_encargo"); say("  total 61.00 visible: " + ("sí" if find("$61.00") is not None else "NO")); adb("shell", "input", "keyevent", "4"); time.sleep(1)
-tap("Clientes", exact=True, wait=2); shot("clientes")
-tap("Notas", exact=True, wait=2); shot("notas")
-tap("Inicio", exact=True, wait=2); shot("inicio_con_datos")
+tap("Clientes", exact=True, wait=2, last=True); shot("clientes")
+tap("Notas", exact=True, wait=2, last=True); shot("notas")
+tap("Inicio", exact=True, wait=2, last=True); shot("inicio_con_datos")
 for dest in ["Registro de pagos", "Estadísticas", "Respaldo", "Seguridad", "Sincronización", "Ajustes"]:
     if tap("Más", wait=1.2) and tap(dest, wait=2.5): shot(dest.lower().replace(" ", "_"))
     adb("shell", "input", "keyevent", "4"); time.sleep(1.2)
