@@ -30,6 +30,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -455,7 +456,7 @@ private fun lerpInk(c: Color) = if (W.day) Color(c.red * .8f, c.green * .8f, c.b
             Column(Modifier.weight(1f)) { Text(title, fontSize = 15.5.sp, fontWeight = FontWeight.ExtraBold); Text(sub, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             val bg by animateColorAsState(if (done) W.green else W.tile, tween(260), label = "step")
             Box(Modifier.size(22.dp).clip(CircleShape).background(bg).border(1.dp, if (done) W.green else W.line2, CircleShape), contentAlignment = Alignment.Center) {
-                if (done) Icon(androidx.compose.material.icons.Icons.Filled.Check, "Completo", Modifier.size(14.dp), tint = Color.White)
+                if (done) Icon(Icons.Filled.Check, "Completo", Modifier.size(14.dp), tint = Color.White)
                 else Text("$n", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
@@ -473,7 +474,7 @@ private fun lerpInk(c: Color) = if (W.day) Color(c.red * .8f, c.green * .8f, c.b
                     Box(Modifier.weight(1f).height(2.dp).background(if (i == 0) Color.Transparent else if (i <= idx) C.status(s).copy(alpha = .6f) else W.line))
                     val c = C.status(s); val on = i <= idx
                     Box(Modifier.size(26.dp).clip(CircleShape).background(if (i < idx) c else if (i == idx) c.copy(alpha = .22f) else W.tile).border(if (i == idx) 2.dp else 1.dp, if (on) c else W.line2, CircleShape), contentAlignment = Alignment.Center) {
-                        if (i < idx) Icon(androidx.compose.material.icons.Icons.Filled.Check, null, Modifier.size(14.dp), tint = Color.White)
+                        if (i < idx) Icon(Icons.Filled.Check, null, Modifier.size(14.dp), tint = Color.White)
                         else Text("${i + 1}", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = if (on) c else MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Box(Modifier.weight(1f).height(2.dp).background(if (i == flow.size - 1) Color.Transparent else if (i < idx) C.status(flow[i + 1]).copy(alpha = .6f) else W.line))
