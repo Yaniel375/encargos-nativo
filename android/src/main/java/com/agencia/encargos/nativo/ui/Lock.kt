@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material.icons.automirrored.filled.Backspace
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.automirrored.filled.Login
@@ -146,23 +149,27 @@ fun LockScreen(onUnlocked: () -> Unit) {
                 Icon(if (granted) Icons.Filled.Check else Icons.Outlined.Lock, null, Modifier.size(13.dp), tint = chipCol); Spacer(Modifier.width(6.dp))
                 Text(if (granted) "Acceso autorizado" else "Acceso seguro", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = chipCol)
             }
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(14.dp))
             // ----- tarjeta (compacta y centrada) -----
             val cardShape = RoundedCornerShape(22.dp)
             Column(Modifier.widthIn(max = 360.dp).fillMaxWidth().graphicsLayer { alpha = card.value; translationY = (1 - card.value) * 60f + 0f; translationX = shake.value * density }
                 .let { if (glowK.value > 0f) it.glow(green, 18.dp, 0.dp, .35f * glowK.value) else it }
                 .clip(cardShape).background(Brush.linearGradient(listOf(Color(17, 24, 39, 214), Color(10, 15, 28, 224)))).border(1.dp, lerpColor(NIGHT.line2, green.copy(alpha = .75f), glowK.value), cardShape)
-                .padding(horizontal = 18.dp, vertical = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                .padding(horizontal = 18.dp, vertical = if (!setup && !usePass) 16.dp else 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 // encabezado centrado: candado pequeño, saludo y una línea de ayuda
+                val pinMode = !setup && !usePass
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(Modifier.size(46.dp).clip(CircleShape).background(Color(15, 23, 42, 160)).border(1.5.dp, lerpColor(Color(59, 130, 246, 150), green, glowK.value), CircleShape), contentAlignment = Alignment.Center) {
+                    // con PIN la cápsula de puntos ya indica el acceso: se omite el candado para que todo quepa centrado
+                    if (!pinMode) Box(Modifier.size(46.dp).clip(CircleShape).background(Color(15, 23, 42, 160)).border(1.5.dp, lerpColor(Color(59, 130, 246, 150), green, glowK.value), CircleShape), contentAlignment = Alignment.Center) {
                         Icon(if (granted) Icons.Filled.Check else Icons.Outlined.Lock, null, Modifier.size(20.dp), tint = if (granted) green else Color(0xFF60A5FA))
                     }
-                    Spacer(Modifier.height(10.dp))
+                    if (!pinMode) Spacer(Modifier.height(10.dp))
                     Text(if (setup) "Crea tu acceso" else "Hola, $greet", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.2).sp, color = Color(0xFFF1F5F9), textAlign = TextAlign.Center)
                     Spacer(Modifier.height(3.dp))
-                    Text(if (setup) "Elige un usuario y una contraseña para proteger tus datos. No hay contraseña por defecto." else if (!usePass) "Escribe tu PIN para entrar." else "Escribe tu usuario y contraseña para entrar.",
-                        fontSize = 12.5.sp, color = NIGHT.mut, textAlign = TextAlign.Center)
+                    // con PIN, el aviso de error ocupa el lugar de la instrucción (en rojo) para no alargar la tarjeta
+                    val pinErr = pinMode && msg.isNotEmpty()
+                    Text(if (pinErr) msg else if (setup) "Elige un usuario y una contraseña para proteger tus datos. No hay contraseña por defecto." else if (pinMode) "Escribe tu PIN para entrar." else "Escribe tu usuario y contraseña para entrar.",
+                        fontSize = 12.5.sp, color = if (pinErr) NIGHT.rose else NIGHT.mut, fontWeight = if (pinErr) FontWeight.SemiBold else FontWeight.Normal, textAlign = TextAlign.Center)
                 }
                 Spacer(Modifier.height(2.dp))
                 if (setup || usePass) {
@@ -184,25 +191,33 @@ fun LockScreen(onUnlocked: () -> Unit) {
                     }
                     if (!setup && sec.pinOn()) Text("Entrar con PIN ›", Modifier.clickable { usePass = false; msg = "" }.padding(4.dp), color = NIGHT.blue, fontWeight = FontWeight.Bold, fontSize = 13.5.sp)
                 } else {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                    // cápsula con un punto por dígito (se rellenan al escribir; verde al entrar)
+                    val pillShape = RoundedCornerShape(50)
+                    Row(Modifier.align(Alignment.CenterHorizontally).clip(pillShape).background(Color(15, 23, 42, 150)).border(1.dp, if (msg.isNotEmpty()) NIGHT.rose.copy(alpha = .6f) else NIGHT.line2, pillShape)
+                        .padding(horizontal = 18.dp, vertical = 12.dp).semantics { contentDescription = "PIN: ${pin.length} de ${sec.pinLen()} dígitos" }, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                         repeat(sec.pinLen()) { i ->
                             val on = i < pin.length
                             val sc by androidx.compose.animation.core.animateFloatAsState(if (on) 1.15f else 1f, tween(160, easing = EaseBounce), label = "dot")
-                            Box(Modifier.padding(horizontal = 8.dp).size(14.dp).graphicsLayer { scaleX = sc; scaleY = sc }.clip(CircleShape).background(if (on) (if (granted) green else NIGHT.blue) else Color0).border(1.5.dp, if (granted) green else NIGHT.blue, CircleShape))
+                            Box(Modifier.size(12.dp).graphicsLayer { scaleX = sc; scaleY = sc }.clip(CircleShape).background(if (on) (if (granted) green else NIGHT.blue) else Color0).border(1.5.dp, if (granted) green else NIGHT.blue.copy(alpha = .8f), CircleShape))
                         }
                     }
-                    PinPad(onKey = { k -> if (!working && pin.length < sec.pinLen()) { tapFeedback(); pin += k } }, onDel = { pin = pin.dropLast(1) }, pal = NIGHT,
-                        left = { if (sec.bioOn() && Bio.available(ui.act)) IconButton(onClick = { Bio.prompt(ui.act) { ok -> if (ok) done("bio") } }) { Icon(Icons.Filled.Fingerprint, "Huella", Modifier.size(30.dp), tint = NIGHT.blueInk) }
-                                 else Box(Modifier.size(68.dp).clip(CircleShape).clickable { usePass = true; msg = "" }, contentAlignment = Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally) { Icon(Icons.Filled.Key, null, tint = NIGHT.mut); Text("Clave", fontSize = 11.sp, color = NIGHT.mut) } } })
-                    Text("Entrar con usuario y contraseña", Modifier.align(Alignment.CenterHorizontally).clickable { usePass = true; msg = "" }.padding(4.dp), color = NIGHT.blue, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Spacer(Modifier.height(2.dp))
+                    // teclado centrado dentro de la tarjeta
+                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    PinPad(onKey = { k -> if (!working && pin.length < sec.pinLen()) { pin += k; msg = "" } }, onDel = { pin = pin.dropLast(1) }, pal = NIGHT, key = 56,
+                        left = { if (sec.bioOn() && Bio.available(ui.act)) Box(Modifier.size(56.dp).clip(CircleShape).background(NIGHT.blue.copy(alpha = .12f)).border(1.dp, NIGHT.blue.copy(alpha = .4f), CircleShape).clickable { Bio.prompt(ui.act) { ok -> if (ok) done("bio") } }, contentAlignment = Alignment.Center) { Icon(Icons.Filled.Fingerprint, "Entrar con huella", Modifier.size(28.dp), tint = NIGHT.blueInk) }
+                                 else Box(Modifier.size(56.dp).clip(CircleShape).clickable { usePass = true; msg = "" }, contentAlignment = Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally) { Icon(Icons.Filled.Key, null, Modifier.size(20.dp), tint = NIGHT.mut); Text("Clave", fontSize = 10.5.sp, color = NIGHT.mut) } } })
+                    }
+                    Box(Modifier.fillMaxWidth().padding(horizontal = 8.dp).height(1.dp).background(NIGHT.line))
+                    Text("Entrar con usuario y contraseña", Modifier.align(Alignment.CenterHorizontally).clip(RoundedCornerShape(10.dp)).clickable { usePass = true; msg = "" }.padding(horizontal = 10.dp, vertical = 6.dp), color = NIGHT.blueInk, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 }
-                if (msg.isNotEmpty()) Text(msg, color = NIGHT.rose, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                if (msg.isNotEmpty() && !pinMode) Text(msg, color = NIGHT.rose, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Outlined.Shield, null, Modifier.size(14.dp), tint = NIGHT.mut); Spacer(Modifier.width(6.dp))
                     Text("Tus datos se guardan solo en este teléfono", fontSize = 11.5.sp, color = NIGHT.mut)
                 }
             }
-            Spacer(Modifier.height(22.dp))
+            Spacer(Modifier.height(16.dp))
             Column(Modifier.graphicsLayer { alpha = card.value }, horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(Modifier.width(22.dp).height(3.dp).clip(RoundedCornerShape(2.dp)).background(NIGHT.blue)); Spacer(Modifier.height(10.dp))
                 Text("Encargos  •  Rápido  •  Seguro  •  Siempre contigo", fontSize = 11.sp, color = Color(0xFF7C8BA5))
@@ -258,21 +273,25 @@ private val Color0 = androidx.compose.ui.graphics.Color.Transparent
 fun <T> CoroutineScope.launchIo(work: () -> T, then: (T) -> Unit) { launch { val r = withContext(Dispatchers.Default) { work() }; then(r) } }
 
 @Composable
-fun PinPad(onKey: (String) -> Unit, onDel: () -> Unit, pal: Palette = W.p, left: @Composable () -> Unit) {
+fun PinPad(onKey: (String) -> Unit, onDel: () -> Unit, pal: Palette = W.p, key: Int = 60, left: @Composable () -> Unit) {
     val rows = listOf(listOf("1", "2", "3"), listOf("4", "5", "6"), listOf("7", "8", "9"))
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        rows.forEach { r -> Row(horizontalArrangement = Arrangement.spacedBy(18.dp)) { r.forEach { k -> Key(k, pal) { onKey(k) } } } }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        rows.forEach { r -> Row(horizontalArrangement = Arrangement.spacedBy(18.dp)) { r.forEach { k -> Key(k, pal, key) { onKey(k) } } } }
         Row(horizontalArrangement = Arrangement.spacedBy(18.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(68.dp), contentAlignment = Alignment.Center) { left() }
-            Key("0", pal) { onKey("0") }
-            Box(Modifier.size(68.dp).clip(CircleShape).clickable { tapFeedback(); onDel() }, contentAlignment = Alignment.Center) { Icon(Icons.Filled.Backspace, "Borrar", tint = pal.mut) }
+            Box(Modifier.size(key.dp), contentAlignment = Alignment.Center) { left() }
+            Key("0", pal, key) { onKey("0") }
+            val src = remember { MutableInteractionSource() }
+            Box(Modifier.pressBounce(src, .9f).size(key.dp).clip(CircleShape).clickable(src, null) { tapFeedback(); onDel() }, contentAlignment = Alignment.Center) {
+                Icon(Icons.AutoMirrored.Filled.Backspace, "Borrar", Modifier.size(22.dp), tint = pal.mut)
+            }
         }
     }
 }
-@Composable private fun Key(k: String, pal: Palette, onClick: () -> Unit) {
+@Composable private fun Key(k: String, pal: Palette, size: Int, onClick: () -> Unit) {
     val src = remember { MutableInteractionSource() }
-    Box(Modifier.pressBounce(src, .9f).size(68.dp).clip(CircleShape).background(Brush.linearGradient(listOf(pal.glassA, pal.glassB))).border(1.dp, pal.line2, CircleShape).clickable(src, null) { onClick() }, contentAlignment = Alignment.Center) {
-        Text(k, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = pal.tx)
+    Box(Modifier.pressBounce(src, .9f).size(size.dp).clip(CircleShape).background(Brush.linearGradient(listOf(pal.glassA, pal.glassB))).border(1.dp, pal.line2, CircleShape)
+        .clickable(src, null) { tapFeedback(); onClick() }.semantics { contentDescription = k }, contentAlignment = Alignment.Center) {
+        Text(k, fontSize = (size * .36f).sp, fontWeight = FontWeight.SemiBold, color = pal.tx)
     }
 }
 
