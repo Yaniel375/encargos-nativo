@@ -336,24 +336,33 @@ private fun waterPath(w: Float, h: Float, top: Float, amp: Float, phase: Float, 
         lineTo(left + w, h); close()
     }
 
-/** Fase 2 de los gráficos circulares: un brillo discreto que recorre la parte llena del anillo mientras la pantalla
- *  está abierta (0..1 por pasada, con una pausa entre pasadas). Se detiene solo al salir de la pantalla, no reinicia el
- *  llenado y no hace nada si el sistema pidió quitar animaciones o el valor es 0. */
-@Composable fun ringSweep(active: Boolean): Float {
-    val a = remember { Animatable(0f) }
-    LaunchedEffect(active) {
-        if (!active || !Motion.enabled) { a.snapTo(0f); return@LaunchedEffect }
-        while (true) { a.snapTo(0f); a.animateTo(1f, tween(2600, easing = androidx.compose.animation.core.LinearEasing)); delay(900) }
-    }
-    return a.value
+/** Reloj de las olas: avanza de forma continua mientras la pantalla está abierta (se detiene sola al salir de ella,
+ *  y Android la pausa con la app en segundo plano). Sin animaciones del sistema, las olas quedan quietas. */
+@Composable fun waveClock(): androidx.compose.runtime.State<Float> {
+    if (!Motion.enabled) return remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+    val tr = androidx.compose.animation.core.rememberInfiniteTransition(label = "olas")
+    // se lee solo dentro del dibujo: cada fotograma redibuja el círculo, sin recomponer la pantalla
+    return tr.animateFloat(0f, (2 * Math.PI).toFloat(), androidx.compose.animation.core.infiniteRepeatable(tween(2400, easing = androidx.compose.animation.core.LinearEasing)), label = "fase")
 }
-/** Dibuja el brillo de la fase 2 sobre un arco que empieza arriba (-90°) y mide [filled] grados. */
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.sweepGlow(filled: Float, t: Float, topLeft: Offset, sz: Size, stroke: Float) {
-    if (filled <= 2f || t <= 0f || t >= 1f) return
-    val seg = kotlin.math.min(34f, filled * .5f)
-    val start = -90f + (filled - seg) * t
-    val fade = kotlin.math.sin(Math.PI * t).toFloat()
-    drawArc(Color.White.copy(alpha = .55f * fade), start, seg, false, topLeft, sz, style = Stroke(stroke, cap = StrokeCap.Round))
+/** Superficie ondulada (olas que avanzan de izquierda a derecha) cerrada hasta el fondo. */
+private fun wavePath(left: Float, w: Float, surf: Float, amp: Float, phase: Float, bottom: Float, cycles: Float = 1.25f): androidx.compose.ui.graphics.Path =
+    androidx.compose.ui.graphics.Path().apply {
+        moveTo(left, bottom); lineTo(left, surf)
+        val steps = 36
+        for (i in 0..steps) { val f = i / steps.toFloat(); lineTo(left + w * f, surf + amp * kotlin.math.sin(f * cycles * 2f * Math.PI.toFloat() - phase)) }
+        lineTo(left + w, bottom); close()
+    }
+/** Agua dentro de un círculo: dos olas del mismo azul (una más clara detrás) recortadas exactamente al contorno.
+ *  El nivel (0..1) es la altura del agua respecto al diámetro: 30 % ocupa el 30 % inferior. */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.waterIn(c: Offset, r: Float, level: Float, phase: Float, amp: Float) {
+    if (level <= 0f) return
+    val d = r * 2; val left = c.x - r; val bottom = c.y + r
+    val surf = (c.y - r) + d * (1 - level)
+    val circle = androidx.compose.ui.graphics.Path().apply { addOval(androidx.compose.ui.geometry.Rect(c, r)) }
+    clipPath(circle) {
+        drawPath(wavePath(left, d, surf, amp * .75f, -phase * 1.15f + 1.9f, bottom, 1.05f), Color(0xFF60A5FA).copy(alpha = .40f))
+        drawPath(wavePath(left, d, surf, amp, phase, bottom), Brush.verticalGradient(listOf(Color(0xFF60A5FA), Color(0xFF2563EB)), surf - amp, bottom))
+    }
 }
 
 /** Indicador "agua" de Pagos y Estadísticas: el círculo se llena hasta el % cobrado con una ola discreta que se calma
@@ -362,28 +371,14 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.sweepGlow(filled: F
     val target = (pct / 100).coerceIn(0.0, 1.0).toFloat()
     val (fill, wave) = waterLevel(target, 1500)
     val shown = if (target > 0f && Motion.enabled && fill != target) pct * (fill / target) else pct
-    val t = ringSweep(target > 0f && fill == target)
+    val phase = waveClock()
     Box(Modifier.size(size.dp).semantics(mergeDescendants = true) { contentDescription = "${Math.round(pct)}% $label" }, contentAlignment = Alignment.Center) {
         Canvas(Modifier.size(size.dp)) {
-            val r = this.size.minDimension / 2
+            val r = this.size.minDimension / 2; val c = Offset(this.size.width / 2, this.size.height / 2)
             drawCircle(if (W.day) Color(0xFFE2E8F0) else Color(15, 23, 42, 200), r)
-            val h = this.size.height; val w = this.size.width
-            val top = h * (1 - fill)
-            val amp = h * .035f * wave; val phase = fill * 14f
-            val circle = androidx.compose.ui.graphics.Path().apply { addOval(androidx.compose.ui.geometry.Rect(Offset.Zero, this@Canvas.size)) }
-            clipPath(circle) {
-                if (fill > 0f) {
-                    // capa trasera (más clara y desfasada) y capa delantera: dan profundidad sin mover la lectura
-                    drawPath(waterPath(w, h, top, amp * .8f, phase + 2.2f), Color(0xFF60A5FA).copy(alpha = .35f))
-                    drawPath(waterPath(w, h, top, amp, phase), Brush.verticalGradient(listOf(Color(0xFF60A5FA), Color(0xFF2563EB)), top, h))
-                    drawRect(Color.White.copy(alpha = .30f), topLeft = Offset(0f, top - 1f), size = Size(w, 2.5f))
-                }
-            }
+            // olas pequeñas y constantes; un poco más vivas mientras el nivel sube
+            waterIn(c, r - 1.5f, fill, phase.value + fill * 6f, r * 2 * (.028f + .02f * wave))
             drawCircle(W.blue.copy(alpha = .45f), r - 1.5f, style = Stroke(3f))
-            // el borde también se llena siguiendo el círculo (mismo color, más intenso) y luego lo recorre un brillo sutil
-            val bi = 1.5f; val bsz = Size(this.size.width - bi * 2, this.size.height - bi * 2)
-            if (fill > 0f) drawArc(W.blue, -90f, 360f * fill, false, Offset(bi, bi), bsz, style = Stroke(3.5f, cap = StrokeCap.Round))
-            sweepGlow(360f * fill, t, Offset(bi, bi), bsz, 3.5f)
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) { val onWater = !W.day || fill > .55f
             Text("${Math.round(shown)}%", fontSize = (size / 6).sp, fontWeight = FontWeight.ExtraBold, color = if (onWater) Color.White else W.tx)
@@ -394,18 +389,22 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.sweepGlow(filled: F
 /** Anillo de cobro del inicio: el arco se dibuja y el % sube a la vez (pasa del valor anterior al nuevo si cambian los datos). */
 @Composable fun RingGauge(pct: Double, label: String = "cobrado", size: Int = 100) {
     val target = (pct / 100).coerceIn(0.0, 1.0).toFloat()
-    val (k, _) = waterLevel(target, 1500)
+    val (k, wave) = waterLevel(target, 1500)
     val shown = if (target > 0f && Motion.enabled && k != target) pct * (k / target) else pct
-    val t = ringSweep(target > 0f && k == target)
+    val phase = waveClock()
     Box(Modifier.size(size.dp).semantics(mergeDescendants = true) { contentDescription = "${Math.round(pct)}% $label" }, contentAlignment = Alignment.Center) {
         Canvas(Modifier.size(size.dp)) {
             val sw = this.size.minDimension * .085f; val inset = sw / 2 + 2f
             val sz = Size(this.size.width - inset * 2, this.size.height - inset * 2)
+            // agua dentro del anillo (recortada al hueco interior)
+            val inner = this.size.minDimension / 2 - inset - sw / 2 - 3f
+            waterIn(Offset(this.size.width / 2, this.size.height / 2), inner, k, phase.value + k * 6f, inner * 2 * (.03f + .02f * wave))
             drawArc(W.track, 0f, 360f, false, Offset(inset, inset), sz, style = Stroke(sw))
             if (k > 0f) drawArc(Brush.sweepGradient(listOf(W.cyan, W.blue, Color(0xFF60A5FA), W.cyan)), -90f, 360f * k, false, Offset(inset, inset), sz, style = Stroke(sw, cap = StrokeCap.Round))
-            sweepGlow(360f * k, t, Offset(inset, inset), sz, sw)
         }
-        Column(horizontalAlignment = Alignment.CenterHorizontally) { Text("${Math.round(shown)}%", fontSize = (size / 4.6).sp, fontWeight = FontWeight.ExtraBold); Text(label, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) { val onWater = !W.day || k > .45f
+            Text("${Math.round(shown)}%", fontSize = (size / 4.6).sp, fontWeight = FontWeight.ExtraBold, color = if (onWater) Color.White else W.tx)
+            Text(label, fontSize = 11.sp, color = if (onWater) Color.White.copy(alpha = .85f) else MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }
 
