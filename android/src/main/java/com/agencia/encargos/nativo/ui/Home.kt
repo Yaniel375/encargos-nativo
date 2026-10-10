@@ -167,7 +167,7 @@ private fun payDate(v: Any?): String {
     Row(modifier.pressBounce(src).glass(day = isDay()).clickable(src, null) { tapFeedback(); onClick() }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
         IconTile(icon, size = 36); Spacer(Modifier.width(9.dp))
         Column(Modifier.weight(1f)) {
-            Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis, letterSpacing = (-0.1).sp)
+            Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 14.sp, letterSpacing = (-0.1).sp)
             Text(value, fontSize = 18.5.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.19).sp, color = valueColor, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(16.dp), tint = W.mut)

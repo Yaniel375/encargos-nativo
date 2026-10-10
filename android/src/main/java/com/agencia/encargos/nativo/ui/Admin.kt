@@ -9,6 +9,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material.icons.outlined.FormatSize
 import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Pin
 import androidx.compose.material.icons.outlined.Fingerprint
@@ -376,6 +381,7 @@ fun SettingsScreen() {
         } }
         item { RowGroup("Apariencia") {
             NavRow(Icons.Outlined.WavingHand, "Nombre del saludo", "\"¡Hola, ${core.greetName.ifEmpty { "…" }}!\"") { sheet = "greet" }; RowSep()
+            NavRow(Icons.Outlined.FormatSize, "Tamaño de la interfaz", "Ajusta qué tan grande se ve todo · ${UiScale.label(UiScale.value)}", UiScale.pct(UiScale.value)) { sheet = "scale" }; RowSep()
             NavRow(Icons.Outlined.DarkMode, "Modo noche", if (!day) "Encendido · fondo oscuro" else "Apagado · colores claros", right = {
                 Switch(!day, { on -> core.ls.set("encargos_aurora_mode", if (on) "night" else "day"); ui.act.recreate() }) }, onClick = null)
         } }
@@ -459,6 +465,32 @@ fun SettingsScreen() {
             val cfg = core.notifs.cfg(); @Suppress("UNUSED_VARIABLE") val t = tick
             listOf("inapp" to "Avisos dentro de la app", "pay" to "Pagos", "order" to "Encargos", "client" to "Clientes", "system" to "Sistema y seguridad", "important" to "Avisos importantes").forEach { (k, l) ->
                 ToggleRow(l, "", Js.truthy(cfg[k])) { core.notifs.toggleCfg(k); tick++ }
+            }
+        }
+        "scale" -> Sheet("Tamaño de la interfaz", { sheet = null }) {
+            var pending by remember { mutableStateOf(UiScale.value) }
+            InfoBox("Cambia el tamaño visual de toda la app: textos, iconos, botones, tarjetas, menús, ventanas y gráficas. No cambia tus datos ni tus importes. Se aplica al soltar el control y se recuerda al volver a abrir la app.")
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(UiScale.label(pending), fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, modifier = Modifier.weight(1f))
+                Text(UiScale.pct(pending), fontWeight = FontWeight.ExtraBold, fontSize = 22.sp, color = W.blueInk)
+            }
+            androidx.compose.material3.Slider(pending, { pending = UiScale.clamp(it) }, valueRange = 0.80f..1.05f, steps = 4,
+                onValueChangeFinished = { UiScale.value = pending; core.ls.set(UiScale.KEY, pending.toString()) },
+                colors = androidx.compose.material3.SliderDefaults.colors(thumbColor = W.blue, activeTrackColor = W.blue, inactiveTrackColor = W.track, activeTickColor = Color.White.copy(alpha = .6f), inactiveTickColor = W.mut.copy(alpha = .6f)),
+                modifier = Modifier.semantics { contentDescription = "Tamaño de la interfaz" })
+            Row(Modifier.fillMaxWidth()) { UiScale.LEVELS.forEach { (lv, _) -> Text("${Math.round(lv * 100)}", fontSize = 11.sp, color = if (lv == pending) W.blueInk else W.mut, fontWeight = if (lv == pending) FontWeight.ExtraBold else FontWeight.Normal, textAlign = TextAlign.Center, modifier = Modifier.weight(1f)) } }
+            // vista previa con el tamaño elegido (antes de aplicarlo)
+            val d = androidx.compose.ui.platform.LocalDensity.current
+            androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(d.density / UiScale.value * pending, d.fontScale)) {
+                Column(Modifier.fillMaxWidth().glass().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Vista previa", fontSize = 11.sp, color = W.mut)
+                    Row(verticalAlignment = Alignment.CenterVertically) { Avatar("Ana", C.blue, 38); androidx.compose.foundation.layout.Spacer(Modifier.width(10.dp)); Column(Modifier.weight(1f)) { Text("Ana Gómez", fontWeight = FontWeight.ExtraBold); Text("2 encargos · Pedido", fontSize = 12.sp, color = W.mut) }; StatusChip("Pedido") }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Kpi("Total", "$61.00", modifier = Modifier.weight(1f)); Kpi("Saldo", "- $51.00", C.rose, modifier = Modifier.weight(1f)) }
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Secondary("Restaurar 100 %", Modifier.weight(1f)) { pending = 1f; UiScale.value = 1f; core.ls.set(UiScale.KEY, "1.0") }
+                Primary("Listo", Modifier.weight(1f)) { if (UiScale.value != pending) { UiScale.value = pending; core.ls.set(UiScale.KEY, pending.toString()) }; sheet = null }
             }
         }
         "fb" -> Sheet("Sonido y vibración", { sheet = null }) {

@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -107,6 +108,19 @@ object W {
     val glass: Brush get() = Brush.linearGradient(listOf(glassA, glassB), start = Offset(0f, 0f), end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY))
     val primary: Brush get() = Brush.linearGradient(listOf(blueTop, blueDeep), start = Offset(0f, 0f), end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY))
     val success: Brush get() = Brush.linearGradient(listOf(Color(0xFF34D399), Color(0xFF059669)), start = Offset(0f, 0f), end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY))
+}
+
+/** Tamaño de la interfaz (Ajustes → Apariencia). Escala TODA la app a la vez —textos, iconos, botones, tarjetas,
+ *  márgenes, menús, ventanas emergentes y gráficas— cambiando la densidad de pantalla con la que dibuja Compose.
+ *  No es un zoom de imagen: el contenido se vuelve a distribuir, el desplazamiento y los toques siguen exactos. */
+object UiScale {
+    const val KEY = "encargos_ui_scale"
+    val LEVELS = listOf(0.80f to "Pequeño", 0.85f to "Compacto", 0.90f to "Normal", 0.95f to "Grande", 1.00f to "Predeterminado", 1.05f to "Muy grande")
+    var value by androidx.compose.runtime.mutableFloatStateOf(1f)
+    fun clamp(v: Float) = (Math.round(v * 20f) / 20f).coerceIn(0.80f, 1.05f)
+    fun load(raw: String?) { value = clamp(raw?.toFloatOrNull() ?: 1f) }
+    fun label(v: Float) = LEVELS.minByOrNull { kotlin.math.abs(it.first - v) }!!.second
+    fun pct(v: Float) = "${Math.round(v * 100)} %"
 }
 
 /** ¿Animaciones activadas en el sistema? (Ajustes → Accesibilidad → Quitar animaciones = equivalente a prefers-reduced-motion). */
