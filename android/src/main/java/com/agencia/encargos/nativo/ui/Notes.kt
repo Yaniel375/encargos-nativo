@@ -46,6 +46,7 @@ import com.agencia.encargos.nativo.util.Images
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.material.icons.outlined.PhotoLibrary
 
 private val NOTE_COLORS = linkedMapOf("blue" to C.blue, "green" to C.green, "amber" to C.amber, "rose" to C.rose, "vio" to C.vio)
 private val URL_RE = Regex("\\b((?:https?://|www\\.)[^\\s<>\"']+|wa\\.me/[^\\s<>\"']+)", RegexOption.IGNORE_CASE)
@@ -121,7 +122,7 @@ fun NoteEditor(n: JObj?, close: () -> Unit) {
         if (links.isNotEmpty()) item { Column { Text("Enlaces en esta nota · toca para abrir", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); links.forEach { u -> Text("🔗 " + u, color = C.blue, modifier = Modifier.clickable { Files.open(ui.act, fullUrl(u)) }.padding(vertical = 3.dp)) } } }
         item { Field(amt, { amt = it }, "Me deben (opcional)", number = true, prefix = "$") }
         item {
-            SectionCard("Fotos de artículos") {
+            SectionCard("Fotos de artículos", icon = Icons.Outlined.PhotoLibrary) {
                 if (photos.isNotEmpty()) PhotoStrip(photos.toList(), 110) { viewer = it }
                 Secondary("Agregar foto", Modifier.fillMaxWidth(), Icons.Filled.AddAPhoto) { pick.launch("image/*") }
             }

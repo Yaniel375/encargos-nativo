@@ -264,7 +264,7 @@ private fun lerpInk(c: Color) = if (W.day) Color(c.red * .8f, c.green * .8f, c.b
 @Composable fun Primary(text: String, modifier: Modifier = Modifier, icon: ImageVector? = null, enabled: Boolean = true, color: Color = C.blue, onClick: () -> Unit) {
     val src = remember { MutableInteractionSource() }; val shape = RoundedCornerShape(14.dp); val once = rememberOnce(onClick)
     val brush = if (color == C.blue) W.primary else Brush.linearGradient(listOf(Color(color.red + (1 - color.red) * .15f, color.green + (1 - color.green) * .15f, color.blue + (1 - color.blue) * .15f), color))
-    Row(modifier.height(52.dp).pressBounce(src).graphicsLayer { alpha = if (enabled) 1f else .5f }.glow(color, 14.dp, 8.dp, if (enabled) .45f else 0f)
+    Row(modifier.height(50.dp).pressBounce(src).graphicsLayer { alpha = if (enabled) 1f else .5f }.glow(color, 14.dp, 8.dp, if (enabled) .45f else 0f)
         .clip(shape).background(brush).clickable(src, null, enabled = enabled) { tapFeedback(); once() }.padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
         if (icon != null) { Icon(icon, null, Modifier.size(18.dp), tint = Color.White); Spacer(Modifier.width(8.dp)) }
@@ -275,7 +275,7 @@ private fun lerpInk(c: Color) = if (W.day) Color(c.red * .8f, c.green * .8f, c.b
 @Composable fun Secondary(text: String, modifier: Modifier = Modifier, icon: ImageVector? = null, color: Color? = null, onClick: () -> Unit) {
     val src = remember { MutableInteractionSource() }; val shape = RoundedCornerShape(14.dp); val once = rememberOnce(onClick)
     val fg = color ?: MaterialTheme.colorScheme.onSurface
-    Row(modifier.height(48.dp).pressBounce(src).clip(shape).background(if (color != null) color.copy(alpha = .08f) else W.tile).border(1.dp, if (color != null) color.copy(alpha = .35f) else W.line2, shape)
+    Row(modifier.height(50.dp).pressBounce(src).clip(shape).background(if (color != null) color.copy(alpha = .08f) else W.tile).border(1.dp, if (color != null) color.copy(alpha = .35f) else W.line2, shape)
         .clickable(src, null) { tapFeedback(); once() }.padding(horizontal = 14.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
         if (icon != null) { Icon(icon, null, Modifier.size(17.dp), tint = fg); Spacer(Modifier.width(7.dp)) }
         Text(text, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -368,24 +368,7 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.waterIn(c: Offset, 
 
 /** Indicador "agua" de Pagos y Estadísticas: el círculo se llena hasta el % cobrado con una ola discreta que se calma
  *  al llegar; el porcentaje sube al mismo ritmo y termina en el valor real. */
-@Composable fun Gauge(pct: Double, label: String = "cobrado", size: Int = 150) {
-    val target = (pct / 100).coerceIn(0.0, 1.0).toFloat()
-    val (fill, wave) = waterLevel(target, 1500)
-    val shown = if (target > 0f && Motion.enabled && fill != target) pct * (fill / target) else pct
-    val phase = waveClock()
-    Box(Modifier.size(size.dp).semantics(mergeDescendants = true) { contentDescription = "${Math.round(pct)}% $label" }, contentAlignment = Alignment.Center) {
-        Canvas(Modifier.size(size.dp)) {
-            val r = this.size.minDimension / 2; val c = Offset(this.size.width / 2, this.size.height / 2)
-            drawCircle(if (W.day) Color(0xFFE2E8F0) else Color(15, 23, 42, 200), r)
-            // olas pequeñas y constantes; un poco más vivas mientras el nivel sube
-            waterIn(c, r - 1.5f, fill, phase.value + fill * 6f, r * 2 * (.028f + .02f * wave))
-            drawCircle(W.blue.copy(alpha = .45f), r - 1.5f, style = Stroke(3f))
-        }
-        Column(horizontalAlignment = Alignment.CenterHorizontally) { val onWater = !W.day || fill > .55f
-            Text("${Math.round(shown)}%", fontSize = (size / 6).sp, fontWeight = FontWeight.ExtraBold, color = if (onWater) Color.White else W.tx)
-            Text(label, fontSize = 11.sp, color = if (onWater) Color.White.copy(alpha = .85f) else W.mut) }
-    }
-}
+@Composable fun Gauge(pct: Double, label: String = "cobrado", size: Int = 100) = RingGauge(pct, label, size)
 
 /** Anillo de cobro del inicio: el arco se dibuja y el % sube a la vez (pasa del valor anterior al nuevo si cambian los datos). */
 @Composable fun RingGauge(pct: Double, label: String = "cobrado", size: Int = 100) {

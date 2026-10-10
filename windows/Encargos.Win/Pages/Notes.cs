@@ -99,7 +99,7 @@ public sealed class NoteEditorPage : Screen
         p.Children.Add(Box("Nota (puedes pegar enlaces https://…)", _body, v => { _body = v; DrawLinks(); }, true));
         p.Children.Add(_links); DrawLinks();
         p.Children.Add(Box("Me deben (opcional, $)", _amt, v => _amt = v));
-        p.Children.Add(Card("Fotos de artículos", null, new ScrollViewer { Content = _photoRow, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled, HorizontalScrollMode = ScrollMode.Enabled },
+        p.Children.Add(IconCard("\uEB9F", "Fotos de artículos", null, new ScrollViewer { Content = _photoRow, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled, HorizontalScrollMode = ScrollMode.Enabled },
             Btn("Agregar foto", async () => { var d = await Media.PickPhoto(900, 0.55); if (d != null) { _photos.Add(d); DrawPhotos(); S.Toast("📷 Foto agregada. Pulsa \"Guardar nota\" para guardarla."); } }, false, null, "")));
         DrawPhotos();
         var colors = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };

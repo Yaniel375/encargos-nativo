@@ -33,6 +33,7 @@ import com.agencia.encargos.core.JObj
 import com.agencia.encargos.core.Js
 import com.agencia.encargos.core.str
 import java.time.LocalDate
+import androidx.compose.material.icons.outlined.CreditCard
 
 /** Pago que se está editando (pedido, índice en paymentHistory). */
 val editPaymentState = mutableStateOf<Pair<String, Int>?>(null)
@@ -74,14 +75,13 @@ fun PaymentsScreen() {
     val list = s.list.filter { mf.isEmpty() || it.p.str("method").ifEmpty { "Efectivo" }.uppercase() == mf.uppercase() }
     Page {
         item {
-            SectionCard(action = { Text("🎯 Meta", color = C.blue, modifier = Modifier.clickable { goal = true }) }) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Gauge(s.pct, size = 140); Spacer(Modifier.width(14.dp))
-                    Column {
-                        Text("Total cobrado", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(money(s.collected), fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = C.green)
-                        Text("de ${money(s.target)} " + if (s.goalMode == "monthly") "(meta del mes)" else "esperado", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        if (s.pct > 100.5) Text("+${Math.round(s.pct - 100)}% sobre la meta", color = C.green, fontSize = 12.sp)
-                    }
+            Row(Modifier.fillMaxWidth().glass().padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
+                Gauge(s.pct, size = 100); Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) { Text("Total cobrado", Modifier.weight(1f), fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant); LinkText("Meta ›") { goal = true } }
+                    Text(money(s.collected), fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.6).sp, color = C.green, maxLines = 1)
+                    Text("de ${money(s.target)} " + if (s.goalMode == "monthly") "(meta del mes)" else "esperado", fontSize = 12.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (s.pct > 100.5) Text("+${Math.round(s.pct - 100)}% sobre la meta", color = C.green, fontSize = 12.5.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -94,7 +94,7 @@ fun PaymentsScreen() {
                 Kpi("Pagos", "${s.list.size}", modifier = Modifier.weight(1f))
             }
         }
-        item { SectionCard("Movimientos recientes", action = { Text("${list.size} pago(s)", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp) }) {
+        item { SectionCard("Movimientos recientes", icon = Icons.Outlined.CreditCard, action = { Text("${list.size} pago(s)", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp) }) {
             Choice(listOf("" to "Todos", "Efectivo" to "Efectivo", "USD" to "USD"), mf) { mf = it; shown = 25 }
             if (list.isEmpty()) Text("Todavía no hay pagos registrados.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             list.take(shown).forEach { it2 ->

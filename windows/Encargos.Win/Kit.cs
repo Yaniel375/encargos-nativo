@@ -150,7 +150,7 @@ public static partial class K
         var fg = accent ? Br(0xFFFFFFFFu) : color ?? Text;
         var tb = T(text, accent ? 15 : 14, true, fg, false); if (accent) tb.FontWeight = FontWeights.ExtraBold; tb.TextTrimming = TextTrimming.CharacterEllipsis;
         object content = glyph != null ? Hs(8, new FontIcon { Glyph = glyph, FontSize = 15, Foreground = fg }, tb) : tb;
-        var b = new Button { Content = content, HorizontalAlignment = stretch ? HorizontalAlignment.Stretch : HorizontalAlignment.Left, Padding = new Thickness(16, 10, 16, 10), CornerRadius = new CornerRadius(14), MinHeight = accent ? 48 : 44, Foreground = fg };
+        var b = new Button { Content = content, HorizontalAlignment = stretch ? HorizontalAlignment.Stretch : HorizontalAlignment.Left, Padding = new Thickness(16, 10, 16, 10), CornerRadius = new CornerRadius(14), MinHeight = 46, Foreground = fg };
         if (BtnStyle != null) b.Style = BtnStyle;
         if (accent) { b.Background = color is SolidColorBrush sc ? Grad(sc) : PrimaryBrush; b.BorderThickness = new Thickness(0); }
         else if (color is SolidColorBrush c2) { b.Background = Alpha(c2, .08); b.BorderBrush = Alpha(c2, .35); b.BorderThickness = new Thickness(1); }
@@ -343,26 +343,12 @@ public static partial class K
         return cv;
     }
 
-    /// <summary>Indicador "agua": el círculo se llena de azul hasta el % cobrado.</summary>
-    public static Grid Gauge(double pct, string label = "cobrado", double size = 130)
-    {
-        pct = double.IsNaN(pct) ? 0 : pct; var fill = Math.Clamp(pct / 100, 0, 1);
-        var g = new Grid { Width = size, Height = size };
-        var baseC = Day ? Color.FromArgb(255, 0xE2, 0xE8, 0xF0) : Color.FromArgb(204, 15, 23, 42);
-        g.Children.Add(new Microsoft.UI.Xaml.Shapes.Ellipse { Fill = new SolidColorBrush(baseC) });
-        g.Children.Add(WaterCircle(size - 3, fill));
-        g.Children.Add(new Microsoft.UI.Xaml.Shapes.Ellipse { Stroke = Alpha(Blue, .45), StrokeThickness = 2.5 });
-        var onWater = !Day || fill > .55;
-        var big = Big(Js.ToFixed(Math.Max(0, pct), 0) + "%", onWater ? White : Text, size / 6); var lab = T(label, 11, false, onWater ? Br(0xD9FFFFFFu) : Mut, false);
-        var finalPct = Math.Max(0, pct); g.Loaded += (_, _) => Fx.Count(big, finalPct, v => Js.ToFixed(v, 0) + "%", 1500, 250);
-
-        var t = V(0, big, lab); t.HorizontalAlignment = HorizontalAlignment.Center; t.VerticalAlignment = VerticalAlignment.Center;
-        foreach (var c in t.Children) ((FrameworkElement)c).HorizontalAlignment = HorizontalAlignment.Center;
-        g.Children.Add(t); return g;
-    }
+    /// <summary>Indicador de cobro de Pagos y Estadísticas: el mismo anillo con agua que Inicio.</summary>
+    public static Grid Gauge(double pct, string label = "cobrado", double size = 100) => Ring(pct, label, size);
     /// <summary>Anillo de cobro del inicio (se dibuja en 1,1 s).</summary>
     public static Grid Ring(double pct, string label = "cobrado", double size = 100)
     {
+        var shownPct = double.IsNaN(pct) ? 0 : Math.Max(0, pct);   // el número muestra el valor real (p. ej. 120 % sobre la meta)
         pct = double.IsNaN(pct) ? 0 : Math.Clamp(pct, 0, 100);
         var g = new Grid { Width = size, Height = size };
         var th = size * .085; var r = (size - th) / 2 - 2;
@@ -370,7 +356,7 @@ public static partial class K
         g.Children.Add(WaterCircle(2 * (r - th / 2 - 3), pct / 100));
         g.Children.Add(ArcLayer(size, r, th, Blue, pct / 100));
         var onW = !Day || pct > 45;
-        var rb = Big(Js.ToFixed(pct, 0) + "%", onW ? White : null, size / 4.6); var rp = pct; g.Loaded += (_, _) => Fx.Count(rb, rp, v => Js.ToFixed(v, 0) + "%", 1500, 250);
+        var rb = Big(Js.ToFixed(shownPct, 0) + "%", onW ? White : null, size / 4.6); var rp = shownPct; g.Loaded += (_, _) => Fx.Count(rb, rp, v => Js.ToFixed(v, 0) + "%", 1500, 250);
         var t = V(0, rb, T(label, 11, false, onW ? Br(0xD9FFFFFFu) : Mut, false)); t.HorizontalAlignment = HorizontalAlignment.Center; t.VerticalAlignment = VerticalAlignment.Center;
         foreach (var c in t.Children) ((FrameworkElement)c).HorizontalAlignment = HorizontalAlignment.Center;
         g.Children.Add(t); return g;

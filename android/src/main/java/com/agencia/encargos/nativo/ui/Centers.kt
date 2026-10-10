@@ -36,6 +36,14 @@ import com.agencia.encargos.core.JObj
 import com.agencia.encargos.core.Js
 import com.agencia.encargos.core.str
 import java.time.LocalDate
+import androidx.compose.material.icons.outlined.AccountBalanceWallet
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Inventory2
+import androidx.compose.material.icons.outlined.LocalShipping
+import androidx.compose.material.icons.outlined.Payments
+import androidx.compose.material.icons.Icons
 
 /* ======================= Centro de atención ======================= */
 @Composable
@@ -61,7 +69,7 @@ fun AttentionScreen() {
         }
         if (att.recentResolved.isNotEmpty()) item { SectionCard { att.recentResolved.forEach { Text("✓ " + it.second, color = C.green) } } }
         item { Choice(listOf("all" to "Todos", "urgent" to "Urgentes", "pay" to "Pagos", "orders" to "Pedidos", "clients" to "Clientes", "other" to "Otros"), filter) { filter = it } }
-        item { Row(verticalAlignment = Alignment.CenterVertically) { Switch(onlyPending, { onlyPending = it }); Text("  Solo pendientes de revisar") } }
+        item { Row(verticalAlignment = Alignment.CenterVertically) { Switch(onlyPending, { onlyPending = it }); Spacer(Modifier.width(10.dp)); Text("Solo pendientes de revisar", fontSize = 13.5.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
         att.GROUPS.forEach { (cat, title) ->
             val items = list.filter { it.cat == cat }
             if (items.isNotEmpty()) item {
@@ -70,11 +78,12 @@ fun AttentionScreen() {
                 val tot = items.sumOf { it.amount ?: 0.0 }
                 val sub = when (cat) { "pay" -> "${items.size} cliente${if (items.size == 1) " debe" else "s deben"} dinero · total ${money(tot)}"; "ready" -> "${items.size} pedido${if (items.size == 1) " llegó" else "s llegaron"}"
                     "transit" -> "${items.size} pedido(s) con mucho tiempo en tránsito"; "funds" -> "${items.size} cliente(s) · total ${money(tot)}"; "incomplete" -> "${items.size} encargo(s) con datos faltantes"; else -> "" }
-                SectionCard(title, action = { Text("${items.size}", color = col, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp) }) {
+                val ic = when (cat) { "pay" -> Icons.Outlined.Payments; "ready" -> Icons.Outlined.Inventory2; "transit" -> Icons.Outlined.LocalShipping; "funds" -> Icons.Outlined.AccountBalanceWallet; "incomplete" -> Icons.Outlined.ErrorOutline; else -> Icons.Outlined.Info }
+                SectionCard(title, icon = ic, action = { Text("${items.size}", color = col, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp) }) {
                     if (sub.isNotEmpty()) Text(sub, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     items.take(if (open[cat] == true) items.size else 3).forEach { a -> AlertRow(a, pc[a.pr]!!) }
-                    if (items.size > 3) Text(if (open[cat] == true) "Ver menos" else "Ver los ${items.size}", color = C.blue, modifier = Modifier.clickable { open[cat] = open[cat] != true })
-                    if (cat == "pay" || cat == "funds") Text("Lista de pendientes y fondos ›", color = C.blue, modifier = Modifier.clickable { ui.go(Screen.Pending) })
+                    if (items.size > 3) LinkText(if (open[cat] == true) "Ver menos" else "Ver los ${items.size}") { open[cat] = open[cat] != true }
+                    if (cat == "pay" || cat == "funds") LinkText("Lista de pendientes y fondos ›") { ui.go(Screen.Pending) }
                 }
             }
         }
@@ -85,7 +94,7 @@ fun AttentionScreen() {
         }
         item {
             val acts = att.activity()
-            SectionCard("Actividad reciente", action = { if (acts.size > 5) Text("Ver todo", color = C.blue, modifier = Modifier.clickable { hist = true }) }) {
+            SectionCard("Actividad reciente", icon = Icons.Outlined.History, action = { if (acts.size > 5) LinkText("Ver todo") { hist = true } }) {
                 if (acts.isEmpty()) Text("Aquí verás tus pagos, entregas, avisos y respaldos.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 acts.take(5).forEach { a -> ActivityRow(a) }
             }

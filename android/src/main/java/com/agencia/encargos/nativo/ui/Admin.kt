@@ -81,6 +81,15 @@ import com.agencia.encargos.nativo.util.Files
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.Devices
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Lightbulb
+import androidx.compose.material.icons.outlined.Link
+import androidx.compose.material.icons.outlined.PhoneAndroid
+import androidx.compose.material.icons.outlined.SyncProblem
+import androidx.compose.material.icons.outlined.Tune
 
 /* ---------------- piezas comunes ---------------- */
 
@@ -201,7 +210,7 @@ fun BackupScreen() {
         item { ActionCard(Icons.Outlined.TableChart, "Exportar a Excel (.csv)", "Una hoja con todos los encargos para abrir en Excel.") {
             ui.requireAuth("Confirma tu identidad para exportar") { startSave(bk.fileName("encargos_", ".csv"), bk.csv().toByteArray(Charsets.UTF_8), "✅ Archivo CSV guardado.") } } }
         item {
-            SectionCard("Consejos") {
+            SectionCard("Consejos", icon = Icons.Outlined.Lightbulb) {
                 IconLabel(Icons.Outlined.Autorenew, "Haz un respaldo cada semana o después de muchos cambios.")
                 IconLabel(Icons.Outlined.Mail, "Envía el archivo a tu correo o a la nube, por si pierdes el teléfono.")
                 IconLabel(Icons.Filled.Upload, "Para recuperar todo en otro teléfono, usa Importar respaldo.")
@@ -270,7 +279,7 @@ fun SecurityScreen() {
             NavRow(Icons.Outlined.VisibilityOff, "Ocultar en apps recientes", "Oculta el contenido en recientes y bloquea capturas de pantalla", right = { Switch(sec.privacyOn(), { sec.setPrivacy(it); act?.applyPrivacy(); refresh() }) }, onClick = null)
         } }
         item {
-            SectionCard("Actividad de seguridad") {
+            SectionCard("Actividad de seguridad", icon = Icons.Outlined.History) {
                 val log = sec.logEntries().take(15)
                 if (log.isEmpty()) Hint("Sin actividad registrada.")
                 log.forEach { e -> Row { Text(if (Js.truthy(e["ok"])) "✅ " else "⚠️ "); Column(Modifier.weight(1f)) { Text(e.str("text"), fontSize = 13.sp); Hint(timeLabel(e["t"])) } } }
@@ -531,7 +540,7 @@ fun SyncScreen() {
                 }
             }
             item {
-                SectionCard("¿Es tu primer dispositivo?") {
+                SectionCard("¿Es tu primer dispositivo?", icon = Icons.Outlined.PhoneAndroid) {
                     Hint("1. En Telegram, abre @BotFather y crea un bot con /newbot.\n2. Abre tu bot nuevo y envíale /start.\n3. Copia el token que te dio BotFather y pégalo aquí.")
                     Field(tok, { tok = it.trim() }, "Token del bot", password = true)
                     Primary("Conectar", Modifier.fillMaxWidth(), Icons.Filled.CloudSync, enabled = tok.isNotEmpty()) {
@@ -540,7 +549,7 @@ fun SyncScreen() {
                 }
             }
             item {
-                SectionCard("¿Ya lo usas en otro dispositivo?") {
+                SectionCard("¿Ya lo usas en otro dispositivo?", icon = Icons.Outlined.Devices) {
                     Hint("En el otro dispositivo ve a Sincronización → \"Código para enlazar\", cópialo y pégalo aquí.")
                     Field(code, { code = it.trim() }, "Código de enlace (ENC1…)", password = true)
                     Primary("Enlazar", Modifier.fillMaxWidth(), Icons.Filled.Sync, enabled = code.isNotEmpty()) {
@@ -568,13 +577,13 @@ fun SyncScreen() {
                 }
             }
             item {
-                SectionCard("Enlazar otro dispositivo") {
+                SectionCard("Enlazar otro dispositivo", icon = Icons.Outlined.Link) {
                     Hint("El código permite a otro teléfono o PC leer y escribir tus datos. Trátalo como una contraseña: no lo compartas con nadie.")
                     Secondary("Mostrar código para enlazar", Modifier.fillMaxWidth(), Icons.Filled.Lock) { ui.requireAuth("Confirma tu identidad para ver el código", true) { shownCode = sync.linkCode() } }
                 }
             }
             item {
-                SectionCard("Opciones") {
+                SectionCard("Opciones", icon = Icons.Outlined.Tune) {
                     ToggleRow("Pausar sincronización", "Los cambios se guardan aquí y se envían al reanudar", paused) { sync.pause(it) }
                     Secondary("Restaurar desde Telegram", Modifier.fillMaxWidth()) {
                         ui.ask("Restaurar desde Telegram", "Se reemplazarán los datos de este dispositivo por el último respaldo de Telegram. Primero se comprueba que el respaldo esté completo. ¿Continuar?", "Restaurar", true) {
@@ -616,7 +625,7 @@ fun SyncDiagScreen() {
     val m = sync.metaInfo(); val cfg = sync.cfg()
     Page {
         item {
-            SectionCard("Estado") {
+            SectionCard("Estado", icon = Icons.Outlined.Info) {
                 Line("Conectado", if (cfg == null) "No" else if (Js.truthy(cfg["paused"])) "En pausa" else "Sí")
                 Line("Estado", sync.state); Line("Pendientes", sync.pending().toString())
                 Line("Dispositivo", sync.deviceId())
@@ -633,13 +642,13 @@ fun SyncDiagScreen() {
         }
         val conf = sync.conflicts()
         if (conf.isNotEmpty()) item {
-            SectionCard("Conflictos resueltos (${conf.size})") {
+            SectionCard("Conflictos resueltos (${conf.size})", icon = Icons.Outlined.SyncProblem) {
                 Hint("Cuando dos dispositivos cambian lo mismo, gana el cambio más reciente. Los pagos nunca se pierden.")
                 conf.take(20).forEach { c -> Text("• " + c.str("entity") + " · ganó " + (if (c.str("kept") == "local") "este dispositivo" else "otro dispositivo (" + c.str("remoteDevice") + ")") + " · " + timeLabel(c["t"]), fontSize = 12.sp) }
             }
         }
         item {
-            SectionCard("Registro") {
+            SectionCard("Registro", icon = Icons.Outlined.Description) {
                 val log = sync.logEntries().take(60)
                 if (log.isEmpty()) Hint("Sin registros.")
                 log.forEach { e -> Column(Modifier.padding(vertical = 2.dp)) {

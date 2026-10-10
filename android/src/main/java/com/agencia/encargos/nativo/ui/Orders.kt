@@ -62,6 +62,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDateTime
 import java.time.ZoneId
+import androidx.compose.material.icons.outlined.EditNote
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.LocalShipping
+import androidx.compose.material.icons.outlined.Payments
+import androidx.compose.material.icons.outlined.PhotoLibrary
+import androidx.compose.material.icons.outlined.Scale
+import androidx.compose.material.icons.outlined.Summarize
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 
 /* ======================= Lista de encargos activos ======================= */
 @Composable
@@ -238,7 +246,7 @@ fun OrderScreen(id: String) {
         }
         item {
             if (st == "Cancelado") SectionCard { Text("Este encargo está cancelado.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            else SectionCard("Estado del pedido", action = { if (nx != null) Text("Pasar a $nx ›", color = C.blue, modifier = Modifier.clickable { advanceWithUndo(ui, x) }) }) {
+            else SectionCard("Estado del pedido", icon = Icons.Outlined.LocalShipping, action = { if (nx != null) LinkText("Pasar a $nx ›") { advanceWithUndo(ui, x) } }) {
                 StatusStepper(Encargos.FLOW, st)
             }
         }
@@ -262,16 +270,16 @@ fun OrderScreen(id: String) {
                 }
             }
         }
-        item { SectionCard("Nota interna", action = { Text(if (x.str("note").isEmpty()) "Agregar" else "Editar", color = C.blue, modifier = Modifier.clickable { note = x.str("note") }) }) {
+        item { SectionCard("Nota interna", icon = Icons.Outlined.EditNote, action = { Text(if (x.str("note").isEmpty()) "Agregar" else "Editar", color = C.blue, modifier = Modifier.clickable { note = x.str("note") }) }) {
             Text(x.str("note").ifEmpty { "Solo para ti: el cliente nunca la ve." }, color = if (x.str("note").isEmpty()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface) } }
         item {
-            SectionCard("Fotos (${photos.size})") {
+            SectionCard("Fotos (${photos.size})", icon = Icons.Outlined.PhotoLibrary) {
                 if (photos.isEmpty()) Text("Puedes agregar fotos desde Editar.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (photos.size == 1) FitPhoto(Images.decode(photos[0], 1000), maxHeight = 340) { viewer = 0 } else PhotoStrip(photos, 130) { viewer = it }
             }
         }
         item {
-            SectionCard("Historial") {
+            SectionCard("Historial", icon = Icons.Outlined.History) {
                 val ev = ArrayList<Triple<Any?, String, Pair<String, androidx.compose.ui.graphics.Color>>>()
                 ev.add(Triple(x["date"], "Encargo creado · ${core.shippingName(core.typeOf(x))} · ${money(x["lbCost"])}/lb", money(x["cost"]) to C.blue))
                 (x["paymentHistory"] as? JArr)?.objs()?.forEach { h -> ev.add(Triple(h["date"], "Pago · ${h.str("method").ifEmpty { "Efectivo" }}" + (if (h.str("note").isNotEmpty()) " · " + h.str("note") else ""), "+" + money(h["amount"]) to C.green)) }
@@ -312,14 +320,14 @@ fun EditOrderScreen(id: String) {
             }
         }
         item {
-            SectionCard("Resumen", action = { Text("${Math.round((if (tot > 0) (pd / tot).coerceIn(0.0, 1.0) else 1.0) * 100)}% pagado", color = MaterialTheme.colorScheme.onSurfaceVariant) }) {
+            SectionCard("Resumen", icon = Icons.Outlined.Summarize, action = { Text("${Math.round((if (tot > 0) (pd / tot).coerceIn(0.0, 1.0) else 1.0) * 100)}% pagado", color = MaterialTheme.colorScheme.onSurfaceVariant) }) {
                 Line("Total", money(tot), bold = true); Line("Pagado", money(pd), C.green); Line("Saldo", if (bal > 0) "- " + money(bal) else if (bal < 0) "+ " + money(-bal) else "Pagado completo", if (bal > 0) C.rose else C.green, bold = true)
                 ProgressBar(if (tot > 0) pd / tot else 1.0)
             }
         }
-        item { SectionCard("Estado") { Choice(Encargos.STATES.map { it to it }, st) { st = it } } }
+        item { SectionCard("Estado", icon = Icons.Outlined.LocalShipping) { Choice(Encargos.STATES.map { it to it }, st) { st = it } } }
         item {
-            SectionCard("Agregar libras", action = { Text("Ahora: ${lb(Js.num(x["pounds"]))}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp) }) {
+            SectionCard("Agregar libras", icon = Icons.Outlined.Scale, action = { Text("Ahora: ${lb(Js.num(x["pounds"]))}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp) }) {
                 Field(addLb, { addLb = it }, "Libras a agregar", number = true, suffix = "lb")
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { listOf(0.5, 1.0, 2.0, 5.0).forEach { q -> Tonal("+" + Js.numberToString(q), Modifier.weight(1f)) { addLb = Js.toFixed(Js.num(addLb) + q, 2) } } }
                 val g = pp * core.marginOf(x)
@@ -327,7 +335,7 @@ fun EditOrderScreen(id: String) {
             }
         }
         item {
-            SectionCard("Registrar pago", action = { Text(if (bal > 0.005) "Debe ${money(bal)}" else "Sin saldo pendiente", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }) {
+            SectionCard("Registrar pago", icon = Icons.Outlined.Payments, action = { Text(if (bal > 0.005) "Debe ${money(bal)}" else "Sin saldo pendiente", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }) {
                 Field(pay, { pay = it }, "Cantidad", number = true, prefix = "$")
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     val due = kotlin.math.max(0.0, Js.num(x["cost"]) + Js.num(x["lbCost"]) * pp - Js.num(x["paid"]))
@@ -348,13 +356,13 @@ fun EditOrderScreen(id: String) {
             }
         }
         item {
-            SectionCard("Fotos del encargo") {
+            SectionCard("Fotos del encargo", icon = Icons.Outlined.PhotoLibrary) {
                 PhotoStrip(photos, 110) { viewer = it }
                 Secondary("Agregar foto", Modifier.fillMaxWidth(), Icons.Filled.AddAPhoto) { pick.launch("image/*") }
             }
         }
         item {
-            SectionCard("Historial de pagos") {
+            SectionCard("Historial de pagos", icon = Icons.AutoMirrored.Outlined.ReceiptLong) {
                 val ph = (x["paymentHistory"] as? JArr)?.objs() ?: emptyList()
                 if (ph.isEmpty()) Text("Sin pagos", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 ph.withIndex().reversed().forEach { (i, h) -> Row(Modifier.fillMaxWidth().clickable { editPaymentState.value = Pair(Js.str(x["id"]), i) }.padding(vertical = 4.dp)) {
@@ -364,7 +372,7 @@ fun EditOrderScreen(id: String) {
             }
         }
         item {
-            SectionCard("Historial de libras") {
+            SectionCard("Historial de libras", icon = Icons.Outlined.Scale) {
                 val lh = (x["lbHistory"] as? JArr)?.objs() ?: emptyList()
                 if (lh.isEmpty()) Text("Sin registros", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 lh.reversed().forEach { h -> Line(Js.fmt(h["date"]), "${Js.toFixed(Js.num(h["from"]), 2)} → ${Js.toFixed(Js.num(h["to"]), 2)} lb") }

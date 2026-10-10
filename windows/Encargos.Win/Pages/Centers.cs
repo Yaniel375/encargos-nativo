@@ -52,7 +52,8 @@ public sealed class AttentionPage : Screen
             foreach (var a in items.Take(open ? items.Count : 3)) rows.Add(AlertRow(a, Pc(a.Pr)));
             if (items.Count > 3) rows.Add(Link(open ? "Ver menos" : $"Ver los {items.Count}", () => { if (!_open.Remove(cat)) _open.Add(cat); Redraw(); }));
             if (cat is "pay" or "funds") rows.Add(Link("Lista de pendientes y fondos ›", () => S.Go(new PendingPage())));
-            p.Children.Add(Card(title, T(items.Count.ToString(), 18, true, col), rows.ToArray()));
+            var ic = cat switch { "pay" => "\uE8C7", "ready" => "\uE7B8", "transit" => "\uE804", "funds" => "\uE8C7", "incomplete" => "\uE783", _ => "\uE946" };
+            p.Children.Add(IconCard(ic, title, T(items.Count.ToString(), 18, true, col), rows.ToArray()));
         }
         if (list.Count == 0) p.Children.Add(Empty(all.Count > 0 ? "Nada en este filtro" : "Todo está en orden", all.Count > 0 ? "Prueba con otro filtro o desactiva \"Solo pendientes\"." : "En este momento no tienes elementos que requieran atención."));
         var lb = att.LastBackup();
@@ -60,7 +61,7 @@ public sealed class AttentionPage : Screen
         var acts = att.Activity();
         var actRows = new List<UIElement>(); if (acts.Count == 0) actRows.Add(Muted("Aquí verás tus pagos, entregas, avisos y respaldos.", 14));
         foreach (var a in acts.Take(5)) actRows.Add(ActRow(a));
-        p.Children.Add(Card("Actividad reciente", acts.Count > 5 ? Link("Ver todo", () => S.Info("Historial de actividad", V(6, att.Activity().Select(a => (UIElement)ActRow(a)).ToArray()))) : null, actRows.ToArray()));
+        p.Children.Add(IconCard("\uE81C", "Actividad reciente", acts.Count > 5 ? Link("Ver todo", () => S.Info("Historial de actividad", V(6, att.Activity().Select(a => (UIElement)ActRow(a)).ToArray()))) : null, actRows.ToArray()));
     }
     static StackPanel ActRow(JObj a) => V(0, T(a.Str("text") + (Js.Num(a["amount"]) != 0 ? " — " + Money(a["amount"]) : ""), 14, true), Muted(Js.Fmt(a["t"]), 11));
 
