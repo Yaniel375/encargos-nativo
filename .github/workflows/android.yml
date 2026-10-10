@@ -1,0 +1,57 @@
+name: Android (APK)
+
+on:
+  push:
+    branches: [main]
+    paths: ["core/**", "android/**", "*.kts", "gradle.properties", ".github/workflows/android.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Pruebas de compatibilidad del motor (core)
+        run: gradle --no-daemon :core:vectors
+
+      - name: Preparar firma (desde secretos de GitHub, nunca en el repositorio)
+        env:
+          KS_B64: ${{ secrets.ENCARGOS_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/encargos.keystore"
+            echo "ENCARGOS_KEYSTORE=$RUNNER_TEMP/encargos.keystore" >> "$GITHUB_ENV"
+          else
+            echo "::warning::Sin secreto ENCARGOS_KEYSTORE_B64: el APK se firmará con una clave de prueba."
+          fi
+
+      - name: Compilar APK
+        env:
+          ENCARGOS_KEYSTORE_PASSWORD: ${{ secrets.ENCARGOS_KEYSTORE_PASSWORD }}
+          ENCARGOS_KEY_ALIAS: ${{ secrets.ENCARGOS_KEY_ALIAS }}
+          ENCARGOS_KEY_PASSWORD: ${{ secrets.ENCARGOS_KEY_PASSWORD }}
+        run: gradle --no-daemon --stacktrace :app:assembleRelease
+
+      - name: Borrar la clave del disco del servidor
+        if: always()
+        run: rm -f "$RUNNER_TEMP/encargos.keystore"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Encargos-Android
+          path: android/build/outputs/apk/release/*.apk
+          if-no-files-found: error

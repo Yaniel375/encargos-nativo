@@ -1,0 +1,40 @@
+name: Núcleos (Kotlin + C#) y pruebas cruzadas
+
+on:
+  push:
+    branches: [main]
+    paths: ["core/**", "windows/Encargos.Core/**", "windows/Encargos.Tests/**", "tests/**", ".github/workflows/core.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  interop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "17" }
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: "8.9" }
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: "8.0.x" }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+
+      - name: Vectores Kotlin
+        run: gradle --no-daemon :core:vectors :core:testClasspath
+
+      - name: Vectores C#
+        run: dotnet run --project windows/Encargos.Tests -c Release -- vectors
+
+      - name: Compilar dispositivo C#
+        run: dotnet build windows/Encargos.Tests -c Release -o out/cs
+
+      - name: Pruebas cruzadas Android (Kotlin) ↔ PC (C#) con Telegram simulado
+        run: |
+          export KT_CP="$(cat core/build/cp.txt)"
+          export CS_DLL="$PWD/out/cs/Encargos.Tests.dll"
+          python tests/interop_native.py

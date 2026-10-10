@@ -1,0 +1,17 @@
+.gradle/
+build/
+*/build/
+local.properties
+.idea/
+*.iml
+*.keystore
+*.jks
+windows/**/bin/
+windows/**/obj/
+windows/**/AppPackages/
+# .NET
+bin/
+obj/
+out/
+*.user
+.vs/
