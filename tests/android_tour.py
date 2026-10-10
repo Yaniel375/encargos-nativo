@@ -199,11 +199,13 @@ def relaunch(extra):
         type_at("Contraseña", "clave123", exact=True); hide_kb(); tap("Iniciar sesión", wait=5)
 # ---------- fotos completas (fotos de muestra con marco rojo y esquinas marcadas; solo en la copia de prueba) ----------
 say("— fotos —")
-def swipe_to(text, n=5):
+def swipe_to(text, n=6):
+    # desplaza hasta que el elemento quede bien visible (por encima de la barra inferior)
     for _ in range(n):
-        if find(text) is not None: return True
+        nd = find(text)
+        if nd is not None and center(nd)[1] < 1550: return True
         adb("shell", "input", "swipe", "540", "1500", "540", "700", "450"); time.sleep(1.1)
-    return find(text) is not None
+    nd = find(text); return nd is not None and center(nd)[1] < 1550
 relaunch(["--es", "tema", "noche", "--es", "fotos", "si", "--es", "escala", "1.0"])
 tap("Encargos", exact=True, wait=2, last=True)
 if tap("Cliente Prueba", wait=2):
