@@ -131,7 +131,7 @@ fun NewOrderScreen(forName: String?, forPhone: String?) {
         }
         item {
             StepCard(4, Icons.Outlined.PhotoCamera, "Captura de la compra", "Opcional · foto o captura de pantalla", photo.isNotEmpty()) {
-                if (photo.isNotEmpty()) Photo(Images.decode(photo), Modifier.fillMaxWidth().height(180.dp)) { ui.ask("Quitar foto", "¿Quitar la foto de este encargo?", "Quitar", true) { photo = "" } }
+                if (photo.isNotEmpty()) FitPhoto(Images.decode(photo), maxHeight = 260) { ui.ask("Quitar foto", "¿Quitar la foto de este encargo?", "Quitar", true) { photo = "" } }
                 val dsh = RoundedCornerShape(16.dp)
                 Row(Modifier.fillMaxWidth().clip(dsh).background(W.tile).dashedBorder(W.line2, 16.dp).clickable { pick.launch("image/*") }.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconTile(Icons.Filled.AddAPhoto, W.vio, 40); Spacer(Modifier.width(12.dp))

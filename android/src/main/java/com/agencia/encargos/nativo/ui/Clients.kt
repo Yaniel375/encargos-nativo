@@ -18,6 +18,15 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.Phone
+import androidx.compose.material.icons.outlined.Favorite
+import androidx.compose.material.icons.outlined.ContactPage
+import androidx.compose.material.icons.outlined.Place
+import androidx.compose.material.icons.outlined.StickyNote2
+import androidx.compose.material.icons.outlined.Inventory2
+import androidx.compose.material.icons.outlined.Payments
+import androidx.compose.material.icons.outlined.PhotoLibrary
+import com.agencia.encargos.core.objs
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -81,62 +90,96 @@ fun ClientCard(c: com.agencia.encargos.core.Encargos.Client) {
     }
 }
 
+/* ======================= Ficha del cliente ======================= */
 @Composable
 fun ClientScreen(name: String) {
     val ui = LocalUi.current; val core = ui.core; val v = LocalVersion.current
     val c = core.findClient(name) ?: run { Empty("Este cliente ya no existe."); return }
     val inf = core.clientInfo(c.name); var edit by remember { mutableStateOf(false) }
+    var viewer by remember { mutableStateOf<Pair<List<String>, Int>?>(null) }
+    val orders = c.orders.sortedByDescending { Js.parseDate(it["date"]).let { d -> if (d.isNaN()) 0.0 else d } }
     val total = c.orders.sumOf { Js.num(it["total"]) }
+    val first = c.orders.minOfOrNull { Js.parseDate(it["date"]).let { d -> if (d.isNaN()) Double.MAX_VALUE else d } }
+    val pays = orders.flatMap { x -> core.payments(x).objs().mapIndexed { i, h -> Triple(x, i, h) } }.sortedByDescending { Js.parseDate(it.third["date"]).let { d -> if (d.isNaN()) 0.0 else d } }
+    val shots = orders.flatMap { core.orderPhotos(it) }
+    val owes = c.pending > 0.005
     Page {
+        // ---- cabecera: quién es y cómo está su cuenta ----
         item {
             SectionCard {
-                Row(verticalAlignment = Alignment.CenterVertically) { Avatar(c.name, C.blue, 56); Spacer(Modifier.width(12.dp)); Column { Text(c.name, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold); Text("${c.phone.ifEmpty { "Sin teléfono" }} · ${c.orders.size} ${if (c.orders.size == 1) "encargo" else "encargos"}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp) } }
-                Row { Text("Pagado ${money(c.paid)} de ${money(total)}", Modifier.weight(1f), fontSize = 13.5.sp); Text(if (c.pending > 0.005) "Debe ${money(c.pending)}" else "Al día", color = if (c.pending > 0.005) C.rose else C.green, fontWeight = FontWeight.ExtraBold, fontSize = 13.5.sp) }
-                ProgressBar(if (total > 0) c.paid / total else 1.0)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Avatar(c.name, if (owes) C.rose else C.blue, 60); Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(c.name, fontSize = 21.sp, fontWeight = FontWeight.ExtraBold, maxLines = 2)
+                        IconLabel(Icons.Outlined.Phone, c.phone.ifEmpty { "Sin teléfono" })
+                        if (first != null && first < Double.MAX_VALUE) Text("Cliente desde ${Js.fmt(first).substringBefore(",")}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Chip(if (owes) "Debe" else "Al día", if (owes) C.rose else C.green)
+                }
+                // saldo: rojo si debe, verde si está al día o tiene fondo a favor
+                val shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+                Column(Modifier.fillMaxWidth().clip(shape).background((if (owes) C.rose else C.green).copy(alpha = .08f)).border(1.dp, (if (owes) C.rose else C.green).copy(alpha = .30f), shape).padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Column(Modifier.weight(1f)) {
+                            Text(if (owes) "Pendiente por cobrar" else "Cuenta al día", fontSize = 12.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(if (owes) "- " + money(countUp(c.pending)) else money(0), fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, color = if (owes) C.rose else C.green)
+                        }
+                        if (c.funds > 0.005) Column(horizontalAlignment = Alignment.End) {
+                            Text("Fondo a favor", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("+ " + money(c.funds), fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, color = C.green)
+                        }
+                    }
+                    ProgressBar(if (total > 0) c.paid / total else 1.0)
+                    Text("Pagó ${money(c.paid)} de ${money(total)}" + if (total > 0) " · ${Math.round((c.paid / total).coerceIn(0.0, 1.0) * 100)} %" else "", fontSize = 12.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Kpi("Encargos", "${c.orders.size}", modifier = Modifier.weight(1f)); Kpi("Libras", lb(c.pounds), modifier = Modifier.weight(1f)); Kpi("Cobrado", money(c.paid), C.green, modifier = Modifier.weight(1f))
+                }
             }
         }
-        item {
-            SectionCard("Datos del cliente", action = { Text(if (inf.str("address").isEmpty() && inf.str("note").isEmpty()) "Agregar ✎" else "Editar ✎", color = C.blue, fontWeight = FontWeight.Bold, modifier = Modifier.clickable { edit = true }) }) {
-                if (inf.str("address").isEmpty() && inf.str("note").isEmpty()) Text("Guarda su dirección de entrega y detalles importantes (tallas, preferencias, horarios…).", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (inf.str("address").isNotEmpty()) { Text("Dirección", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(inf.str("address")) }
-                if (inf.str("note").isNotEmpty()) { Text("Nota fija", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(inf.str("note")) }
-            }
-        }
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Kpi("Encargos", "${c.orders.size}", modifier = Modifier.weight(1f)); Kpi("Libras", lb(c.pounds), modifier = Modifier.weight(1f)); Kpi("A favor", if (c.funds > 0) "+ " + money(c.funds) else "$0.00", C.green, modifier = Modifier.weight(1f)) }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Kpi("Cobrado", money(c.paid), C.green, modifier = Modifier.weight(1f)); Kpi("Pendiente", if (c.pending > 0) "- " + money(c.pending) else "$0.00", C.rose, modifier = Modifier.weight(1f)) }
-            }
-        }
+        // ---- acciones ----
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Primary("Nuevo encargo", Modifier.weight(1f), Icons.Filled.Add) { ui.go(Screen.NewFor(c.name, c.phone)) }
-                    if (c.pending > 0.005) Secondary("Cobrar", Modifier.weight(1f).height(52.dp), Icons.Filled.Chat, color = C.green) { ui.whatsapp(c.phone, core.reminderClient(c), c.name) }
+                    if (owes) Secondary("Cobrar", Modifier.weight(1f).height(52.dp), Icons.Filled.Chat, color = C.green) { ui.whatsapp(c.phone, core.reminderClient(c), c.name) }
                     else Secondary("WhatsApp", Modifier.weight(1f).height(52.dp), Icons.Filled.Chat, color = C.green) { ui.whatsapp(c.phone, "", c.name) }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Secondary("Avisar llegada", Modifier.weight(1f), Icons.Filled.Inventory2) { ui.whatsapp(c.phone, core.arrivalMessage(c), c.name) }
-                    if (c.pending <= 0.005) Secondary("Agradecer compra", Modifier.weight(1f)) { ui.whatsapp(c.phone, core.thanksClient(c), c.name) }
+                    if (!owes) Secondary("Agradecer compra", Modifier.weight(1f), Icons.Outlined.Favorite) { ui.whatsapp(c.phone, core.thanksClient(c), c.name) }
                 }
             }
         }
+        // ---- datos fijos del cliente ----
         item {
-            SectionCard("Encargos") {
-                c.orders.sortedByDescending { Js.parseDate(it["date"]) }.forEach { x ->
-                    val b = Js.num(x["balance"]); val t = Js.num(x["total"]); val id = Js.str(x["id"])
+            SectionCard("Datos del cliente", icon = Icons.Outlined.ContactPage, action = { Text(if (inf.str("address").isEmpty() && inf.str("note").isEmpty()) "Agregar ✎" else "Editar ✎", color = C.blue, fontWeight = FontWeight.Bold, modifier = Modifier.clickable { edit = true }) }) {
+                if (inf.str("address").isEmpty() && inf.str("note").isEmpty()) Text("Guarda su dirección de entrega y detalles importantes (tallas, preferencias, horarios…).", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (inf.str("address").isNotEmpty()) InfoLine(Icons.Outlined.Place, "Dirección", inf.str("address"))
+                if (inf.str("note").isNotEmpty()) InfoLine(Icons.Outlined.StickyNote2, "Nota fija", inf.str("note"))
+            }
+        }
+        // ---- encargos ----
+        item {
+            SectionCard("Encargos (${orders.size})", icon = Icons.Outlined.Inventory2) {
+                orders.forEach { x ->
+                    val b = Js.num(x["balance"]); val t = Js.num(x["total"]); val id = Js.str(x["id"]); val ph = core.orderPhotos(x)
                     val sh = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
                     Column(Modifier.fillMaxWidth().clip(sh).background(W.tile).border(1.dp, W.line, sh).clickable { ui.go(Screen.Order(id)) }.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
-                                Text("${Js.fmt(x["date"])} · ${core.shippingName(core.typeOf(x))} ${lb(Js.num(x["pounds"]))}", fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, maxLines = 1)
-                                Row { Text("Total ${money(t)} · ", fontSize = 12.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Text(if (b > 0.005) "Debe ${money(b)}" else if (b < -0.005) "A favor ${money(-b)}" else "Pagado", fontSize = 12.5.sp, color = if (b > 0.005) C.rose else C.green, fontWeight = FontWeight.Bold) }
-                                Text("${core.orderLabel(x)} · ${money(x["lbCost"])}/lb", fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("${Js.fmt(x["date"]).substringBefore(",")} · ${core.shippingName(core.typeOf(x))} ${lb(Js.num(x["pounds"]))}", fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, maxLines = 1)
+                                Text("${core.orderLabel(x)} · ${money(x["lbCost"])}/lb", fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                             }
                             StatusChip(x.str("status"))
                         }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Kpi("Total", money(t), modifier = Modifier.weight(1f)); Kpi("Pagado", money(x["paid"]), C.green, modifier = Modifier.weight(1f))
+                            Kpi(if (b < -0.005) "A favor" else "Saldo", if (b > 0.005) "- " + money(b) else if (b < -0.005) "+ " + money(-b) else "$0.00", if (b > 0.005) C.rose else C.green, modifier = Modifier.weight(1f))
+                        }
                         ProgressBar(if (t > 0) Js.num(x["paid"]) / t else 1.0)
+                        if (ph.isNotEmpty()) PhotoStrip(ph, 84) { viewer = ph to it }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             CardBtn("Ficha", Icons.Outlined.Description, Modifier.weight(1f)) { ui.go(Screen.Order(id)) }
                             CardBtn("Editar", Icons.Filled.Edit, Modifier.weight(1f)) { ui.go(Screen.EditOrder(id)) }
@@ -145,9 +188,43 @@ fun ClientScreen(name: String) {
                 }
             }
         }
+        // ---- pagos de todos sus encargos ----
+        item {
+            SectionCard("Pagos (${pays.size})", icon = Icons.Outlined.Payments) {
+                if (pays.isEmpty()) Text("Todavía no hay pagos registrados.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                pays.take(30).forEachIndexed { k, (x, i, h) ->
+                    if (k > 0) RowSep()
+                    Row(Modifier.fillMaxWidth().clickable { editPaymentState.value = Pair(Js.str(x["id"]), i) }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("${dayLabel(h["date"])} · ${h.str("method").ifEmpty { "Efectivo" }}", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text(core.orderLabel(x) + if (h.str("note").isNotEmpty()) " · " + h.str("note") else "", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                        }
+                        Text("+ " + money(h["amount"]), color = C.green, fontWeight = FontWeight.ExtraBold)
+                    }
+                }
+                if (pays.isNotEmpty()) Text("Toca un pago para corregirlo o eliminarlo.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        // ---- todas las capturas de sus pedidos ----
+        if (shots.isNotEmpty()) item {
+            SectionCard("Capturas de pedidos (${shots.size})", icon = Icons.Outlined.PhotoLibrary) {
+                PhotoStrip(shots, 120) { viewer = shots to it }
+                Text("Toca una captura para verla completa y ampliarla.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
     }
     if (edit) ClientInfoDialog(c.name, inf.str("address"), inf.str("note")) { edit = false }
+    viewer?.let { (l, i) -> PhotoViewer(l, i, null) { viewer = null } }
+    PaymentEditHost()
     @Suppress("UNUSED_VARIABLE") val u = v
+}
+
+/** Dato del cliente con icono, etiqueta pequeña y valor. */
+@Composable private fun InfoLine(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, value: String) {
+    Row(verticalAlignment = Alignment.Top) {
+        IconTile(icon, size = 32); Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) { Text(label, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(value, fontSize = 14.sp) }
+    }
 }
 
 @Composable

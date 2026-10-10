@@ -29,6 +29,7 @@ class MainActivity : FragmentActivity() {
         // Solo en la copia de PRUEBA automática: permite elegir el tema al abrir (recorrido día/noche)
         if (BuildConfig.CAPTURE_TEST) intent?.getStringExtra("tema")?.let { app.core.ls.set("encargos_aurora_mode", if (it == "dia") "day" else "night") }
         if (BuildConfig.CAPTURE_TEST) intent?.getStringExtra("escala")?.let { app.core.ls.set(com.agencia.encargos.nativo.ui.UiScale.KEY, it) }
+        if (BuildConfig.CAPTURE_TEST && intent?.getStringExtra("fotos") == "si") com.agencia.encargos.nativo.util.TestPhotos.seed(app.core)
         com.agencia.encargos.nativo.ui.UiScale.load(app.core.ls.get(com.agencia.encargos.nativo.ui.UiScale.KEY, "1"))
         setContent { EncargosTheme(day = app.core.ls.get("encargos_aurora_mode", "") == "day") { AppRoot(app, this) } }
     }

@@ -267,7 +267,7 @@ fun OrderScreen(id: String) {
         item {
             SectionCard("Fotos (${photos.size})") {
                 if (photos.isEmpty()) Text("Puedes agregar fotos desde Editar.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) { photos.forEachIndexed { i, s -> Photo(Images.decode(s, 400), Modifier.size(96.dp)) { viewer = i } } }
+                if (photos.size == 1) FitPhoto(Images.decode(photos[0], 1000), maxHeight = 340) { viewer = 0 } else PhotoStrip(photos, 130) { viewer = it }
             }
         }
         item {
@@ -287,15 +287,6 @@ fun OrderScreen(id: String) {
     if (receipt) ReceiptDialog(x) { receipt = false }
     note?.let { n -> NoteDialog(n, { note = null }) { t2 -> if (core.setNote(x["id"], t2)) ui.toast("✅ Nota guardada."); note = null } }
     @Suppress("UNUSED_VARIABLE") val u = v
-}
-
-@Composable
-fun PhotoViewer(list: List<String>, start: Int, onDelete: ((Int) -> Unit)?, dismiss: () -> Unit) {
-    var i by remember { mutableStateOf(start) }
-    AlertDialog(onDismissRequest = dismiss, confirmButton = { TextButton(onClick = dismiss) { Text("Cerrar") } },
-        dismissButton = { Row { if (list.size > 1) { TextButton(onClick = { i = (i - 1 + list.size) % list.size }) { Text("‹") }; TextButton(onClick = { i = (i + 1) % list.size }) { Text("›") } }
-            if (onDelete != null) TextButton(onClick = { onDelete(i) }) { Text("Eliminar foto", color = C.rose) } } },
-        text = { Photo(Images.decode(list.getOrNull(i), 1400), Modifier.fillMaxWidth().height(380.dp)) })
 }
 
 /* ======================= Editar encargo (estado, libras, pago, fotos) ======================= */
@@ -358,7 +349,7 @@ fun EditOrderScreen(id: String) {
         }
         item {
             SectionCard("Fotos del encargo") {
-                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) { photos.forEachIndexed { i, s -> Photo(Images.decode(s, 400), Modifier.size(90.dp)) { viewer = i } } }
+                PhotoStrip(photos, 110) { viewer = it }
                 Secondary("Agregar foto", Modifier.fillMaxWidth(), Icons.Filled.AddAPhoto) { pick.launch("image/*") }
             }
         }

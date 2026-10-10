@@ -88,6 +88,8 @@ fun NotesScreen() {
 @Composable
 fun NoteCard(n: JObj, modifier: Modifier, open: () -> Unit) {
     val ui = LocalUi.current
+    var viewer by remember { mutableStateOf<Pair<List<String>, Int>?>(null) }
+    viewer?.let { (l, i) -> PhotoViewer(l, i, null) { viewer = null } }
     val c = NOTE_COLORS[n.str("color")] ?: C.blue
     Column(modifier.glass(RoundedCornerShape(18.dp)).clickable { open() }.padding(13.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) { Box(Modifier.size(9.dp).clip(CircleShape).background(c)); Text("  " + n.str("title").ifEmpty { "Sin título" }, fontWeight = FontWeight.ExtraBold, maxLines = 2, modifier = Modifier.weight(1f)); if (Js.truthy(n["pinned"])) Text("📌", fontSize = 12.sp) }
@@ -97,7 +99,7 @@ fun NoteCard(n: JObj, modifier: Modifier, open: () -> Unit) {
             Text("🔗 " + u.removePrefix("https://").removePrefix("http://").take(40), color = C.blue, fontSize = 12.5.sp, fontWeight = FontWeight.Bold, maxLines = 1,
                 modifier = Modifier.fillMaxWidth().clip(sh).background(W.tile).border(1.dp, W.line, sh).clickable { Files.open(ui.act, fullUrl(u)) }.padding(horizontal = 10.dp, vertical = 8.dp)) }
         val ph = (n["photos"] as? JArr)?.filterIsInstance<String>() ?: emptyList()
-        if (ph.isNotEmpty()) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) { ph.forEach { Photo(Images.decode(it, 300), Modifier.size(60.dp)) } }
+        if (ph.size == 1) FitPhoto(Images.decode(ph[0], 700), maxHeight = 200) { viewer = ph to 0 } else if (ph.isNotEmpty()) PhotoStrip(ph, 84) { viewer = ph to it }
         Text(dayLabel(n["updated"]), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
@@ -120,7 +122,7 @@ fun NoteEditor(n: JObj?, close: () -> Unit) {
         item { Field(amt, { amt = it }, "Me deben (opcional)", number = true, prefix = "$") }
         item {
             SectionCard("Fotos de artículos") {
-                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) { photos.forEachIndexed { i, s -> Photo(Images.decode(s, 300), Modifier.size(80.dp)) { viewer = i } } }
+                if (photos.isNotEmpty()) PhotoStrip(photos.toList(), 110) { viewer = it }
                 Secondary("Agregar foto", Modifier.fillMaxWidth(), Icons.Filled.AddAPhoto) { pick.launch("image/*") }
             }
         }
