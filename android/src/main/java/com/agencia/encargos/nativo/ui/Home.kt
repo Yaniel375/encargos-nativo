@@ -126,15 +126,17 @@ fun HomeScreen() {
                 list.forEachIndexed { i, p ->
                     if (i > 0) HorizontalDivider(color = W.line)
                     val x = core.orders().firstOrNull { Js.str(it["id"]) == p.orderId }
-                    Row(Modifier.fillMaxWidth().clickable { ui.go(Screen.Order(p.orderId)) }.padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    val done = x != null && Js.num(x["total"]) > 0 && Js.num(x["balance"]) <= 0.005
+                    // fila compacta: inicial · cliente y fecha/método · importe (y "Saldado" si ya no debe nada)
+                    Row(Modifier.fillMaxWidth().clickable { ui.go(Screen.Order(p.orderId)) }.padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Avatar(p.client, C.green, 32); Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f)) {
-                            Text(payDate(p.p["date"]), fontSize = 12.5.sp, fontWeight = FontWeight.Bold)
                             Text(p.client, fontSize = 13.5.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text(p.p.str("method").ifEmpty { "Efectivo" }, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(payDate(p.p["date"]) + " · " + p.p.str("method").ifEmpty { "Efectivo" }, fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                         }
-                        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(money(p.p["amount"]), fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
-                            if (x != null && Js.num(x["total"]) > 0 && Js.num(x["balance"]) <= 0.005) Chip("Completado", W.green)
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text("+ " + money(p.p["amount"]), fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = C.green)
+                            if (done) Text("Saldado", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }

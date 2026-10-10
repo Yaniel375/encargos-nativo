@@ -233,7 +233,7 @@ private fun Header(ui: Ui, app: EncargosApp, lock: () -> Unit, modifier: Modifie
                 }
                 Icon(Icons.Filled.KeyboardArrowDown, "Más", Modifier.size(18.dp), tint = W.mut)
             }
-            DropdownMenu(menu, { menu = false }, shape = RoundedCornerShape(18.dp), containerColor = W.menu, modifier = Modifier.width(300.dp).border(1.dp, W.line2, RoundedCornerShape(18.dp))) {
+            DropdownMenu(menu, { menu = false }, shape = RoundedCornerShape(18.dp), containerColor = W.menu, modifier = Modifier.width(250.dp).border(1.dp, W.line2, RoundedCornerShape(18.dp))) {
                 ProfileMenu(ui, app, lock) { menu = false }
             }
         }
@@ -248,46 +248,43 @@ private fun ProfileMenu(ui: Ui, app: EncargosApp, lock: () -> Unit, close: () ->
     val core = app.core
     // cada acción cierra primero el menú: un toque = una sola navegación
     fun act(f: () -> Unit) { close(); tapFeedback(); f() }
-    Column(Modifier.padding(horizontal = 10.dp, vertical = 2.dp)) {
-        // cabecera: avatar, nombre y rol; la flecha abre los ajustes (su destino actual)
+    Column(Modifier.padding(horizontal = 8.dp, vertical = 2.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        // cabecera compacta: avatar, nombre y usuario; la flecha abre los ajustes (su destino actual)
         val src0 = remember { MutableInteractionSource() }
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable(src0, null) { act { ui.go(Screen.Settings) } }.padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Avatar(core.greetName.ifEmpty { "E" }, C.blue, 42); Spacer(Modifier.width(12.dp))
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(src0, null) { act { ui.go(Screen.Settings) } }.padding(horizontal = 6.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Avatar(core.greetName.ifEmpty { "E" }, C.blue, 34); Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
-                Text(core.greetName.ifEmpty { "Mi cuenta" }, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = W.tx, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(app.security.userName().ifEmpty { "admin" }, fontSize = 13.sp, color = W.mut, maxLines = 1)
+                Text(core.greetName.ifEmpty { "Mi cuenta" }, fontWeight = FontWeight.ExtraBold, fontSize = 14.5.sp, color = W.tx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(app.security.userName().ifEmpty { "admin" }, fontSize = 11.5.sp, color = W.mut, maxLines = 1)
             }
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Ver perfil y ajustes", Modifier.size(22.dp), tint = W.mut)
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Ver perfil y ajustes", Modifier.size(18.dp), tint = W.mut)
         }
-        Spacer(Modifier.height(8.dp))
-        // fila principal: tres accesos del mismo tamaño
-        Row(Modifier.fillMaxWidth()) {
+        // tres accesos en recuadros iguales
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             listOf(Triple(Screen.Payments, "Pagos", Icons.Outlined.CreditCard), Triple(Screen.Stats, "Estadísticas", Icons.Outlined.BarChart), Triple(Screen.Settings, "Ajustes", Icons.Outlined.Settings)).forEach { (s, l, ic) ->
-                val src = remember { MutableInteractionSource() }
-                Column(Modifier.weight(1f).pressBounce(src, .93f).clip(RoundedCornerShape(14.dp)).clickable(src, null) { act { if (ui.current != s) ui.go(s) } }.padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(ic, s.title, Modifier.size(22.dp), tint = W.tx); Spacer(Modifier.height(6.dp))
-                    Text(l, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = W.tx, maxLines = 1)
+                val src = remember { MutableInteractionSource() }; val sh = RoundedCornerShape(12.dp)
+                Column(Modifier.weight(1f).pressBounce(src, .94f).clip(sh).background(W.tile).border(1.dp, W.line, sh).clickable(src, null) { act { if (ui.current != s) ui.go(s) } }.padding(vertical = 9.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(ic, s.title, Modifier.size(19.dp), tint = W.blueInk); Spacer(Modifier.height(4.dp))
+                    Text(l, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = W.tx, maxLines = 1)
                 }
             }
         }
-        Box(Modifier.padding(vertical = 8.dp).fillMaxWidth().height(1.dp).background(W.line))
-        // modo día / noche (un solo control; texto e icono según el modo activo)
+        Box(Modifier.fillMaxWidth().padding(horizontal = 4.dp).height(1.dp).background(W.line))
+        // modo día / noche y bloquear: filas compactas
         val day = W.day
-        val srcT = remember { MutableInteractionSource() }
-        Row(Modifier.fillMaxWidth().pressBounce(srcT, .97f).clip(RoundedCornerShape(14.dp)).clickable(srcT, null) { act { core.ls.set("encargos_aurora_mode", if (day) "night" else "day"); ui.act.recreate() } }.padding(horizontal = 6.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconTile(if (day) Icons.Outlined.DarkMode else Icons.Outlined.LightMode, W.tx, 38); Spacer(Modifier.width(14.dp))
-            Text(if (day) "Modo noche" else "Modo día", fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = W.tx)
+        @Composable fun MenuRow(icon: ImageVector, text: String, color: Color, tint: Color, bg: Color, f: () -> Unit) {
+            val src = remember { MutableInteractionSource() }
+            Row(Modifier.fillMaxWidth().pressBounce(src, .97f).clip(RoundedCornerShape(12.dp)).clickable(src, null) { act(f) }.padding(horizontal = 6.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+                val ts = RoundedCornerShape(10.dp)
+                Box(Modifier.size(30.dp).clip(ts).background(bg).border(1.dp, tint.copy(alpha = .25f), ts), contentAlignment = Alignment.Center) { Icon(icon, null, Modifier.size(16.dp), tint = tint) }
+                Spacer(Modifier.width(10.dp))
+                Text(text, fontWeight = FontWeight.SemiBold, fontSize = 13.5.sp, color = color)
+            }
         }
-        Spacer(Modifier.height(4.dp))
-        // bloquear: usa el bloqueo existente
-        val srcL = remember { MutableInteractionSource() }
-        Row(Modifier.fillMaxWidth().pressBounce(srcL, .97f).clip(RoundedCornerShape(14.dp)).clickable(srcL, null) { act { lock() } }.padding(horizontal = 6.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            val ls = RoundedCornerShape(12.dp)
-            Box(Modifier.size(38.dp).clip(ls).background(C.rose.copy(alpha = .12f)).border(1.dp, C.rose.copy(alpha = .35f), ls), contentAlignment = Alignment.Center) { Icon(Icons.Outlined.Lock, null, Modifier.size(18.dp), tint = C.rose) }
-            Spacer(Modifier.width(14.dp))
-            Text("Bloquear app", fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = C.rose)
-        }
-        Spacer(Modifier.height(4.dp))
+        MenuRow(if (day) Icons.Outlined.DarkMode else Icons.Outlined.LightMode, if (day) "Modo noche" else "Modo día", W.tx, W.tx, W.tile) {
+            core.ls.set("encargos_aurora_mode", if (day) "night" else "day"); ui.act.recreate() }
+        MenuRow(Icons.Outlined.Lock, "Bloquear app", C.rose, C.rose, C.rose.copy(alpha = .10f)) { lock() }
     }
 }
 
