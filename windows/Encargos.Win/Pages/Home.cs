@@ -29,7 +29,7 @@ public sealed class HomePage : Screen
         // .aHero: anillo + "Por cobrar"
         var total = d.Paid + d.Pending; var pct = total > 0 ? d.Paid / total * 100 : 0;
         Grid Leg(Brush c, string l, string v, Brush? vc = null) { var g = Lead(Dot(c, 8), T(l, 13.5, false, Mut), T(v, 13.5, true, vc, false)); g.ColumnSpacing = 8; return g; }
-        var hero = Card(Lead(Ring(pct, "cobrado", 100), V(2, T("Por cobrar", 12.5, true, Mut), Counted(Big("", null, 32), d.Pending, Money), V(3, Leg(Green, "Cobrado", Money(d.Paid), Green), Leg(Rose, "Pendiente", Money(d.Pending), Rose)))));
+        var hero = Card(Lead(Ring(pct, "cobrado", 100), V(2, T("Por cobrar", 12.5, true, Mut), Counted(Big("", null, 32), d.Pending, v => Money(v)), V(3, Leg(Green, "Cobrado", Money(d.Paid), Green), Leg(Rose, "Pendiente", Money(d.Pending), Rose)))));
         hero.Padding = new Thickness(20);
         UIElement Stat(string glyph, string label, string value, Brush? vc, Action go, double? num = null, Func<double, string>? fmt = null)
         {
