@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -55,3 +55,50 @@ jobs:
           name: Encargos-Android
           path: android/build/outputs/apk/release/*.apk
           if-no-files-found: error
+
+      - name: Publicar en la página de descargas (Releases)
+        if: github.ref == 'refs/heads/main'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p pub && cp android/build/outputs/apk/release/*.apk "pub/Encargos-Android.apk"
+          echo "::notice title=Archivo listo::Encargos-Android.apk $(du -h pub/Encargos-Android.apk | cut -f1)"
+          for i in 1 2 3; do
+            gh release view ultima >/dev/null 2>&1 || gh release create ultima --title "Encargos nativo · última versión" --notes "Descargas de Encargos nativo. Android: Encargos-Android.apk · Windows: Encargos_Windows_Setup.exe. No contienen ningún token: el bot se configura dentro de la app." --latest || true
+            gh release upload ultima "pub/Encargos-Android.apk" --clobber && break
+            sleep 10
+          done
+
+  prueba-en-vivo:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { name: Encargos-Android, path: apk }
+      - name: Activar KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+      - name: Abrir la app en un teléfono emulado y capturar pantallas
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          script: |
+            mkdir -p shots && adb logcat -c && adb install -r apk/*.apk && adb shell am start -W -n com.agencia.encargos.nativo/.MainActivity ; sleep 12 ; adb exec-out screencap -p > shots/android_1_inicio.png ; adb shell input tap 540 1500 ; sleep 3 ; adb exec-out screencap -p > shots/android_2.png ; adb logcat -d > shots/logcat.txt ; adb shell pidof com.agencia.encargos.nativo > shots/pid.txt || echo "NO" > shots/pid.txt
+      - name: Revisar cierres inesperados
+        run: |
+          grep -A40 "FATAL EXCEPTION" shots/logcat.txt | grep -v "^--$" > shots/crash.txt || true
+          grep -E "com.agencia.encargos|AndroidRuntime" shots/logcat.txt | tail -300 > shots/app_log.txt || true
+          rm -f shots/logcat.txt
+          if [ -s shots/crash.txt ]; then echo "::error title=La app se cerró::$(head -c 600 shots/crash.txt | tr '\n' ' ')"; else echo "::notice title=Android::La app abrió sin cerrarse (pid $(cat shots/pid.txt))"; fi
+      - name: Guardar capturas en la rama capturas-android
+        if: always()
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          cd shots && git init -q -b capturas-android && git add -A && git -c user.name=ci -c user.email=ci@local commit -qm "Capturas Android run ${{ github.run_number }}"
+          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}" capturas-android

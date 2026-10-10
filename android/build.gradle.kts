@@ -16,8 +16,10 @@ android {
         applicationId = "com.agencia.encargos.nativo"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        // En GitHub Actions cada compilación sube el número para que la app se pueda actualizar encima.
+        val run = (System.getenv("GITHUB_RUN_NUMBER") ?: "0").toIntOrNull() ?: 0
+        versionCode = 100 + run
+        versionName = "1.0.$run"
         vectorDrawables { useSupportLibrary = true }
     }
 
