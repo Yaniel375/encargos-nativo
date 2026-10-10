@@ -162,7 +162,7 @@ fun AppRoot(app: EncargosApp, act: FragmentActivity) {
     val snack = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val ui = remember { Ui(app, act, snack, scope) }
-    remember { Profile.photo = app.core.ls.get(Profile.KEY, ""); 0 }   // foto de perfil guardada en este dispositivo
+    remember { Profile.photo = app.core.ls.get(Profile.KEY, "") ?: ""; 0 }   // foto de perfil guardada en este dispositivo
     val v by app.version.collectAsState()
     val sv by app.syncVersion.collectAsState()
     val notice by app.notices.collectAsState()
