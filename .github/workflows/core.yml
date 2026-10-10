@@ -2,7 +2,7 @@ name: Núcleos (Kotlin + C#) y pruebas cruzadas
 
 on:
   push:
-    branches: [main]
+    branches: [main, rediseno-premium]
     paths: ["core/**", "windows/Encargos.Core/**", "windows/Encargos.Tests/**", "tests/**", ".github/workflows/core.yml"]
   workflow_dispatch:
 
@@ -25,10 +25,13 @@ jobs:
         with: { python-version: "3.12" }
 
       - name: Vectores Kotlin
-        run: gradle --no-daemon :core:vectors :core:testClasspath
+        run: gradle --no-daemon :core:vectors :core:funcional :core:testClasspath
 
       - name: Vectores C#
         run: dotnet run --project windows/Encargos.Tests -c Release -- vectors
+
+      - name: Pruebas funcionales C#
+        run: dotnet run --project windows/Encargos.Tests -c Release -- funcional
 
       - name: Compilar dispositivo C#
         run: dotnet build windows/Encargos.Tests -c Release -o out/cs

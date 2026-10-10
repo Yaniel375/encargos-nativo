@@ -5,6 +5,7 @@ using Encargos.Core;
 // Uso:  Encargos.Tests vectors [archivo.enc]
 //       Encargos.Tests device <puerto> <apiBase> <carpeta> [PC|ANDROID]
 Console.OutputEncoding = Encoding.UTF8;
+if (args.Length > 0 && args[0] == "funcional") return Funcional.Run();
 if (args.Length > 0 && args[0] == "device") { DeviceServer.Run(int.Parse(args[1]), args[2], args[3], args.Length > 4 ? args[4] : "PC"); return 0; }
 return Vectors.Run(args.Length > 1 ? args[1] : null);
 

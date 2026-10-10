@@ -2,7 +2,7 @@ name: Android (APK)
 
 on:
   push:
-    branches: [main]
+    branches: [main, rediseno-premium]
     paths: ["core/**", "android/**", "tests/android_tour.py", "*.kts", "gradle.properties", ".github/workflows/android.yml"]
   workflow_dispatch:
 
@@ -28,7 +28,7 @@ jobs:
       - name: Pruebas de compatibilidad del motor (core)
         run: |
           set -o pipefail
-          gradle --no-daemon :core:vectors 2>&1 | tee core.log || { grep -E "^e: |FAIL|❌|What went wrong" -A2 core.log | head -40 | while IFS= read -r l; do echo "::error::$l"; done; exit 1; }
+          gradle --no-daemon :core:vectors :core:funcional 2>&1 | tee core.log || { grep -E "^e: |FAIL|❌|What went wrong" -A2 core.log | head -40 | while IFS= read -r l; do echo "::error::$l"; done; exit 1; }
 
       - name: Preparar firma (clave cifrada del repositorio + contraseña en secreto de GitHub)
         env:

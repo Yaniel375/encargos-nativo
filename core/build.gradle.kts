@@ -14,3 +14,9 @@ tasks.register("testClasspath") {
     dependsOn("testClasses")
     doLast { layout.buildDirectory.file("cp.txt").get().asFile.writeText(sourceSets["test"].runtimeClasspath.asPath) }
 }
+// Pruebas funcionales (clientes, pagos, estados, persistencia, WhatsApp): gradle :core:funcional
+tasks.register<JavaExec>("funcional") {
+    group = "verification"; dependsOn("testClasses")
+    classpath = sourceSets["test"].runtimeClasspath
+    mainClass.set("com.agencia.encargos.core.Funcional")
+}

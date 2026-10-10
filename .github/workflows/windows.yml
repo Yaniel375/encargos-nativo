@@ -2,7 +2,7 @@ name: Windows (instalador)
 
 on:
   push:
-    branches: [main]
+    branches: [main, rediseno-premium]
     paths: ["windows/**", ".github/workflows/windows.yml"]
   workflow_dispatch:
 
@@ -21,7 +21,9 @@ jobs:
           dotnet-version: "8.0.x"
 
       - name: Pruebas del núcleo C#
-        run: dotnet run --project windows/Encargos.Tests -c Release -- vectors
+        run: |
+          dotnet run --project windows/Encargos.Tests -c Release -- vectors
+          dotnet run --project windows/Encargos.Tests -c Release -- funcional
 
       - name: Compilar la app (WinUI 3, autocontenida x64)
         shell: bash
