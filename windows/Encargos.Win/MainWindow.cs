@@ -70,6 +70,67 @@ public sealed class MainWindow : Window
         if (sec.HasCredentials() && !sec.GetLockCfg().OnOpen) { Unlock(false); }
         else ShowLock();
         _tick.Start();
+        if (Services.SelfTestDir != null) _ = SelfTest(Services.SelfTestDir);
+    }
+
+    /* ---------------- autoprueba (solo con ENCARGOS_SELFTEST, carpeta de datos aparte) ---------------- */
+    public string? LastRenderError;
+    async Task SelfTest(string dir)
+    {
+        var log = new System.Text.StringBuilder(); var fails = 0;
+        void L(string s) { log.AppendLine(s); try { File.WriteAllText(Path.Combine(dir, "autoprueba.txt"), log.ToString()); } catch { } }
+        try
+        {
+            Directory.CreateDirectory(dir);
+            await Task.Delay(3000);
+            await Snap(dir, "00_acceso", L);
+            if (!Services.Security.HasCredentials()) Services.Security.SetCredentials("prueba", "clave123");
+            Unlock(true); await Task.Delay(1500);
+            var r = Services.Core.CreateOrder(new EncargosApp.NewOrder("Cliente Prueba", "55512345", 40, 7, 3, 10));
+            var x = r.Value;
+            L(r.Ok ? $"encargo de prueba creado: total {Js.Money(x!["total"])} · pagado {Js.Money(x["paid"])} · saldo {Js.Money(x["balance"])}" : "no se pudo crear el encargo: " + r.Error);
+            if (r.Ok && Js.Num(x!["total"]) != 61) { fails++; L("ERROR: el total debería ser $61.00"); }
+            var keys = new[] { "home", "clients", "new", "orders", "notes", "payments", "pending", "stats", "attention", "notifs", "completed", "backup", "security", "sync", "settings" };
+            var i = 1;
+            foreach (var k in keys)
+            {
+                LastRenderError = null; Root(PageFor(k)); await Task.Delay(900);
+                if (LastRenderError != null) { fails++; L($"ERROR en {k}: {LastRenderError}"); }
+                await Snap(dir, $"{i++:00}_{k}", L);
+            }
+            if (r.Ok)
+            {
+                foreach (var (name, page) in new (string, Screen)[] { ("ficha_encargo", new OrderPage(Js.Str(x!["id"]))), ("editar_encargo", new EditOrderPage(Js.Str(x["id"]))), ("ficha_cliente", new ClientPage("Cliente Prueba")), ("diagnostico_sync", new SyncDiagPage()) })
+                {
+                    LastRenderError = null; Go(page); await Task.Delay(900);
+                    if (LastRenderError != null) { fails++; L($"ERROR en {name}: {LastRenderError}"); }
+                    await Snap(dir, $"{i++:00}_{name}", L);
+                }
+            }
+            L(fails == 0 ? "RESULTADO: OK" : $"RESULTADO: {fails} error(es)");
+        }
+        catch (Exception e) { L("RESULTADO: ERROR " + e.GetType().Name + ": " + Services.Redact(e.Message) + "\n" + e.StackTrace); }
+        await Task.Delay(500);
+        Application.Current.Exit();
+    }
+    async Task Snap(string dir, string name, Action<string> L)
+    {
+        try
+        {
+            var rtb = new Microsoft.UI.Xaml.Media.Imaging.RenderTargetBitmap();
+            await rtb.RenderAsync(_root);
+            var px = await rtb.GetPixelsAsync();
+            var bytes = System.Runtime.InteropServices.WindowsRuntime.WindowsRuntimeBufferExtensions.ToArray(px);
+            using var ms = new Windows.Storage.Streams.InMemoryRandomAccessStream();
+            var enc = await Windows.Graphics.Imaging.BitmapEncoder.CreateAsync(Windows.Graphics.Imaging.BitmapEncoder.PngEncoderId, ms);
+            enc.SetPixelData(Windows.Graphics.Imaging.BitmapPixelFormat.Bgra8, Windows.Graphics.Imaging.BitmapAlphaMode.Premultiplied, (uint)rtb.PixelWidth, (uint)rtb.PixelHeight, 96, 96, bytes);
+            await enc.FlushAsync();
+            ms.Seek(0);
+            using var outS = File.Create(Path.Combine(dir, name + ".png"));
+            await ms.AsStreamForRead().CopyToAsync(outS);
+            L($"captura {name} ({rtb.PixelWidth}x{rtb.PixelHeight})");
+        }
+        catch (Exception e) { L($"captura {name} falló: {e.GetType().Name} {e.Message}"); }
     }
 
     /* ---------------- estructura ---------------- */
@@ -124,7 +185,7 @@ public sealed class MainWindow : Window
         var off = _scroll.VerticalOffset;
         var panel = new StackPanel { Spacing = 12, Padding = new Thickness(28, 8, 28, 40), MaxWidth = 1000, HorizontalAlignment = HorizontalAlignment.Stretch };
         try { p.Build(panel); }
-        catch (Exception e) { Services.Report(e); panel.Children.Clear(); panel.Children.Add(Card(T("No se pudo mostrar esta pantalla.", 15, true), Muted(Services.Redact(e.Message)), Btn("Ir a Inicio", () => Root(new HomePage()), true))); }
+        catch (Exception e) { Services.Report(e); LastRenderError = e.GetType().Name + ": " + Services.Redact(e.Message); panel.Children.Clear(); panel.Children.Add(Card(T("No se pudo mostrar esta pantalla.", 15, true), Muted(Services.Redact(e.Message)), Btn("Ir a Inicio", () => Root(new HomePage()), true))); }
         _scroll.Content = panel;
         if (!top) { panel.UpdateLayout(); _scroll.ChangeView(null, off, null, true); } else _scroll.ChangeView(null, 0, null, true);
         _title.Text = p.Title;

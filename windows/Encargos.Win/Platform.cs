@@ -62,7 +62,9 @@ public sealed class DpapiSecrets : ISecrets
 /// <summary>Objetos únicos de la app.</summary>
 public static class Services
 {
-    public static readonly string DataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EncargosNativo");
+    /// <summary>Solo para la prueba automática: si existe, la app usa una carpeta de datos aparte y nunca toca los datos reales.</summary>
+    public static readonly string? SelfTestDir = Environment.GetEnvironmentVariable("ENCARGOS_SELFTEST") is { Length: > 0 } d ? d : null;
+    public static readonly string DataDir = SelfTestDir != null ? Path.Combine(SelfTestDir, "datos") : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EncargosNativo");
     static SqliteStorage? _storage;
     public static SqliteStorage Storage => _storage ??= Init();
     static SqliteStorage Init() { Directory.CreateDirectory(DataDir); return new SqliteStorage(Path.Combine(DataDir, "encargos.db")); }

@@ -3,7 +3,7 @@ name: Windows (instalador)
 on:
   push:
     branches: [main]
-    paths: ["windows/**", "tests/windows_tour.py", ".github/workflows/windows.yml"]
+    paths: ["windows/**", ".github/workflows/windows.yml"]
   workflow_dispatch:
 
 permissions:
@@ -63,8 +63,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with: { name: Encargos-Windows, path: setup }
-      - uses: actions/setup-python@v5
-        with: { python-version: "3.12" }
       - name: Instalar la app
         shell: pwsh
         run: |
@@ -73,17 +71,20 @@ jobs:
           if (!(Test-Path "$env:LOCALAPPDATA\Programs\Encargos Nativo\Encargos.exe")) { "::error::No se instaló Encargos.exe"; exit 1 }
           Get-Process Encargos -ErrorAction SilentlyContinue | Stop-Process -Force
           (New-Object -ComObject Shell.Application).MinimizeAll()
-      - name: Recorrer la app (datos de prueba)
+      - name: Autoprueba de la app (carpeta de datos aparte, datos de prueba)
         shell: pwsh
         run: |
-          pip install --quiet pywinauto pillow
-          python tests/windows_tour.py "$env:LOCALAPPDATA\Programs\Encargos Nativo\Encargos.exe" shots
-          if ($LASTEXITCODE -ne 0) { "FALLO" | Out-File shots\FALLO }
-          $log = "$env:LOCALAPPDATA\EncargosNativo\errores.log"
-          if (Test-Path $log) { Copy-Item $log shots\errores.log }
-          $last = (Get-Content shots\recorrido_windows.txt | Select-Object -Last 1)
-          $miss = (Select-String -Path shots\recorrido_windows.txt -Pattern "✗").Count
-          if (Test-Path shots\FALLO) { "::error title=Windows::$last" } else { "::notice title=Windows::$last · pasos no encontrados: $miss" }
+          $dir = "$PWD\shots"; New-Item -ItemType Directory -Force $dir | Out-Null
+          $env:ENCARGOS_SELFTEST = $dir
+          $p = Start-Process "$env:LOCALAPPDATA\Programs\Encargos Nativo\Encargos.exe" -PassThru
+          if (!$p.WaitForExit(180000)) { "::error title=Windows::La autoprueba no terminó en 3 minutos"; Stop-Process $p -Force; "FALLO" | Out-File "$dir\FALLO" }
+          $log = "$dir\datos\errores.log"; if (Test-Path $log) { Copy-Item $log "$dir\errores.log" }
+          Remove-Item -Recurse -Force "$dir\datos" -ErrorAction SilentlyContinue
+          if (!(Test-Path "$dir\autoprueba.txt")) { "::error title=Windows::La app se cerró antes de terminar (código $($p.ExitCode))"; "FALLO" | Out-File "$dir\FALLO"; exit 0 }
+          Get-Content "$dir\autoprueba.txt"
+          $last = (Get-Content "$dir\autoprueba.txt" | Select-String "RESULTADO" | Select-Object -Last 1)
+          if ("$last" -notmatch "RESULTADO: OK") { "::error title=Windows::$last"; "FALLO" | Out-File "$dir\FALLO" } else { "::notice title=Windows::$last" }
+          Get-Content "$dir\autoprueba.txt" | Select-String "ERROR|falló" | ForEach-Object { "::warning title=Windows::$_" }
           exit 0
       - name: Guardar capturas en la rama capturas-windows
         if: always()
