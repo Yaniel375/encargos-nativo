@@ -336,12 +336,33 @@ private fun waterPath(w: Float, h: Float, top: Float, amp: Float, phase: Float, 
         lineTo(left + w, h); close()
     }
 
+/** Fase 2 de los gráficos circulares: un brillo discreto que recorre la parte llena del anillo mientras la pantalla
+ *  está abierta (0..1 por pasada, con una pausa entre pasadas). Se detiene solo al salir de la pantalla, no reinicia el
+ *  llenado y no hace nada si el sistema pidió quitar animaciones o el valor es 0. */
+@Composable fun ringSweep(active: Boolean): Float {
+    val a = remember { Animatable(0f) }
+    LaunchedEffect(active) {
+        if (!active || !Motion.enabled) { a.snapTo(0f); return@LaunchedEffect }
+        while (true) { a.snapTo(0f); a.animateTo(1f, tween(2600, easing = androidx.compose.animation.core.LinearEasing)); delay(900) }
+    }
+    return a.value
+}
+/** Dibuja el brillo de la fase 2 sobre un arco que empieza arriba (-90°) y mide [filled] grados. */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.sweepGlow(filled: Float, t: Float, topLeft: Offset, sz: Size, stroke: Float) {
+    if (filled <= 2f || t <= 0f || t >= 1f) return
+    val seg = kotlin.math.min(34f, filled * .5f)
+    val start = -90f + (filled - seg) * t
+    val fade = kotlin.math.sin(Math.PI * t).toFloat()
+    drawArc(Color.White.copy(alpha = .55f * fade), start, seg, false, topLeft, sz, style = Stroke(stroke, cap = StrokeCap.Round))
+}
+
 /** Indicador "agua" de Pagos y Estadísticas: el círculo se llena hasta el % cobrado con una ola discreta que se calma
  *  al llegar; el porcentaje sube al mismo ritmo y termina en el valor real. */
 @Composable fun Gauge(pct: Double, label: String = "cobrado", size: Int = 150) {
     val target = (pct / 100).coerceIn(0.0, 1.0).toFloat()
-    val (fill, wave) = waterLevel(target)
+    val (fill, wave) = waterLevel(target, 1500)
     val shown = if (target > 0f && Motion.enabled && fill != target) pct * (fill / target) else pct
+    val t = ringSweep(target > 0f && fill == target)
     Box(Modifier.size(size.dp).semantics(mergeDescendants = true) { contentDescription = "${Math.round(pct)}% $label" }, contentAlignment = Alignment.Center) {
         Canvas(Modifier.size(size.dp)) {
             val r = this.size.minDimension / 2
@@ -359,6 +380,10 @@ private fun waterPath(w: Float, h: Float, top: Float, amp: Float, phase: Float, 
                 }
             }
             drawCircle(W.blue.copy(alpha = .45f), r - 1.5f, style = Stroke(3f))
+            // el borde también se llena siguiendo el círculo (mismo color, más intenso) y luego lo recorre un brillo sutil
+            val bi = 1.5f; val bsz = Size(this.size.width - bi * 2, this.size.height - bi * 2)
+            if (fill > 0f) drawArc(W.blue, -90f, 360f * fill, false, Offset(bi, bi), bsz, style = Stroke(3.5f, cap = StrokeCap.Round))
+            sweepGlow(360f * fill, t, Offset(bi, bi), bsz, 3.5f)
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) { val onWater = !W.day || fill > .55f
             Text("${Math.round(shown)}%", fontSize = (size / 6).sp, fontWeight = FontWeight.ExtraBold, color = if (onWater) Color.White else W.tx)
@@ -369,14 +394,16 @@ private fun waterPath(w: Float, h: Float, top: Float, amp: Float, phase: Float, 
 /** Anillo de cobro del inicio: el arco se dibuja y el % sube a la vez (pasa del valor anterior al nuevo si cambian los datos). */
 @Composable fun RingGauge(pct: Double, label: String = "cobrado", size: Int = 100) {
     val target = (pct / 100).coerceIn(0.0, 1.0).toFloat()
-    val (k, _) = waterLevel(target, 1100)
+    val (k, _) = waterLevel(target, 1500)
     val shown = if (target > 0f && Motion.enabled && k != target) pct * (k / target) else pct
+    val t = ringSweep(target > 0f && k == target)
     Box(Modifier.size(size.dp).semantics(mergeDescendants = true) { contentDescription = "${Math.round(pct)}% $label" }, contentAlignment = Alignment.Center) {
         Canvas(Modifier.size(size.dp)) {
             val sw = this.size.minDimension * .085f; val inset = sw / 2 + 2f
             val sz = Size(this.size.width - inset * 2, this.size.height - inset * 2)
             drawArc(W.track, 0f, 360f, false, Offset(inset, inset), sz, style = Stroke(sw))
             if (k > 0f) drawArc(Brush.sweepGradient(listOf(W.cyan, W.blue, Color(0xFF60A5FA), W.cyan)), -90f, 360f * k, false, Offset(inset, inset), sz, style = Stroke(sw, cap = StrokeCap.Round))
+            sweepGlow(360f * k, t, Offset(inset, inset), sz, sw)
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) { Text("${Math.round(shown)}%", fontSize = (size / 4.6).sp, fontWeight = FontWeight.ExtraBold); Text(label, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }

@@ -1,5 +1,6 @@
 using Encargos.Core;
 using Microsoft.UI;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -249,6 +250,61 @@ public static partial class K
         fill.Loaded += (_, _) => { var sb = new Storyboard(); sb.Children.Add(Fx.Anim(ct, "ScaleX", 0, 1, 900, 300)); sb.Completed += (_, _) => ct.ScaleX = 1; sb.Begin(); };
         return g;
     }
+    /* ---------- llenado circular (fase 1) y brillo que recorre el anillo (fase 2) ---------- */
+    static Point OnCircle(double c, double r, double deg) { var a = deg * Math.PI / 180; return new Point(c + r * Math.Cos(a), c + r * Math.Sin(a)); }
+    /// <summary>Geometría de un arco que empieza arriba (-90°) y mide [deg] grados (círculo completo si deg ≥ 360).</summary>
+    static Geometry ArcGeo(double c, double r, double deg)
+    {
+        deg = Math.Clamp(deg, 0, 360);
+        if (deg >= 359.9) return new EllipseGeometry { Center = new Point(c, c), RadiusX = r, RadiusY = r };
+        var fig = new PathFigure { StartPoint = OnCircle(c, r, -90), IsClosed = false, IsFilled = false };
+        fig.Segments.Add(new ArcSegment { Point = OnCircle(c, r, -90 + deg), Size = new Size(r, r), IsLargeArc = deg > 180, SweepDirection = SweepDirection.Clockwise });
+        var pg = new PathGeometry(); pg.Figures.Add(fig); return pg;
+    }
+    /// <summary>Capa de anillo: se llena siguiendo el círculo de 0 al valor real (1,5 s) y después un brillo discreto recorre la
+    /// parte llena mientras la pantalla está abierta. Se detiene al salir de la pantalla; sin animaciones del sistema, va directo al valor.</summary>
+    public static Grid ArcLayer(double size, double r, double thickness, Brush stroke, double frac)
+    {
+        frac = Math.Clamp(double.IsNaN(frac) ? 0 : frac, 0, 1);
+        var c = size / 2; var g = new Grid { Width = size, Height = size, IsHitTestVisible = false };
+        var arc = new Microsoft.UI.Xaml.Shapes.Path { Stroke = stroke, StrokeThickness = thickness, StrokeStartLineCap = PenLineCap.Round, StrokeEndLineCap = PenLineCap.Round, Data = ArcGeo(c, r, Fx.Enabled ? 0 : 360 * frac) };
+        g.Children.Add(arc);
+        var full = 360 * frac; var seg = Math.Min(34, full * .5);
+        var glow = new Microsoft.UI.Xaml.Shapes.Path { Stroke = Br(0x8CFFFFFFu), StrokeThickness = thickness, StrokeStartLineCap = PenLineCap.Round, StrokeEndLineCap = PenLineCap.Round, Data = ArcGeo(c, r, seg), Opacity = 0 };
+        var rot = new RotateTransform { CenterX = c, CenterY = c }; glow.RenderTransform = rot; g.Children.Add(glow);
+        Storyboard? loop = null; DispatcherQueueTimer? timer = null;
+        g.Loaded += (_, _) =>
+        {
+            if (!Fx.Enabled) { arc.Data = ArcGeo(c, r, full); return; }
+            // fase 1: llenado circular desde cero (cada vez que se entra en la pantalla)
+            var start = DateTime.UtcNow.AddMilliseconds(250);
+            timer = g.DispatcherQueue.CreateTimer(); timer.Interval = TimeSpan.FromMilliseconds(16);
+            timer.Tick += (_, _) =>
+            {
+                var k = Math.Clamp((DateTime.UtcNow - start).TotalMilliseconds / 1500, 0, 1); var e = 1 - Math.Pow(1 - k, 3);
+                arc.Data = ArcGeo(c, r, full * e);
+                if (k >= 1) { timer!.Stop(); arc.Data = ArcGeo(c, r, full); }
+            };
+            timer.Start();
+            // fase 2: brillo que recorre la parte llena (pasada de 2,6 s y pausa), sin vaciar ni cambiar el valor
+            if (full > 2)
+            {
+                var ang = new DoubleAnimationUsingKeyFrames { RepeatBehavior = RepeatBehavior.Forever };
+                ang.KeyFrames.Add(new LinearDoubleKeyFrame { KeyTime = TimeSpan.Zero, Value = 0 });
+                ang.KeyFrames.Add(new LinearDoubleKeyFrame { KeyTime = TimeSpan.FromMilliseconds(2600), Value = full - seg });
+                ang.KeyFrames.Add(new DiscreteDoubleKeyFrame { KeyTime = TimeSpan.FromMilliseconds(3500), Value = full - seg });
+                var op = new DoubleAnimationUsingKeyFrames { RepeatBehavior = RepeatBehavior.Forever };
+                foreach (var (ms, v) in new[] { (0, 0.0), (500, 1.0), (2100, 1.0), (2600, 0.0), (3500, 0.0) }) op.KeyFrames.Add(new LinearDoubleKeyFrame { KeyTime = TimeSpan.FromMilliseconds(ms), Value = v });
+                Storyboard.SetTarget(ang, rot); Storyboard.SetTargetProperty(ang, "Angle");
+                Storyboard.SetTarget(op, glow); Storyboard.SetTargetProperty(op, "Opacity");
+                loop = new Storyboard { BeginTime = TimeSpan.FromMilliseconds(1800) }; loop.Children.Add(ang); loop.Children.Add(op); loop.Begin();
+            }
+        };
+        // al salir de la pantalla se detiene todo (no consume CPU); al volver se crea de nuevo y empieza desde cero
+        g.Unloaded += (_, _) => { timer?.Stop(); loop?.Stop(); };
+        return g;
+    }
+
     /// <summary>Indicador "agua": el círculo se llena de azul hasta el % cobrado.</summary>
     public static Grid Gauge(double pct, string label = "cobrado", double size = 130)
     {
@@ -258,10 +314,11 @@ public static partial class K
         var s1 = new GradientStop { Color = baseC, Offset = 1 }; var s2 = new GradientStop { Color = Color.FromArgb(255, 0x60, 0xA5, 0xFA), Offset = 1 };
         var water = new LinearGradientBrush { StartPoint = new Point(.5, 0), EndPoint = new Point(.5, 1), GradientStops = { new GradientStop { Color = baseC, Offset = 0 }, s1, s2, new GradientStop { Color = Color.FromArgb(255, 0x25, 0x63, 0xEB), Offset = 1 } } };
         g.Children.Add(new Microsoft.UI.Xaml.Shapes.Ellipse { Fill = water, Stroke = Alpha(Blue, .45), StrokeThickness = 2.5 });
-        g.Loaded += (_, _) => { var to = 1 - fill; var sb = new Storyboard(); sb.Children.Add(Fx.Anim(s1, "Offset", 1, to, 1300, 250, dependent: true)); sb.Children.Add(Fx.Anim(s2, "Offset", 1, to, 1300, 250, dependent: true)); sb.Completed += (_, _) => { s1.Offset = to; s2.Offset = to; }; sb.Begin(); };
+        g.Loaded += (_, _) => { var to = 1 - fill; var sb = new Storyboard(); sb.Children.Add(Fx.Anim(s1, "Offset", 1, to, 1500, 250, dependent: true)); sb.Children.Add(Fx.Anim(s2, "Offset", 1, to, 1500, 250, dependent: true)); sb.Completed += (_, _) => { s1.Offset = to; s2.Offset = to; }; sb.Begin(); };
+        g.Children.Add(ArcLayer(size, size / 2 - 1.5, 3, Blue, fill));
         var onWater = !Day || fill > .55;
         var big = Big(Js.ToFixed(Math.Max(0, pct), 0) + "%", onWater ? White : Text, size / 6); var lab = T(label, 11, false, onWater ? Br(0xD9FFFFFFu) : Mut, false);
-        var finalPct = Math.Max(0, pct); g.Loaded += (_, _) => Fx.Count(big, finalPct, v => Js.ToFixed(v, 0) + "%", 1300, 250);
+        var finalPct = Math.Max(0, pct); g.Loaded += (_, _) => Fx.Count(big, finalPct, v => Js.ToFixed(v, 0) + "%", 1500, 250);
 
         var t = V(0, big, lab); t.HorizontalAlignment = HorizontalAlignment.Center; t.VerticalAlignment = VerticalAlignment.Center;
         foreach (var c in t.Children) ((FrameworkElement)c).HorizontalAlignment = HorizontalAlignment.Center;
@@ -272,10 +329,10 @@ public static partial class K
     {
         pct = double.IsNaN(pct) ? 0 : Math.Clamp(pct, 0, 100);
         var g = new Grid { Width = size, Height = size };
-        var ring = new ProgressRing { IsIndeterminate = false, Minimum = 0, Maximum = 100, Value = 0, Width = size, Height = size, Foreground = Blue, Background = Track };
-        g.Children.Add(ring);
-        ring.Loaded += (_, _) => { var sb = new Storyboard(); sb.Children.Add(Fx.Anim(ring, "Value", 0, pct, 1100, 250, dependent: true)); sb.Completed += (_, _) => ring.Value = pct; sb.Begin(); };
-        var rb = Big(Js.ToFixed(pct, 0) + "%", null, size / 4.6); var rp = pct; g.Loaded += (_, _) => Fx.Count(rb, rp, v => Js.ToFixed(v, 0) + "%", 1100, 250);
+        var th = size * .085; var r = (size - th) / 2 - 2;
+        g.Children.Add(new Microsoft.UI.Xaml.Shapes.Ellipse { Width = 2 * r + th, Height = 2 * r + th, Stroke = Track, StrokeThickness = th, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center });
+        g.Children.Add(ArcLayer(size, r, th, Blue, pct / 100));
+        var rb = Big(Js.ToFixed(pct, 0) + "%", null, size / 4.6); var rp = pct; g.Loaded += (_, _) => Fx.Count(rb, rp, v => Js.ToFixed(v, 0) + "%", 1500, 250);
         var t = V(0, rb, Muted(label, 11)); t.HorizontalAlignment = HorizontalAlignment.Center; t.VerticalAlignment = VerticalAlignment.Center;
         foreach (var c in t.Children) ((FrameworkElement)c).HorizontalAlignment = HorizontalAlignment.Center;
         g.Children.Add(t); return g;
