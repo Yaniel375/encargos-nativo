@@ -26,7 +26,9 @@ jobs:
           gradle-version: "8.9"
 
       - name: Pruebas de compatibilidad del motor (core)
-        run: gradle --no-daemon :core:vectors
+        run: |
+          set -o pipefail
+          gradle --no-daemon :core:vectors 2>&1 | tee core.log || { grep -E "^e: |FAIL|❌|What went wrong" -A2 core.log | head -40 | while IFS= read -r l; do echo "::error::$l"; done; exit 1; }
 
       - name: Preparar firma (clave cifrada del repositorio + contraseña en secreto de GitHub)
         env:
@@ -46,7 +48,12 @@ jobs:
           fi
 
       - name: Compilar APK
-        run: gradle --no-daemon --stacktrace :app:assembleRelease
+        run: |
+          set -o pipefail
+          gradle --no-daemon :app:assembleRelease 2>&1 | tee build.log || {
+            grep -E "^e: |error:|FAILURE|What went wrong" -A2 build.log | head -60 | while IFS= read -r l; do echo "::error::$l"; done
+            mkdir -p reg && cp build.log reg/android_build.log && cd reg && git init -q -b registros-android && git add -A && git -c user.name=ci -c user.email=ci@local commit -qm log && git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" registros-android
+            exit 1; }
 
       - uses: actions/upload-artifact@v4
         with:
