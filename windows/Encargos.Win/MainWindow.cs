@@ -533,9 +533,12 @@ public sealed class MainWindow : Window
             // mismo marco que el resto de la app: vidrio, borde fino, icono en recuadro junto al título y botones de la app
             var clean = CleanTitle(title);
             var head = Hs(12, IconTile(glyph ?? DialogGlyph(clean), 36), H(clean, 19)); ((FrameworkElement)head.Children[1]).VerticalAlignment = VerticalAlignment.Center;
-            var d = new ContentDialog { Title = head, Content = new ScrollViewer { Content = content, MaxHeight = 560 }, PrimaryButtonText = primary, XamlRoot = _root.XamlRoot, DefaultButton = ContentDialogButton.Primary, RequestedTheme = Day ? ElementTheme.Light : ElementTheme.Dark, CornerRadius = new CornerRadius(22), FontFamily = Font,
+            var d = new ContentDialog { Title = head, Content = new ScrollViewer { Content = content, MaxHeight = 560 }, PrimaryButtonText = primary, XamlRoot = _root.XamlRoot, DefaultButton = ContentDialogButton.None, RequestedTheme = Day ? ElementTheme.Light : ElementTheme.Dark, CornerRadius = new CornerRadius(22), FontFamily = Font,
                 Background = CardBg, BorderBrush = Line2, BorderThickness = new Thickness(1),
                 PrimaryButtonStyle = DialogBtn(true, danger), SecondaryButtonStyle = DialogBtn(false, false), CloseButtonStyle = DialogBtn(false, false) };
+            // un solo fondo en toda la ventana (sin franja distinta en el pie)
+            d.Resources["ContentDialogTopOverlay"] = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+            d.Resources["ContentDialogBackground"] = CardBg;
             if (close != null) d.CloseButtonText = close;
             if (secondary != null) d.SecondaryButtonText = secondary;
             d.PrimaryButtonClick += (_, a) => { if (onPrimary != null && !onPrimary()) a.Cancel = true; };
