@@ -8,13 +8,6 @@
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
             </ResourceDictionary.MergedDictionaries>
-
-            <!-- Tipografía de la app web: Manrope -->
-            <FontFamily x:Key="ManropeFont">ms-appx:///Assets/Fonts/Manrope.ttf#Manrope</FontFamily>
-            <FontFamily x:Key="ContentControlThemeFontFamily">ms-appx:///Assets/Fonts/Manrope.ttf#Manrope</FontFamily>
-            <CornerRadius x:Key="ControlCornerRadius">12</CornerRadius>
-            <CornerRadius x:Key="OverlayCornerRadius">20</CornerRadius>
-
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Dark">
                     <!-- azul de la web en lugar del color de Windows -->
@@ -53,6 +46,15 @@
                     <Color x:Key="SystemAccentColorLight1">#FF3B82F6</Color>
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
+
+
+            <!-- Tipografía de la app web: Manrope -->
+            <FontFamily x:Key="ManropeFont">ms-appx:///Assets/Fonts/Manrope.ttf#Manrope</FontFamily>
+            <FontFamily x:Key="ContentControlThemeFontFamily">ms-appx:///Assets/Fonts/Manrope.ttf#Manrope</FontFamily>
+            <CornerRadius x:Key="ControlCornerRadius">12</CornerRadius>
+            <CornerRadius x:Key="OverlayCornerRadius">20</CornerRadius>
+
+
 
             <!-- Botón sin el gris de Windows: fondo propio, brillo suave al pasar el ratón, atenuado si está deshabilitado -->
             <Style x:Key="AuroraButton" TargetType="Button">
