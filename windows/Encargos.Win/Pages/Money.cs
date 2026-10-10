@@ -61,10 +61,9 @@ public sealed class PaymentsPage : Screen
         var s = Services.Stats.Payments();
         var list = s.List.Where(i => _mf.Length == 0 || i.P.Str("method").IfEmpty("Efectivo").ToUpperInvariant() == _mf.ToUpperInvariant()).ToList();
         var over = s.Collected > s.Target && s.Target > 0;
-        p.Children.Add(Card((string?)null, Link("🎯 Meta", Payments.Goal),
-            Lead(Gauge(s.Pct, "cobrado", 140), V(4, Muted("Total cobrado", 13), Big(Money(s.Collected), Green),
-                Muted("de " + Money(s.Target) + (s.GoalMode == "monthly" ? " (meta del mes)" : " esperado")),
-                s.Pct > 100.5 ? T($"+{Math.Round(s.Pct - 100)}% sobre la meta", 12, false, Green) : null))));
+        p.Children.Add(Card(Lead(Gauge(s.Pct, "cobrado", 100), V(2, Row(T("Total cobrado", 12.5, true, Mut), Link("Meta ›", Payments.Goal)), Big(Money(s.Collected), Green, 30),
+                Muted("de " + Money(s.Target) + (s.GoalMode == "monthly" ? " (meta del mes)" : " esperado"), 12.5),
+                s.Pct > 100.5 ? T($"+{Math.Round(s.Pct - 100)}% sobre la meta", 12.5, true, Green) : null))));
         p.Children.Add(Cols(Kpi(s.GoalMode == "monthly" ? "Meta del mes" : "Meta (encargos)", s.Target > 0 ? Money(s.Target) : "Sin meta"),
             Kpi(over ? "Superado" : "Restante", over ? "+" + Money(s.Collected - s.Target) : Money(s.Remaining), over ? Green : null), Kpi("Pagos", s.List.Count.ToString())));
         var rows = new List<UIElement> { Choice(new[] { ("", "Todos"), ("Efectivo", "Efectivo"), ("USD", "USD") }, _mf, k => { _mf = k; _shown = 25; Redraw(); }) };
@@ -77,7 +76,7 @@ public sealed class PaymentsPage : Screen
         }
         if (list.Count > _shown) rows.Add(Btn($"Ver más pagos ({list.Count - _shown})", () => { _shown += 25; Redraw(); }));
         if (list.Count > 0) rows.Add(Muted("Pulsa un pago para corregirlo o eliminarlo.", 11));
-        p.Children.Add(Card("Movimientos recientes", Muted($"{list.Count} pago(s)"), rows.ToArray()));
+        p.Children.Add(IconCard("\uE8C7", "Movimientos recientes", Muted($"{list.Count} pago(s)"), rows.ToArray()));
     }
 }
 
@@ -154,9 +153,9 @@ public sealed class StatsPage : Screen
         var nextB = Btn("›", () => { _ref = st.Shift(_period, _ref, 1); Redraw(); }, false, null, null, false); nextB.IsEnabled = !isNow;
         var lbl = T(st.Label(_period, a, b) + (isNow ? " · actual" : ""), 16, true); lbl.HorizontalAlignment = HorizontalAlignment.Center;
         p.Children.Add(Lead(prevB, lbl, nextB));
-        p.Children.Add(Card(Lead(Gauge(cur.Ventas > 0 ? cur.Cobrado / cur.Ventas * 100 : cur.Cobrado > 0 ? 100 : 0, "cobrado", 120),
-            V(4, Muted("Dinero cobrado", 13), Big(Money(cur.Cobrado), Green, 22), Delta(cur.Cobrado, prev.Cobrado), Muted($"de {Money(cur.Ventas)} vendido"))), Bars(st.Buckets(_period, a, b), null, 120)));
-        p.Children.Add(Cols(KpiD("Ventas", Money(cur.Ventas), Blue, cur.Ventas, prev.Ventas), KpiD("Encargos", cur.Ord.Count.ToString(), null, cur.Ord.Count, prev.Ord.Count),
+        p.Children.Add(Card(Lead(Gauge(cur.Ventas > 0 ? cur.Cobrado / cur.Ventas * 100 : cur.Cobrado > 0 ? 100 : 0, "cobrado", 100),
+            V(2, T("Dinero cobrado", 12.5, true, Mut), Big(Money(cur.Cobrado), Green, 30), Delta(cur.Cobrado, prev.Cobrado), Muted($"de {Money(cur.Ventas)} vendido"))), Bars(st.Buckets(_period, a, b), null, 120)));
+        p.Children.Add(Cols(KpiD("Ventas", Money(cur.Ventas), null, cur.Ventas, prev.Ventas), KpiD("Encargos", cur.Ord.Count.ToString(), null, cur.Ord.Count, prev.Ord.Count),
             KpiD("Libras", Js.ToFixed(cur.Lb, 1) + " lb", null, cur.Lb, prev.Lb)));
         p.Children.Add(Cols(KpiD("Ganancia", Signed(cur.Gan), cur.Gan >= 0 ? Green : Rose, cur.Gan, prev.Gan), KpiD("Gastos", Money(cur.Gastos), null, cur.Gastos, prev.Gastos),
             KpiD("Ganancia neta", Signed(cur.Neta), cur.Neta >= 0 ? Green : Rose, cur.Neta, prev.Neta)));
@@ -171,11 +170,11 @@ public sealed class StatsPage : Screen
             exRows.Add(Click(Row(V(0, T(e.Str("concept"), 14, true), Muted((EncargosApp.EXP_CATS.FirstOrDefault(c => c.Item1 == e.Str("cat")).Item2 ?? "Otros") + " · " + DayLabel(e["date"]))),
                 T("-" + Money(e["amount"]), 14, true)), () => ExpenseDialog(e2)));
         }
-        p.Children.Add(Cols(Card("Mejores clientes", null, topRows.ToArray()), Card("Gastos del periodo", Link("+ Agregar", () => ExpenseDialog(null)), exRows.ToArray())));
+        p.Children.Add(Cols(IconCard("\uE734", "Mejores clientes", null, topRows.ToArray()), IconCard("\uE8EF", "Gastos del periodo", Link("+ Agregar", () => ExpenseDialog(null)), exRows.ToArray())));
         var ina = st.InactiveClients(); var inRows = new List<UIElement>();
         if (ina.Count == 0) inRows.Add(Muted("Todos tus clientes compraron en los últimos 30 días. 👏", 14));
         foreach (var (c, last) in ina) { var cc = c; inRows.Add(Lead(Avatar(c.Name, Mut, 34), V(0, T(c.Name, 14, true), Muted("Última compra " + Core.Attention.Ago(last))), Btn("Escribir", () => S.WhatsApp(cc.Phone, "", cc.Name), false, null, null, false))); }
-        p.Children.Add(Card("Clientes inactivos", null, inRows.ToArray()));
+        p.Children.Add(IconCard("\uE716", "Clientes inactivos", null, inRows.ToArray()));
     }
 
     static async void ExpenseDialog(JObj? e)

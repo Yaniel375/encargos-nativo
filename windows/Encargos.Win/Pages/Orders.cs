@@ -149,7 +149,7 @@ public sealed class OrderPage : Screen
         if (st == "Cancelado") p.Children.Add(Card(Muted("Este encargo está cancelado.", 14)));
         else
         {
-            p.Children.Add(Card("Estado del pedido", nx != null ? Link($"Pasar a {nx} ›", () => OrderActions.Advance(x)) : null, Stepper(EncargosApp.FLOW, st)));
+            p.Children.Add(IconCard("\uE804", "Estado del pedido", nx != null ? Link($"Pasar a {nx} ›", () => OrderActions.Advance(x)) : null, Stepper(EncargosApp.FLOW, st)));
         }
         p.Children.Add(Cols(Kpi("Pedido", Money(x["cost"])), Kpi("Envío", Money(x["shipping"]), null, $"{Js.ToFixed(Js.Num(x["pounds"]), 2)} × {Money(x["lbCost"])}"), Kpi("Total", Money(t), Blue),
             Kpi("Pagado", Money(pd), Green), Kpi(b < -0.005 ? "A favor" : "Saldo", b > 0.005 ? "-" + Money(b) : b < -0.005 ? "+" + Money(-b) : "$0.00", b > 0.005 ? Rose : Green),
@@ -157,9 +157,9 @@ public sealed class OrderPage : Screen
         p.Children.Add(Cols(Btn("Editar", () => S.Go(new EditOrderPage(_id)), true, null, ""), Btn("WhatsApp", () => S.WhatsApp(x.Str("phone"), "", x.Str("name")), false, Green, ""),
             Btn("Enviar recibo", () => Media.Receipt(x), false, null, ""),
             b > 0.005 ? Btn("Recordar pago", () => S.WhatsApp(x.Str("phone"), Core.ReminderOrder(x), x.Str("name")), false, Rose) : Btn("Agradecer", () => S.WhatsApp(x.Str("phone"), Core.ThanksOrder(x), x.Str("name")))));
-        p.Children.Add(Card("Nota interna", Link(x.Str("note").Length == 0 ? "Agregar" : "Editar", () => OrderActions.EditNote(x)),
+        p.Children.Add(IconCard("\uE70B", "Nota interna", Link(x.Str("note").Length == 0 ? "Agregar" : "Editar", () => OrderActions.EditNote(x)),
             x.Str("note").Length == 0 ? Muted("Solo para ti: el cliente nunca la ve.", 14) : T(x.Str("note"))));
-        p.Children.Add(Card($"Fotos ({photos.Count})", Link("Agregar foto", async () => { var d = await Media.PickPhoto(900, 0.55); if (d != null && Core.AddOrderPhoto(x["id"], d)) S.Toast("✅ Foto guardada."); }),
+        p.Children.Add(IconCard("\uEB9F", $"Fotos ({photos.Count})", Link("Agregar foto", async () => { var d = await Media.PickPhoto(900, 0.55); if (d != null && Core.AddOrderPhoto(x["id"], d)) S.Toast("✅ Foto guardada."); }),
             photos.Count == 0 ? (UIElement)Muted("Todavía no hay fotos de esta compra.", 14)
             : photos.Count == 1 ? Media.Photo(photos[0], double.NaN, 320, () => OrderActions.ViewPhotos(x, 0), 1200)
             : Media.Strip(photos, 140, i => OrderActions.ViewPhotos(x, i))));
@@ -167,7 +167,7 @@ public sealed class OrderPage : Screen
         ev.Add((x["date"], $"Encargo creado · {Core.ShippingName(Core.TypeOf(x))} · {Money(x["lbCost"])}/lb", Money(x["cost"]), Blue));
         foreach (var h in (x["paymentHistory"] as JArr)?.Objs() ?? new()) ev.Add((h["date"], "Pago · " + h.Str("method").IfEmpty("Efectivo") + (h.Str("note").Length > 0 ? " · " + h.Str("note") : ""), "+" + Money(h["amount"]), Green));
         foreach (var h in (x["lbHistory"] as JArr)?.Objs() ?? new()) ev.Add((h["date"], $"Libras: {Js.ToFixed(Js.Num(h["from"]), 2)} → {Js.ToFixed(Js.Num(h["to"]), 2)}", (Js.Num(h["change"]) >= 0 ? "+" : "") + Js.ToFixed(Js.Num(h["change"]), 2) + " lb", Mut));
-        p.Children.Add(Card("Historial", null, ev.OrderByDescending(e => { var v = Js.ParseDate(e.d); return double.IsNaN(v) ? 0 : v; })
+        p.Children.Add(IconCard("\uE81C", "Historial", null, ev.OrderByDescending(e => { var v = Js.ParseDate(e.d); return double.IsNaN(v) ? 0 : v; })
             .Select(e => (UIElement)Row(V(0, T(e.txt), Muted(Js.Fmt(e.d), 11)), T(e.val, 14, true, e.col))).ToArray()));
         p.Children.Add(Btn("Ver ficha del cliente", () => S.Go(new ClientPage(x.Str("name"))), false, null, ""));
     }
@@ -192,21 +192,21 @@ public sealed class EditOrderPage : Screen
         p.Children.Add(Card(Lead(Avatar(x.Str("name"), Status(_st), 48), V(2, H(x.Str("name"), 18), Muted(x.Str("phone").IfEmpty("Sin teléfono")))),
             Chips(Chip("🔒 " + Core.ShippingName(Core.TypeOf(x)) + " · " + Money(x["lbCost"]) + "/lb", Teal)),
             Muted("El tipo de envío y la tarifa quedan fijos para conservar el precio original.")));
-        p.Children.Add(Card("Resumen", null, _sum));
-        p.Children.Add(Card("Estado", null, Choice(EncargosApp.STATES.Select(s => (s, s)), _st, k => { _st = k; Redraw(); })));
+        p.Children.Add(IconCard("\uE9D2", "Resumen", null, _sum));
+        p.Children.Add(IconCard("\uE804", "Estado", null, Choice(EncargosApp.STATES.Select(s => (s, s)), _st, k => { _st = k; Redraw(); })));
         TextBox lbBox = null!, payBox = null!;
         lbBox = Box("Libras a agregar", _addLb, v => { _addLb = v; Calc(x); });
-        p.Children.Add(Card("Agregar libras", Muted("Ahora: " + Lb(Js.Num(x["pounds"]))), lbBox,
+        p.Children.Add(IconCard("\uE8EF", "Agregar libras", Muted("Ahora: " + Lb(Js.Num(x["pounds"]))), lbBox,
             Cols(new[] { 0.5, 1, 2, 5 }.Select(q => (UIElement)Btn("+" + Js.NumberToString(q), () => lbBox.Text = Js.ToFixed(Num(lbBox.Text) + q, 2))).ToArray()), _gain));
         payBox = Box("Cantidad del pago ($)", _pay, v => { _pay = v; Calc(x); });
         double Due() => Math.Max(0, Js.Num(x["cost"]) + Js.Num(x["lbCost"]) * (Js.Num(x["pounds"]) + Num(_addLb)) - Js.Num(x["paid"]));
-        p.Children.Add(Card("Registrar pago", null, payBox,
+        p.Children.Add(IconCard("\uE8C7", "Registrar pago", null, payBox,
             Cols(Btn("Todo el saldo", () => payBox.Text = Js.ToFixed(Due(), 2)), Btn("La mitad", () => payBox.Text = Js.ToFixed(Due() / 2, 2)), Btn("Sin pago", () => payBox.Text = "")),
             Combo(new[] { ("Efectivo", "Efectivo"), ("USD", "USD") }, _method, k => _method = k, "Método"),
             Box("Nota del pago (ej. Abono)", _payNote, v => _payNote = v)));
         p.Children.Add(Btn("Guardar cambios", () => Save(x), true, null, ""));
         var photos = Core.OrderPhotos(x);
-        p.Children.Add(Card("Fotos del encargo", null,
+        p.Children.Add(IconCard("\uEB9F", "Fotos del encargo", null,
             photos.Count > 0 ? Media.Strip(photos, 110, i => OrderActions.ViewPhotos(x, i)) : null,
             Btn("Agregar foto", async () => { var d = await Media.PickPhoto(900, 0.55); if (d != null && Core.AddOrderPhoto(x["id"], d)) { S.Toast("✅ Foto guardada."); Redraw(); } }, false, null, "")));
         var ph = (x["paymentHistory"] as JArr)?.Objs() ?? new();
@@ -219,9 +219,9 @@ public sealed class EditOrderPage : Screen
                 () => Payments.Edit(_id, idx, Redraw)));
         }
         if (ph.Count > 0) rows.Add(Muted("Pulsa un pago para corregirlo o eliminarlo.", 11));
-        p.Children.Add(Card("Historial de pagos", null, rows.ToArray()));
+        p.Children.Add(IconCard("\uE8C7", "Historial de pagos", null, rows.ToArray()));
         var lh = (x["lbHistory"] as JArr)?.Objs() ?? new();
-        p.Children.Add(Card("Historial de libras", null, lh.Count == 0 ? new UIElement[] { Muted("Sin registros", 14) } :
+        p.Children.Add(IconCard("\uE8EF", "Historial de libras", null, lh.Count == 0 ? new UIElement[] { Muted("Sin registros", 14) } :
             Enumerable.Reverse(lh).Select(h => (UIElement)Line(Js.Fmt(h["date"]), $"{Js.ToFixed(Js.Num(h["from"]), 2)} → {Js.ToFixed(Js.Num(h["to"]), 2)} lb")).ToArray()));
         Calc(x);
     }

@@ -37,6 +37,9 @@ import com.agencia.encargos.core.Stats
 import com.agencia.encargos.core.str
 import java.time.LocalDate
 import kotlin.math.abs
+import androidx.compose.material.icons.outlined.EmojiEvents
+import androidx.compose.material.icons.outlined.MoneyOff
+import androidx.compose.material.icons.outlined.PersonOff
 
 @Composable
 fun StatsScreen() {
@@ -63,28 +66,28 @@ fun StatsScreen() {
         item {
             SectionCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Gauge(if (cur.ventas > 0) cur.cobrado / cur.ventas * 100 else if (cur.cobrado > 0) 100.0 else 0.0, size = 120); Spacer(Modifier.width(14.dp))
-                    Column { Text("Dinero cobrado", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(money(countUp(cur.cobrado)), fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = C.green); delta(cur.cobrado, prev.cobrado); Text("de ${money(cur.ventas)} vendido", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    Gauge(if (cur.ventas > 0) cur.cobrado / cur.ventas * 100 else if (cur.cobrado > 0) 100.0 else 0.0, size = 100); Spacer(Modifier.width(14.dp))
+                    Column { Text("Dinero cobrado", fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(money(countUp(cur.cobrado)), fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.6).sp, color = C.green, maxLines = 1); delta(cur.cobrado, prev.cobrado); Text("de ${money(cur.ventas)} vendido", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 }
                 Bars(st.buckets(p, a, b), height = 120)
             }
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { kpi("Ventas", money(countUp(cur.ventas)), C.blue, cur.ventas, prev.ventas, Modifier.weight(1f)); kpi("Encargos", "${countUp(cur.ord.size.toDouble()).toInt()}", MaterialTheme.colorScheme.onSurface, cur.ord.size.toDouble(), prev.ord.size.toDouble(), Modifier.weight(1f)) }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { kpi("Ventas", money(countUp(cur.ventas)), MaterialTheme.colorScheme.onSurface, cur.ventas, prev.ventas, Modifier.weight(1f)); kpi("Encargos", "${countUp(cur.ord.size.toDouble()).toInt()}", MaterialTheme.colorScheme.onSurface, cur.ord.size.toDouble(), prev.ord.size.toDouble(), Modifier.weight(1f)) }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { kpi("Libras", Js.toFixed(countUp(cur.lb), 1) + " lb", MaterialTheme.colorScheme.onSurface, cur.lb, prev.lb, Modifier.weight(1f)); kpi("Ganancia", (if (cur.gan < 0) "-" else "") + money(abs(cur.gan)), if (cur.gan >= 0) C.green else C.rose, cur.gan, prev.gan, Modifier.weight(1f)) }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { kpi("Gastos", money(countUp(cur.gastos)), MaterialTheme.colorScheme.onSurface, cur.gastos, prev.gastos, Modifier.weight(1f)); kpi("Ganancia neta", (if (cur.neta < 0) "-" else "") + money(abs(cur.neta)), if (cur.neta >= 0) C.green else C.rose, cur.neta, prev.neta, Modifier.weight(1f)) }
             }
         }
         item {
-            SectionCard("Mejores clientes") {
+            SectionCard("Mejores clientes", icon = Icons.Outlined.EmojiEvents) {
                 val top = st.topClients(cur); val mx = top.maxOfOrNull { it.second } ?: 1.0
                 if (top.isEmpty()) Text("Sin encargos en este periodo.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 top.forEach { (n, t, c) -> Text(n, fontWeight = FontWeight.Bold); Text("${money(t)} · $c encargo${if (c == 1) "" else "s"}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); ProgressBar(t / mx, C.blue) }
             }
         }
         item {
-            SectionCard("Gastos del periodo", action = { Text("+ Agregar", color = C.blue, modifier = Modifier.clickable { newExp = true }) }) {
+            SectionCard("Gastos del periodo", icon = Icons.Outlined.MoneyOff, action = { LinkText("+ Agregar") { newExp = true } }) {
                 val ex = st.expensesIn(a, b)
                 if (ex.isEmpty()) Text("Anota transporte, aduana, empaques y otros gastos para ver tu ganancia neta real.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 ex.forEach { e -> Row(Modifier.fillMaxWidth().clickable { exp = e }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -93,7 +96,7 @@ fun StatsScreen() {
             }
         }
         item {
-            SectionCard("Clientes inactivos") {
+            SectionCard("Clientes inactivos", icon = Icons.Outlined.PersonOff) {
                 val ina = st.inactiveClients()
                 if (ina.isEmpty()) Text("Todos tus clientes compraron en los últimos 30 días. 👏", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 ina.forEach { (c, last) -> Row(verticalAlignment = Alignment.CenterVertically) {

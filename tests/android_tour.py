@@ -146,6 +146,7 @@ for dest, row in [("respaldo", "Respaldo e importación"), ("seguridad", "Seguri
             nd = find(row, exact=True)
             if nd is not None and center(nd)[1] < 1550: break  # por encima de la barra inferior
             adb("shell", "input", "swipe", "540", "1500", "540", "700", "400"); time.sleep(1)
+        time.sleep(1.5)  # deja que termine el desplazamiento por inercia antes de tocar la fila
         if tap(row, exact=True, wait=2.5):
             shot(dest)
             # al volver atrás, Ajustes debe seguir desplazado donde estaba (la fila sigue a la vista)

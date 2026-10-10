@@ -67,7 +67,7 @@ public sealed class BackupPage : Screen
             {
                 if (await Media.SaveFile(Backup.FileName("encargos_", ".csv"), ".csv", "CSV para Excel", Crypto.Utf8(bk.Csv()))) S.Toast("✅ Archivo CSV guardado.");
             })));
-        var tips = Card("Consejos", null,
+        var tips = IconCard("\uE82F", "Consejos", null,
             Lead(new FontIcon { Glyph = "\uE895", FontSize = 14, Foreground = Mut }, T("Haz un respaldo cada semana o después de muchos cambios.", 13)),
             Lead(new FontIcon { Glyph = "\uE715", FontSize = 14, Foreground = Mut }, T("Envía el archivo a tu correo, a una memoria USB o a la nube, por si pierdes el equipo.", 13)),
             Lead(new FontIcon { Glyph = "\uE898", FontSize = 14, Foreground = Mut }, T("Para recuperar todo en otro equipo o teléfono, usa Importar respaldo.", 13)),
@@ -148,7 +148,7 @@ public sealed class SecurityPage : Screen
             })),
             NavRow("\uED1A", "Ocultar en capturas de pantalla", "Excluye la ventana de capturas, grabaciones y pantallas compartidas", null, null, Switch(sec.PrivacyOn(), v => { sec.SetPrivacy(v); S.ApplyPrivacy(); })));
         var log = sec.LogEntries().Take(15).ToList();
-        var activity = Card("Actividad de seguridad", null, log.Count == 0 ? new UIElement[] { Muted("Sin actividad registrada.", 14) } :
+        var activity = IconCard("\uE81C", "Actividad de seguridad", null, log.Count == 0 ? new UIElement[] { Muted("Sin actividad registrada.", 14) } :
             log.Select(e => (UIElement)Lead(T(Js.Truthy(e["ok"]) ? "✅" : "⚠️"), V(0, T(e.Str("text"), 13), Muted(AdminUtil.TimeLabel(e["t"]), 11)))).ToArray());
         var danger = Group("Zona de peligro", NavRow("\uE74D", "Eliminar todos los datos", "Requiere confirmar tu identidad y escribir ELIMINAR", () => S.RequireAuth("Confirma tu identidad", Wipe, true), null, null, Rose, Rose));
         var foot = Muted("El PIN se guarda con sal y hash iterado; Windows Hello no comparte tu huella con la app. Ningún respaldo incluye tu PIN ni tu contraseña.", 12);
@@ -353,9 +353,9 @@ public sealed class SyncPage : Screen
             var tokBox = new PasswordBox { Header = "Token del bot" }; tokBox.PasswordChanged += (_, _) => _tok = tokBox.Password.Trim();
             var codeBox = new PasswordBox { Header = "Código de enlace (ENC1…)" }; codeBox.PasswordChanged += (_, _) => _code = codeBox.Password.Trim();
             p.Children.Add(Cols(
-                Card("¿Es tu primer dispositivo?", null, Muted("1. En Telegram, abre @BotFather y crea un bot con /newbot.\n2. Abre tu bot nuevo y envíale /start.\n3. Copia el token que te dio BotFather y pégalo aquí.", 13),
+                IconCard("\uE8EA", "¿Es tu primer dispositivo?", null, Muted("1. En Telegram, abre @BotFather y crea un bot con /newbot.\n2. Abre tu bot nuevo y envíale /start.\n3. Copia el token que te dio BotFather y pégalo aquí.", 13),
                     tokBox, Btn("Conectar", Connect, true, null, "")),
-                Card("¿Ya lo usas en otro dispositivo?", null, Muted("En el otro dispositivo ve a Sincronización → \"Código para enlazar\", cópialo y pégalo aquí.", 13),
+                IconCard("\uE772", "¿Ya lo usas en otro dispositivo?", null, Muted("En el otro dispositivo ve a Sincronización → \"Código para enlazar\", cópialo y pégalo aquí.", 13),
                     codeBox, Btn("Enlazar", Link, true, null, ""))));
             return;
         }
@@ -369,9 +369,9 @@ public sealed class SyncPage : Screen
             V(8, Btn("Sincronizar ahora", async () => { var ok = await S.BusySync("Sincronizando…", () => sync.SyncNowBlocking()); S.Toast(ok ? "✅ Sincronizado." : Services.Redact(sync.LastErr).IfEmpty("Sincronización en curso…")); Redraw(); }, true, null, ""),
                 Btn("Respaldar ahora en Telegram", async () => { var ok = await S.BusySync("Subiendo respaldo…", () => sync.BackupNow()); S.Toast(ok ? "✅ Respaldo actualizado en Telegram." : Services.Redact(sync.LastErr).IfEmpty("No se pudo respaldar.")); Redraw(); }, false, null, ""),
                 Btn("Crear respaldo local", () => S.Root(new BackupPage()), false, null, ""))));
-        p.Children.Add(Card("Enlazar otro dispositivo", null, Muted("El código permite a otro teléfono o PC leer y escribir tus datos. Trátalo como una contraseña: no lo compartas con nadie.", 13),
+        p.Children.Add(IconCard("\uE71B", "Enlazar otro dispositivo", null, Muted("El código permite a otro teléfono o PC leer y escribir tus datos. Trátalo como una contraseña: no lo compartas con nadie.", 13),
             Btn("Mostrar código para enlazar", () => S.RequireAuth("Confirma tu identidad para ver el código", ShowCode, true), false, null, "")));
-        p.Children.Add(Card("Opciones", null,
+        p.Children.Add(IconCard("\uE713", "Opciones", null,
             Toggle("Pausar sincronización", "Los cambios se guardan aquí y se envían al reanudar", paused, v => { sync.Pause(v); Redraw(); }),
             Cols(Btn("Restaurar desde Telegram", () => S.Ask("Restaurar desde Telegram", "Se reemplazarán los datos de este equipo por el último respaldo de Telegram. Primero se comprueba que el respaldo esté completo. ¿Continuar?", "Restaurar", true,
                     () => S.RequireAuth("Confirma tu identidad", async () =>
@@ -427,7 +427,7 @@ public sealed class SyncDiagPage : Screen
     {
         var sync = Services.Sync; var m = sync.MetaInfo(); var cfg = sync.Cfg();
         string N(object? v) { var s = Js.NumberToString(Js.Num(v)); return s == "0" ? "—" : s; }
-        p.Children.Add(Card("Estado", null,
+        p.Children.Add(IconCard("\uE946", "Estado", null,
             Line("Conectado", cfg == null ? "No" : Js.Truthy(cfg["paused"]) ? "En pausa" : "Sí"), Line("Estado", sync.State), Line("Pendientes", sync.Pending().ToString()),
             Line("Equipo", sync.DeviceId()), Line("Base de datos", cfg != null ? cfg.Str("db").Take(8) + "…" : "—"),
             Line("Versión local", Js.NumberToString(Js.Num(m["localVersion"]))), Line("Última sincronización", AdminUtil.TimeLabel(m["lastSync"])),
@@ -437,10 +437,10 @@ public sealed class SyncDiagPage : Screen
             Muted("El token y la llave de cifrado nunca se muestran aquí.", 12)));
         var conf = sync.Conflicts();
         if (conf.Count > 0)
-            p.Children.Add(Card($"Conflictos resueltos ({conf.Count})", null, new UIElement[] { Muted("Cuando dos dispositivos cambian lo mismo, gana el cambio más reciente. Los pagos nunca se pierden.", 13) }
+            p.Children.Add(IconCard("\uE895", $"Conflictos resueltos ({conf.Count})", null, new UIElement[] { Muted("Cuando dos dispositivos cambian lo mismo, gana el cambio más reciente. Los pagos nunca se pierden.", 13) }
                 .Concat(conf.Take(20).Select(c => (UIElement)T("• " + c.Str("entity") + " · ganó " + (c.Str("kept") == "local" ? "este equipo" : "otro dispositivo (" + c.Str("remoteDevice") + ")") + " · " + AdminUtil.TimeLabel(c["t"]), 12))).ToArray()));
         var log = sync.LogEntries().Take(60).ToList();
-        p.Children.Add(Card("Registro", null, log.Count == 0 ? new UIElement[] { Muted("Sin registros.", 14) } :
+        p.Children.Add(IconCard("\uE8A5", "Registro", null, log.Count == 0 ? new UIElement[] { Muted("Sin registros.", 14) } :
             log.Select(e => (UIElement)V(0, T((e.Str("kind") switch { "err" => "⚠️ ", "in" => "⬇️ ", "out" => "⬆️ ", _ => "• " }) + Services.Redact(e.Str("text")), 12, false, e.Str("kind") == "err" ? Rose : null),
                 Muted(AdminUtil.TimeLabel(e["t"]) + " · " + e.Str("dev"), 11))).ToArray()));
         p.Children.Add(Btn("Copiar diagnóstico (sin secretos)", () =>
