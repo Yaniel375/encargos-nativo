@@ -48,7 +48,7 @@ fun StatsScreen() {
     val cur = st.calc(a, b); val prev = st.calc(pa, pb)
     val isNow = LocalDate.now().let { !it.isBefore(a) && it.isBefore(b) }
     @Composable fun delta(n: Double, o: Double) { val d = st.pct(n, o)
-        Text(if (d == null) "▲ nuevo" else if (abs(d) < 0.5) "= igual que antes" else (if (d > 0) "▲ " else "▼ ") + Js.toFixed(abs(d), 0) + "% vs anterior", fontSize = 11.sp, color = if (d == null || d > 0) C.green else if (abs(d) < 0.5) MaterialTheme.colorScheme.onSurfaceVariant else C.rose) }
+        Text(if (d == null) "▲ nuevo" else if (abs(d) < 0.5) "= igual que antes" else (if (d > 0) "▲ " else "▼ ") + Js.toFixed(abs(d), 0) + "% vs anterior", fontSize = 11.sp, color = if (d == null) W.blueInk else if (abs(d) < 0.5) MaterialTheme.colorScheme.onSurfaceVariant else if (d > 0) C.green else C.rose) }
     @Composable fun kpi(label: String, value: String, color: Color, n: Double, o: Double, m: Modifier) {
         Column(m) { Kpi(label, value, color, modifier = Modifier.fillMaxWidth()); delta(n, o) } }
     Page(right = "${cur.ord.size} encargo${if (cur.ord.size == 1) "" else "s"}") {
@@ -71,16 +71,16 @@ fun StatsScreen() {
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { kpi("Ventas", money(countUp(cur.ventas)), C.blue, cur.ventas, prev.ventas, Modifier.weight(1f)); kpi("Encargos", "${countUp(cur.ord.size.toDouble()).toInt()}", C.vio, cur.ord.size.toDouble(), prev.ord.size.toDouble(), Modifier.weight(1f)) }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { kpi("Libras", Js.toFixed(countUp(cur.lb), 1) + " lb", C.amber, cur.lb, prev.lb, Modifier.weight(1f)); kpi("Ganancia", (if (cur.gan < 0) "-" else "") + money(abs(cur.gan)), if (cur.gan >= 0) C.green else C.rose, cur.gan, prev.gan, Modifier.weight(1f)) }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { kpi("Gastos", money(countUp(cur.gastos)), C.rose, cur.gastos, prev.gastos, Modifier.weight(1f)); kpi("Ganancia neta", (if (cur.neta < 0) "-" else "") + money(abs(cur.neta)), if (cur.neta >= 0) C.green else C.rose, cur.neta, prev.neta, Modifier.weight(1f)) }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { kpi("Ventas", money(countUp(cur.ventas)), C.blue, cur.ventas, prev.ventas, Modifier.weight(1f)); kpi("Encargos", "${countUp(cur.ord.size.toDouble()).toInt()}", MaterialTheme.colorScheme.onSurface, cur.ord.size.toDouble(), prev.ord.size.toDouble(), Modifier.weight(1f)) }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { kpi("Libras", Js.toFixed(countUp(cur.lb), 1) + " lb", MaterialTheme.colorScheme.onSurface, cur.lb, prev.lb, Modifier.weight(1f)); kpi("Ganancia", (if (cur.gan < 0) "-" else "") + money(abs(cur.gan)), if (cur.gan >= 0) C.green else C.rose, cur.gan, prev.gan, Modifier.weight(1f)) }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { kpi("Gastos", money(countUp(cur.gastos)), MaterialTheme.colorScheme.onSurface, cur.gastos, prev.gastos, Modifier.weight(1f)); kpi("Ganancia neta", (if (cur.neta < 0) "-" else "") + money(abs(cur.neta)), if (cur.neta >= 0) C.green else C.rose, cur.neta, prev.neta, Modifier.weight(1f)) }
             }
         }
         item {
             SectionCard("Mejores clientes") {
                 val top = st.topClients(cur); val mx = top.maxOfOrNull { it.second } ?: 1.0
                 if (top.isEmpty()) Text("Sin encargos en este periodo.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                top.forEach { (n, t, c) -> Text(n, fontWeight = FontWeight.Bold); Text("${money(t)} · $c encargo${if (c == 1) "" else "s"}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); ProgressBar(t / mx, C.vio) }
+                top.forEach { (n, t, c) -> Text(n, fontWeight = FontWeight.Bold); Text("${money(t)} · $c encargo${if (c == 1) "" else "s"}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); ProgressBar(t / mx, C.blue) }
             }
         }
         item {
@@ -89,7 +89,7 @@ fun StatsScreen() {
                 if (ex.isEmpty()) Text("Anota transporte, aduana, empaques y otros gastos para ver tu ganancia neta real.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 ex.forEach { e -> Row(Modifier.fillMaxWidth().clickable { exp = e }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) { Text(e.str("concept"), fontWeight = FontWeight.Bold); Text((Encargos.EXP_CATS.firstOrNull { it.first == e.str("cat") }?.second ?: "Otros") + " · " + dayLabel(e["date"]), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                    Text("-" + money(e["amount"]), color = C.rose, fontWeight = FontWeight.Bold) } }
+                    Text("-" + money(e["amount"]), fontWeight = FontWeight.Bold) } }
             }
         }
         item {

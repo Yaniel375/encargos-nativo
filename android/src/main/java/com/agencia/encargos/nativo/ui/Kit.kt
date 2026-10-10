@@ -86,6 +86,20 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.TextStyle
+import kotlinx.coroutines.launch
+import androidx.compose.material.icons.filled.ZoomIn
+import androidx.compose.ui.input.pointer.positionChanged
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.animation.togetherWith
@@ -604,5 +618,104 @@ fun Modifier.dashedBorder(color: Color, radius: androidx.compose.ui.unit.Dp): Mo
     Box(Modifier.pressBounce(src, .9f).size(40.dp).graphicsLayer { alpha = if (enabled) 1f else .4f }.clip(sh).background(W.btnBg).border(1.dp, W.btnLine, sh)
         .clickable(src, null, enabled = enabled) { tapFeedback(); onClick() }, contentAlignment = Alignment.Center) {
         Icon(icon, desc, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurface)
+    }
+}
+
+/* ======================= Fotos completas (sin recortes ni deformaciones) ======================= */
+
+/** Proporción real de una foto (ancho / alto), limitada para que una foto muy alargada no rompa el diseño. */
+private fun ratioOf(bm: Bitmap) = (bm.width.toFloat() / bm.height.coerceAtLeast(1)).coerceIn(0.35f, 3f)
+
+/** Foto completa a todo el ancho: respeta su proporción ("contain"); si es muy alta, se limita la altura y se ve entera dentro. */
+@Composable fun FitPhoto(bm: Bitmap?, modifier: Modifier = Modifier, maxHeight: Int = 320, onClick: (() -> Unit)? = null) {
+    if (bm == null) return
+    val shape = RoundedCornerShape(14.dp)
+    Box(modifier.fillMaxWidth().heightIn(max = maxHeight.dp).aspectRatio(ratioOf(bm), matchHeightConstraintsFirst = false).clip(shape).background(W.tile).border(1.dp, W.line, shape)
+        .let { if (onClick != null) it.clickable { tapFeedback(); onClick() } else it }, contentAlignment = Alignment.Center) {
+        Image(bm.asImageBitmap(), "Foto", Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+        if (onClick != null) ZoomBadge(Modifier.align(Alignment.BottomEnd))
+    }
+}
+
+/** Fila de miniaturas que muestran cada foto ENTERA (misma altura, ancho según su proporción). Tocar abre el visor. */
+@Composable fun PhotoStrip(photos: List<String>, height: Int = 110, onOpen: (Int) -> Unit) {
+    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        photos.forEachIndexed { i, s ->
+            val bm = remember(s) { com.agencia.encargos.nativo.util.Images.decode(s, 500) } ?: return@forEachIndexed
+            val shape = RoundedCornerShape(12.dp)
+            Box(Modifier.height(height.dp).width((height * ratioOf(bm)).dp).clip(shape).background(W.tile).border(1.dp, W.line, shape)
+                .clickable { tapFeedback(); onOpen(i) }.semantics { contentDescription = "Foto ${i + 1} de ${photos.size}" }, contentAlignment = Alignment.Center) {
+                Image(bm.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+                if (photos.size > 1) Text("${i + 1}/${photos.size}", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White,
+                    modifier = Modifier.align(Alignment.TopStart).padding(5.dp).clip(RoundedCornerShape(6.dp)).background(Color.Black.copy(alpha = .55f)).padding(horizontal = 5.dp, vertical = 1.dp))
+                ZoomBadge(Modifier.align(Alignment.BottomEnd))
+            }
+        }
+    }
+}
+
+@Composable private fun ZoomBadge(modifier: Modifier) {
+    Box(modifier.padding(5.dp).size(22.dp).clip(CircleShape).background(Color.Black.copy(alpha = .55f)), contentAlignment = Alignment.Center) {
+        Icon(androidx.compose.material.icons.Icons.Filled.ZoomIn, null, Modifier.size(14.dp), tint = Color.White)
+    }
+}
+
+/** Visor a pantalla completa: cada foto se ve entera; se amplía con dos dedos o con doble toque y, si hay varias,
+ *  se pasa de una a otra deslizando (o con las flechas). "Eliminar foto" solo aparece donde ya existía esa acción. */
+@Composable fun PhotoViewer(list: List<String>, start: Int, onDelete: ((Int) -> Unit)?, dismiss: () -> Unit) {
+    if (list.isEmpty()) { dismiss(); return }
+    androidx.compose.ui.window.Dialog(onDismissRequest = dismiss, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
+        val pager = androidx.compose.foundation.pager.rememberPagerState(initialPage = start.coerceIn(0, list.size - 1)) { list.size }
+        val scope = androidx.compose.runtime.rememberCoroutineScope()
+        var zoomed by remember { mutableStateOf(false) }
+        Box(Modifier.fillMaxSize().background(Color(0xF2020611))) {
+            androidx.compose.foundation.pager.HorizontalPager(pager, Modifier.fillMaxSize(), userScrollEnabled = !zoomed, key = { it }) { page ->
+                ZoomableImage(list[page], active = pager.currentPage == page) { zoomed = it }
+            }
+            // barra superior: posición y Cerrar
+            Row(Modifier.fillMaxWidth().statusBarsPadding().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(if (list.size > 1) "Foto ${pager.currentPage + 1} de ${list.size}" else "Foto", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, modifier = Modifier.weight(1f))
+                Secondary("Cerrar", Modifier.height(40.dp), color = Color.White) { dismiss() }
+            }
+            // barra inferior: anterior / siguiente / eliminar
+            Row(Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (list.size > 1) {
+                    GlassIconBtn(androidx.compose.material.icons.Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Foto anterior", enabled = pager.currentPage > 0) { scope.launch { pager.animateScrollToPage(pager.currentPage - 1) } }
+                    GlassIconBtn(androidx.compose.material.icons.Icons.AutoMirrored.Filled.KeyboardArrowRight, "Foto siguiente", enabled = pager.currentPage < list.size - 1) { scope.launch { pager.animateScrollToPage(pager.currentPage + 1) } }
+                }
+                Text("Pellizca o toca dos veces para ampliar", fontSize = 11.5.sp, color = Color.White.copy(alpha = .7f), modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+                if (onDelete != null) Secondary("Eliminar", Modifier.height(40.dp), color = C.rose) { onDelete(pager.currentPage) }
+            }
+        }
+    }
+}
+
+/** Una foto entera que se puede ampliar (1× a 5×) y mover cuando está ampliada; vuelve a 1× al cambiar de foto. */
+@Composable private fun ZoomableImage(src: String, active: Boolean, onZoom: (Boolean) -> Unit) {
+    val bm = remember(src) { com.agencia.encargos.nativo.util.Images.decode(src, 1600) }
+    var scale by remember { mutableStateOf(1f) }; var off by remember { mutableStateOf(Offset.Zero) }
+    LaunchedEffect(active) { if (!active) { scale = 1f; off = Offset.Zero } }
+    LaunchedEffect(scale, active) { if (active) onZoom(scale > 1.01f) }
+    Box(Modifier.fillMaxSize().padding(top = 64.dp, bottom = 72.dp)
+        .pointerInput(src) { detectTapGestures(onDoubleTap = { p -> if (scale > 1.01f) { scale = 1f; off = Offset.Zero } else { scale = 2.5f; off = (Offset(size.width / 2f, size.height / 2f) - p) * 1.5f } }) }
+        .pointerInput(src) {
+            awaitEachGesture {
+                awaitFirstDown(requireUnconsumed = false)
+                do {
+                    val ev = awaitPointerEvent()
+                    val zoom = ev.calculateZoom(); val pan = ev.calculatePan()
+                    val pinching = ev.changes.count { it.pressed } >= 2
+                    if (pinching || scale > 1.01f) {
+                        val ns = (scale * zoom).coerceIn(1f, 5f)
+                        val maxX = size.width * (ns - 1) / 2f; val maxY = size.height * (ns - 1) / 2f
+                        off = if (ns <= 1.01f) Offset.Zero else Offset((off.x + pan.x).coerceIn(-maxX, maxX), (off.y + pan.y).coerceIn(-maxY, maxY))
+                        scale = ns
+                        ev.changes.forEach { if (it.positionChanged()) it.consume() }
+                    }
+                } while (ev.changes.any { it.pressed })
+            }
+        }, contentAlignment = Alignment.Center) {
+        if (bm == null) Text("No se pudo abrir esta foto.", color = Color.White)
+        else Image(bm.asImageBitmap(), "Foto ampliable", Modifier.fillMaxSize().graphicsLayer { scaleX = scale; scaleY = scale; translationX = off.x; translationY = off.y }, contentScale = ContentScale.Fit)
     }
 }

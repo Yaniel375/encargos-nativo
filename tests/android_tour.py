@@ -197,6 +197,32 @@ def relaunch(extra):
     adb("shell", "am", "start", "-S", "-W", "-n", f"{PKG}/.MainActivity", *extra); time.sleep(8)
     if find("Iniciar sesión") is not None:
         type_at("Contraseña", "clave123", exact=True); hide_kb(); tap("Iniciar sesión", wait=5)
+# ---------- fotos completas (fotos de muestra con marco rojo y esquinas marcadas; solo en la copia de prueba) ----------
+say("— fotos —")
+def swipe_to(text, n=5):
+    for _ in range(n):
+        if find(text) is not None: return True
+        adb("shell", "input", "swipe", "540", "1500", "540", "700", "450"); time.sleep(1.1)
+    return find(text) is not None
+relaunch(["--es", "tema", "noche", "--es", "fotos", "si", "--es", "escala", "1.0"])
+tap("Encargos", exact=True, wait=2, last=True)
+if tap("Cliente Prueba", wait=2):
+    if swipe_to("Foto 1 de 2"): shot("ficha_encargo_fotos")
+    if tap("Foto 1 de 2", wait=2):
+        shot("visor_foto_vertical")
+        adb("shell", "input", "swipe", "900", "1100", "150", "1100", "300"); time.sleep(1.5); shot("visor_foto_horizontal")
+        adb("shell", "input", "tap", "540", "1100"); time.sleep(0.12); adb("shell", "input", "tap", "540", "1100"); time.sleep(1.2); shot("visor_ampliado")
+        tap("Cerrar", exact=True, wait=1.2)
+home()
+tap("Clientes", exact=True, wait=2, last=True)
+if tap("Cliente Prueba", wait=2.5):
+    shot("ficha_cliente_arriba")
+    adb("shell", "input", "swipe", "540", "1500", "540", "600", "450"); time.sleep(1.2); shot("ficha_cliente_medio")
+    if swipe_to("Capturas de pedidos"): adb("shell", "input", "swipe", "540", "1400", "540", "900", "450"); time.sleep(1); shot("ficha_cliente_capturas")
+home()
+tap("Notas", exact=True, wait=2, last=True); shot("notas_con_fotos")
+if tap("Foto 1 de 3", wait=2): shot("visor_nota"); tap("Cerrar", exact=True, wait=1.2)
+home()
 for esc, tag in [("1.05", "105"), ("0.8", "80")]:
     say(f"— escala {tag} % —")
     relaunch(["--es", "tema", "noche", "--es", "escala", esc])
