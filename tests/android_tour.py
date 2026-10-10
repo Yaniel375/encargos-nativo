@@ -54,6 +54,7 @@ def tap(text, cls=None, exact=False, wait=1.5, last=False):
 
 def type_in(label, value):
     # la etiqueta está encima del campo: se toca el primer campo de texto que hay debajo
+    hide_kb()
     lab = find(label)
     es = edits()
     target = None
@@ -71,6 +72,7 @@ def edits():
     return sorted(es, key=lambda nd: center(nd)[1])
 
 def type_nth(i, value):
+    hide_kb()
     es = edits()
     if i >= len(es): say(f"  ✗ no hay campo #{i}"); return
     x, y = center(es[i]); adb("shell", "input", "tap", str(x), str(y)); time.sleep(0.6)
