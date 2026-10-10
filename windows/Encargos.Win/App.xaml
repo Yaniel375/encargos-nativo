@@ -8,6 +8,91 @@
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
             </ResourceDictionary.MergedDictionaries>
+
+            <!-- Tipografía de la app web: Manrope -->
+            <FontFamily x:Key="ManropeFont">ms-appx:///Assets/Fonts/Manrope.ttf#Manrope</FontFamily>
+            <FontFamily x:Key="ContentControlThemeFontFamily">ms-appx:///Assets/Fonts/Manrope.ttf#Manrope</FontFamily>
+            <CornerRadius x:Key="ControlCornerRadius">12</CornerRadius>
+            <CornerRadius x:Key="OverlayCornerRadius">20</CornerRadius>
+
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Dark">
+                    <!-- azul de la web en lugar del color de Windows -->
+                    <Color x:Key="SystemAccentColor">#FF3B82F6</Color>
+                    <Color x:Key="SystemAccentColorLight1">#FF60A5FA</Color>
+                    <Color x:Key="SystemAccentColorLight2">#FF60A5FA</Color>
+                    <Color x:Key="SystemAccentColorLight3">#FF93C5FD</Color>
+                    <Color x:Key="SystemAccentColorDark1">#FF2563EB</Color>
+                    <SolidColorBrush x:Key="TextControlBackground" Color="#8C0F172A" />
+                    <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="#A60F172A" />
+                    <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="#CC0B1220" />
+                    <SolidColorBrush x:Key="TextControlBorderBrush" Color="#3D94A3B8" />
+                    <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="#5C94A3B8" />
+                    <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="#FF3B82F6" />
+                    <SolidColorBrush x:Key="TextControlForeground" Color="#FFF1F5F9" />
+                    <SolidColorBrush x:Key="TextControlForegroundFocused" Color="#FFF1F5F9" />
+                    <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="#FF64748B" />
+                    <SolidColorBrush x:Key="TextControlPlaceholderForegroundFocused" Color="#FF64748B" />
+                    <SolidColorBrush x:Key="TextControlHeaderForeground" Color="#FF9AA6B8" />
+                    <SolidColorBrush x:Key="ComboBoxBackground" Color="#8C0F172A" />
+                    <SolidColorBrush x:Key="ComboBoxBorderBrush" Color="#3D94A3B8" />
+                    <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="#FF0E1628" />
+                    <SolidColorBrush x:Key="ContentDialogBackground" Color="#FF0E1628" />
+                    <SolidColorBrush x:Key="ContentDialogBorderBrush" Color="#3D94A3B8" />
+                    <SolidColorBrush x:Key="MenuFlyoutPresenterBackground" Color="#FF0E1628" />
+                    <SolidColorBrush x:Key="FlyoutPresenterBackground" Color="#FF0E1628" />
+                    <SolidColorBrush x:Key="ToggleSwitchFillOn" Color="#FF3B82F6" />
+                    <SolidColorBrush x:Key="ToggleSwitchFillOnPointerOver" Color="#FF60A5FA" />
+                    <SolidColorBrush x:Key="ToggleSwitchFillOff" Color="#1F94A3B8" />
+                    <SolidColorBrush x:Key="ToggleSwitchStrokeOff" Color="#5C94A3B8" />
+                    <SolidColorBrush x:Key="ScrollBarThumbFill" Color="#5C94A3B8" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Light">
+                    <Color x:Key="SystemAccentColor">#FF2563EB</Color>
+                    <Color x:Key="SystemAccentColorDark1">#FF1D4ED8</Color>
+                    <Color x:Key="SystemAccentColorLight1">#FF3B82F6</Color>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+
+            <!-- Botón sin el gris de Windows: fondo propio, brillo suave al pasar el ratón, atenuado si está deshabilitado -->
+            <Style x:Key="AuroraButton" TargetType="Button">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Padding" Value="14,8,14,8" />
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+                <Setter Property="UseSystemFocusVisuals" Value="True" />
+                <Setter Property="FontFamily" Value="{StaticResource ManropeFont}" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Grid x:Name="Root" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                  BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}">
+                                <VisualStateManager.VisualStateGroups>
+                                    <VisualStateGroup x:Name="CommonStates">
+                                        <VisualState x:Name="Normal" />
+                                        <VisualState x:Name="PointerOver">
+                                            <VisualState.Setters><Setter Target="Hover.Opacity" Value="1" /></VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Pressed">
+                                            <VisualState.Setters><Setter Target="Hover.Opacity" Value="1" /></VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Disabled">
+                                            <VisualState.Setters><Setter Target="Root.Opacity" Value="0.5" /></VisualState.Setters>
+                                        </VisualState>
+                                    </VisualStateGroup>
+                                </VisualStateManager.VisualStateGroups>
+                                <Border x:Name="Hover" Background="#12FFFFFF" Opacity="0" CornerRadius="{TemplateBinding CornerRadius}" />
+                                <ContentPresenter x:Name="Content" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                  Padding="{TemplateBinding Padding}" Foreground="{TemplateBinding Foreground}"
+                                                  HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                  VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

@@ -56,6 +56,16 @@ def type_in(label, value):
     if tap(label, "EditText", wait=0.6):
         adb("shell", "input", "text", value.replace(" ", "%s")); time.sleep(0.4)
 
+def edits():
+    es = [nd for nd in nodes() if "EditText" in (nd.get("class") or "")]
+    return sorted(es, key=lambda nd: center(nd)[1])
+
+def type_nth(i, value):
+    es = edits()
+    if i >= len(es): say(f"  ✗ no hay campo #{i}"); return
+    x, y = center(es[i]); adb("shell", "input", "tap", str(x), str(y)); time.sleep(0.6)
+    adb("shell", "input", "text", value.replace(" ", "%s")); time.sleep(0.4); say(f"  ✓ escribí en el campo #{i}")
+
 def kb_open():
     return "mInputShown=true" in adb("shell", "dumpsys", "input_method")
 
@@ -71,7 +81,7 @@ def crashed():
 adb("logcat", "-c")
 adb("shell", "am", "start", "-W", "-n", f"{PKG}/.MainActivity"); time.sleep(8)
 shot("crear_acceso")
-type_in("Usuario", "prueba"); type_in("mínimo 6", "clave123"); type_in("Repite", "clave123"); hide_kb()
+type_nth(0, "prueba"); type_nth(1, "clave123"); type_nth(2, "clave123"); hide_kb()
 tap("Crear acceso", wait=5)
 shot("inicio")
 tap("Nuevo", exact=True, wait=2, last=True); shot("nuevo_encargo")

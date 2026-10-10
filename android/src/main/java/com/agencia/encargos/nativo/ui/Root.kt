@@ -152,7 +152,7 @@ fun AppRoot(app: EncargosApp, act: FragmentActivity) {
     LaunchedEffect(notice) { notice?.let { ui.toast(it); app.notices.value = null } }
     LaunchedEffect(Unit) { (act as? com.agencia.encargos.nativo.MainActivity)?.onLock = { unlocked = false; app.unlocked = false } }
 
-    CompositionLocalProvider(LocalUi provides ui, LocalVersion provides v + sv) {
+    CompositionLocalProvider(LocalUi provides ui, LocalVersion provides v + sv, androidx.compose.material3.LocalContentColor provides MaterialTheme.colorScheme.onBackground) {
         Box(Modifier.fillMaxSize()) {
             if (isDay()) DayBackground() else AuroraBackground()
             // paso suave entre la pantalla de acceso y la app (lgVeilOut)
