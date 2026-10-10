@@ -165,6 +165,11 @@ public sealed class MainWindow : Window
             // acceso con PIN (PIN de prueba solo en la carpeta de prueba)
             if (!Services.Security.PinOn()) Services.Security.SetPin("1234");
             ShowLock(); await Task.Delay(2600); await Snap(dir, $"{i++:00}_acceso_pin", L); Unlock(false); await Task.Delay(800);
+            // anillos: fase 1 (llenándose) y fase 2 (lleno, con brillo recorriéndolo)
+            Root(new HomePage()); await Task.Delay(800); await Snap(dir, $"{i++:00}_anillo_llenandose", L);
+            await Task.Delay(3200); await Snap(dir, $"{i++:00}_anillo_lleno", L);
+            Root(new PaymentsPage()); await Task.Delay(900); await Snap(dir, $"{i++:00}_agua_llenandose", L);
+            await Task.Delay(3200); await Snap(dir, $"{i++:00}_agua_llena", L);
             // ventana grande (como maximizada en 1920×1080): con "Adaptar a la pantalla" todo crece en su sitio
             try { AppWindow.Resize(new Windows.Graphics.SizeInt32(1920, 1080)); } catch { }
             await Task.Delay(1500); L($"ventana {_root.ActualWidth:0}×{_root.ActualHeight:0} · escala {Fit:0.00}");

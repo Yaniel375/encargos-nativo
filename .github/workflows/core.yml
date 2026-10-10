@@ -2,7 +2,7 @@ name: Núcleos (Kotlin + C#) y pruebas cruzadas
 
 on:
   push:
-    branches: [main, rediseno-premium, interfaz-referencia, menu-perfil, graficas-escala, fichas-fotos, login-menu-pagos, pin-menu, pc-sync]
+    branches: [main, rediseno-premium, interfaz-referencia, menu-perfil, graficas-escala, fichas-fotos, login-menu-pagos, pin-menu, pc-sync, anillos]
     paths: ["core/**", "windows/Encargos.Core/**", "windows/Encargos.Tests/**", "tests/**", ".github/workflows/core.yml"]
   workflow_dispatch:
 

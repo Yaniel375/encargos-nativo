@@ -1,5 +1,6 @@
 using Encargos.Core;
 using Microsoft.UI;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -249,19 +250,111 @@ public static partial class K
         fill.Loaded += (_, _) => { var sb = new Storyboard(); sb.Children.Add(Fx.Anim(ct, "ScaleX", 0, 1, 900, 300)); sb.Completed += (_, _) => ct.ScaleX = 1; sb.Begin(); };
         return g;
     }
+    /* ---------- llenado circular (fase 1) y brillo que recorre el anillo (fase 2) ---------- */
+    static Point OnCircle(double c, double r, double deg) { var a = deg * Math.PI / 180; return new Point(c + r * Math.Cos(a), c + r * Math.Sin(a)); }
+    /// <summary>Geometría de un arco que empieza arriba (-90°) y mide [deg] grados (círculo completo si deg ≥ 360).</summary>
+    static Geometry ArcGeo(double c, double r, double deg)
+    {
+        deg = Math.Clamp(deg, 0, 360);
+        if (deg >= 359.9) return new EllipseGeometry { Center = new Point(c, c), RadiusX = r, RadiusY = r };
+        var fig = new PathFigure { StartPoint = OnCircle(c, r, -90), IsClosed = false, IsFilled = false };
+        fig.Segments.Add(new ArcSegment { Point = OnCircle(c, r, -90 + deg), Size = new Size(r, r), IsLargeArc = deg > 180, SweepDirection = SweepDirection.Clockwise });
+        var pg = new PathGeometry(); pg.Figures.Add(fig); return pg;
+    }
+    /// <summary>Capa de anillo: se llena siguiendo el círculo de 0 al valor real (1,5 s) al entrar en la pantalla.</summary>
+    public static Grid ArcLayer(double size, double r, double thickness, Brush stroke, double frac)
+    {
+        frac = Math.Clamp(double.IsNaN(frac) ? 0 : frac, 0, 1);
+        var c = size / 2; var g = new Grid { Width = size, Height = size, IsHitTestVisible = false };
+        var arc = new Microsoft.UI.Xaml.Shapes.Path { Stroke = stroke, StrokeThickness = thickness, StrokeStartLineCap = PenLineCap.Round, StrokeEndLineCap = PenLineCap.Round, Data = ArcGeo(c, r, Fx.Enabled ? 0 : 360 * frac) };
+        g.Children.Add(arc);
+        var full = 360 * frac;
+        DispatcherQueueTimer? timer = null;
+        g.Loaded += (_, _) =>
+        {
+            if (!Fx.Enabled) { arc.Data = ArcGeo(c, r, full); return; }
+            // fase 1: llenado circular desde cero (cada vez que se entra en la pantalla)
+            var start = DateTime.UtcNow.AddMilliseconds(250);
+            timer = g.DispatcherQueue.CreateTimer(); timer.Interval = TimeSpan.FromMilliseconds(16);
+            timer.Tick += (_, _) =>
+            {
+                var k = Math.Clamp((DateTime.UtcNow - start).TotalMilliseconds / 1500, 0, 1); var e = 1 - Math.Pow(1 - k, 3);
+                arc.Data = ArcGeo(c, r, full * e);
+                if (k >= 1) { timer!.Stop(); arc.Data = ArcGeo(c, r, full); }
+            };
+            timer.Start();
+        };
+        // al salir de la pantalla se detiene todo (no consume CPU); al volver se crea de nuevo y empieza desde cero
+        g.Unloaded += (_, _) => timer?.Stop();
+        return g;
+    }
+
+    /// <summary>Superficie ondulada de 2 longitudes de onda (λ = ancho del círculo), cerrada hasta el fondo; se desplaza λ para un bucle perfecto.</summary>
+    static Geometry WaveGeo(double d, double amp, double shift)
+    {
+        var fig = new PathFigure { StartPoint = new Point(0, d + amp + 4), IsClosed = true, IsFilled = true };
+        var seg = new PolyLineSegment();
+        for (var i = 0; i <= 96; i++) { var x = 2 * d * i / 96.0; seg.Points.Add(new Point(x, amp * Math.Sin((x / d + shift) * 2 * Math.PI))); }
+        seg.Points.Add(new Point(2 * d, d + amp + 4));
+        fig.Segments.Add(seg); var pg = new PathGeometry(); pg.Figures.Add(fig); return pg;
+    }
+    /// <summary>Recipiente circular con agua: el nivel sube desde abajo hasta [fill] (altura = porcentaje) en 1,5 s al entrar en la
+    /// pantalla y después dos olas del mismo azul siguen moviéndose de izquierda a derecha sin cambiar el nivel. Recortado al círculo;
+    /// se detiene al salir de la pantalla y respeta "quitar animaciones" de Windows.</summary>
+    public static Canvas WaterCircle(double d, double fill)
+    {
+        fill = Math.Clamp(double.IsNaN(fill) ? 0 : fill, 0, 1);
+        var cv = new Canvas { Width = d, Height = d, IsHitTestVisible = false, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        try
+        {
+            var vis = Microsoft.UI.Xaml.Hosting.ElementCompositionPreview.GetElementVisual(cv); var comp = vis.Compositor;
+            var eg = comp.CreateEllipseGeometry(); eg.Center = new System.Numerics.Vector2((float)d / 2); eg.Radius = new System.Numerics.Vector2((float)d / 2);
+            vis.Clip = comp.CreateGeometricClip(eg);
+        }
+        catch { cv.Clip = new RectangleGeometry { Rect = new Rect(0, 0, d, d) }; }
+        if (fill <= 0) return cv;
+        var amp = d * .03;
+        var level = d * (1 - fill);
+        var back = new Microsoft.UI.Xaml.Shapes.Path { Data = WaveGeo(d, amp * .75, .33), Fill = new SolidColorBrush(Color.FromArgb(102, 0x60, 0xA5, 0xFA)) };
+        var front = new Microsoft.UI.Xaml.Shapes.Path { Data = WaveGeo(d, amp, 0),
+            Fill = new LinearGradientBrush { StartPoint = new Point(.5, 0), EndPoint = new Point(.5, 1), GradientStops = { new GradientStop { Color = Color.FromArgb(255, 0x60, 0xA5, 0xFA), Offset = 0 }, new GradientStop { Color = Color.FromArgb(255, 0x25, 0x63, 0xEB), Offset = .6 } } } };
+        var tb = new CompositeTransform { TranslateY = Fx.Enabled ? d : level, TranslateX = 0 }; back.RenderTransform = tb;
+        var tf = new CompositeTransform { TranslateY = Fx.Enabled ? d : level, TranslateX = -d }; front.RenderTransform = tf;
+        cv.Children.Add(back); cv.Children.Add(front);
+        Storyboard? sb = null;
+        cv.Loaded += (_, _) =>
+        {
+            if (!Fx.Enabled) return;
+            sb = new Storyboard();
+            // nivel: sube desde el fondo hasta el porcentaje real (y se queda ahí)
+            foreach (var t in new[] { tb, tf })
+            {
+                var up = new DoubleAnimation { From = d, To = level, Duration = TimeSpan.FromMilliseconds(1500), BeginTime = TimeSpan.FromMilliseconds(250), EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
+                Storyboard.SetTarget(up, t); Storyboard.SetTargetProperty(up, "TranslateY"); sb.Children.Add(up);
+            }
+            // olas: la delantera avanza a la derecha y la trasera a la izquierda, en bucle continuo
+            var fw = new DoubleAnimation { From = -d, To = 0, Duration = TimeSpan.FromMilliseconds(2400), RepeatBehavior = RepeatBehavior.Forever };
+            Storyboard.SetTarget(fw, tf); Storyboard.SetTargetProperty(fw, "TranslateX"); sb.Children.Add(fw);
+            var bw = new DoubleAnimation { From = 0, To = -d, Duration = TimeSpan.FromMilliseconds(3300), RepeatBehavior = RepeatBehavior.Forever };
+            Storyboard.SetTarget(bw, tb); Storyboard.SetTargetProperty(bw, "TranslateX"); sb.Children.Add(bw);
+            sb.Begin();
+        };
+        cv.Unloaded += (_, _) => sb?.Stop();
+        return cv;
+    }
+
     /// <summary>Indicador "agua": el círculo se llena de azul hasta el % cobrado.</summary>
     public static Grid Gauge(double pct, string label = "cobrado", double size = 130)
     {
         pct = double.IsNaN(pct) ? 0 : pct; var fill = Math.Clamp(pct / 100, 0, 1);
         var g = new Grid { Width = size, Height = size };
         var baseC = Day ? Color.FromArgb(255, 0xE2, 0xE8, 0xF0) : Color.FromArgb(204, 15, 23, 42);
-        var s1 = new GradientStop { Color = baseC, Offset = 1 }; var s2 = new GradientStop { Color = Color.FromArgb(255, 0x60, 0xA5, 0xFA), Offset = 1 };
-        var water = new LinearGradientBrush { StartPoint = new Point(.5, 0), EndPoint = new Point(.5, 1), GradientStops = { new GradientStop { Color = baseC, Offset = 0 }, s1, s2, new GradientStop { Color = Color.FromArgb(255, 0x25, 0x63, 0xEB), Offset = 1 } } };
-        g.Children.Add(new Microsoft.UI.Xaml.Shapes.Ellipse { Fill = water, Stroke = Alpha(Blue, .45), StrokeThickness = 2.5 });
-        g.Loaded += (_, _) => { var to = 1 - fill; var sb = new Storyboard(); sb.Children.Add(Fx.Anim(s1, "Offset", 1, to, 1300, 250, dependent: true)); sb.Children.Add(Fx.Anim(s2, "Offset", 1, to, 1300, 250, dependent: true)); sb.Completed += (_, _) => { s1.Offset = to; s2.Offset = to; }; sb.Begin(); };
+        g.Children.Add(new Microsoft.UI.Xaml.Shapes.Ellipse { Fill = new SolidColorBrush(baseC) });
+        g.Children.Add(WaterCircle(size - 3, fill));
+        g.Children.Add(new Microsoft.UI.Xaml.Shapes.Ellipse { Stroke = Alpha(Blue, .45), StrokeThickness = 2.5 });
         var onWater = !Day || fill > .55;
         var big = Big(Js.ToFixed(Math.Max(0, pct), 0) + "%", onWater ? White : Text, size / 6); var lab = T(label, 11, false, onWater ? Br(0xD9FFFFFFu) : Mut, false);
-        var finalPct = Math.Max(0, pct); g.Loaded += (_, _) => Fx.Count(big, finalPct, v => Js.ToFixed(v, 0) + "%", 1300, 250);
+        var finalPct = Math.Max(0, pct); g.Loaded += (_, _) => Fx.Count(big, finalPct, v => Js.ToFixed(v, 0) + "%", 1500, 250);
 
         var t = V(0, big, lab); t.HorizontalAlignment = HorizontalAlignment.Center; t.VerticalAlignment = VerticalAlignment.Center;
         foreach (var c in t.Children) ((FrameworkElement)c).HorizontalAlignment = HorizontalAlignment.Center;
@@ -272,11 +365,13 @@ public static partial class K
     {
         pct = double.IsNaN(pct) ? 0 : Math.Clamp(pct, 0, 100);
         var g = new Grid { Width = size, Height = size };
-        var ring = new ProgressRing { IsIndeterminate = false, Minimum = 0, Maximum = 100, Value = 0, Width = size, Height = size, Foreground = Blue, Background = Track };
-        g.Children.Add(ring);
-        ring.Loaded += (_, _) => { var sb = new Storyboard(); sb.Children.Add(Fx.Anim(ring, "Value", 0, pct, 1100, 250, dependent: true)); sb.Completed += (_, _) => ring.Value = pct; sb.Begin(); };
-        var rb = Big(Js.ToFixed(pct, 0) + "%", null, size / 4.6); var rp = pct; g.Loaded += (_, _) => Fx.Count(rb, rp, v => Js.ToFixed(v, 0) + "%", 1100, 250);
-        var t = V(0, rb, Muted(label, 11)); t.HorizontalAlignment = HorizontalAlignment.Center; t.VerticalAlignment = VerticalAlignment.Center;
+        var th = size * .085; var r = (size - th) / 2 - 2;
+        g.Children.Add(new Microsoft.UI.Xaml.Shapes.Ellipse { Width = 2 * r + th, Height = 2 * r + th, Stroke = Track, StrokeThickness = th, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center });
+        g.Children.Add(WaterCircle(2 * (r - th / 2 - 3), pct / 100));
+        g.Children.Add(ArcLayer(size, r, th, Blue, pct / 100));
+        var onW = !Day || pct > 45;
+        var rb = Big(Js.ToFixed(pct, 0) + "%", onW ? White : null, size / 4.6); var rp = pct; g.Loaded += (_, _) => Fx.Count(rb, rp, v => Js.ToFixed(v, 0) + "%", 1500, 250);
+        var t = V(0, rb, T(label, 11, false, onW ? Br(0xD9FFFFFFu) : Mut, false)); t.HorizontalAlignment = HorizontalAlignment.Center; t.VerticalAlignment = VerticalAlignment.Center;
         foreach (var c in t.Children) ((FrameworkElement)c).HorizontalAlignment = HorizontalAlignment.Center;
         g.Children.Add(t); return g;
     }
