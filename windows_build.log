@@ -1,0 +1,5 @@
+  Determining projects to restore...
+  Restored D:\a\encargos-nativo\encargos-nativo\windows\Encargos.Core\Encargos.Core.csproj (in 13.97 sec).
+  Restored D:\a\encargos-nativo\encargos-nativo\windows\Encargos.Win\Encargos.Win.csproj (in 15.67 sec).
+  Encargos.Core -> D:\a\encargos-nativo\encargos-nativo\windows\Encargos.Core\bin\x64\Release\net8.0\Encargos.Core.dll
+D:\a\encargos-nativo\encargos-nativo\windows\Encargos.Win\Pages\Home.cs(32,134): error CS0123: No overload for 'K.Money(object?)' matches delegate 'Func<double, string>' [D:\a\encargos-nativo\encargos-nativo\windows\Encargos.Win\Encargos.Win.csproj]
