@@ -64,16 +64,16 @@ fun StatsScreen() {
             SectionCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Gauge(if (cur.ventas > 0) cur.cobrado / cur.ventas * 100 else if (cur.cobrado > 0) 100.0 else 0.0, size = 120); Spacer(Modifier.width(14.dp))
-                    Column { Text("Dinero cobrado", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(money(cur.cobrado), fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = C.green); delta(cur.cobrado, prev.cobrado); Text("de ${money(cur.ventas)} vendido", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    Column { Text("Dinero cobrado", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(money(countUp(cur.cobrado)), fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = C.green); delta(cur.cobrado, prev.cobrado); Text("de ${money(cur.ventas)} vendido", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 }
                 Bars(st.buckets(p, a, b), height = 120)
             }
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { kpi("Ventas", money(cur.ventas), C.blue, cur.ventas, prev.ventas, Modifier.weight(1f)); kpi("Encargos", "${cur.ord.size}", C.vio, cur.ord.size.toDouble(), prev.ord.size.toDouble(), Modifier.weight(1f)) }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { kpi("Libras", Js.toFixed(cur.lb, 1) + " lb", C.amber, cur.lb, prev.lb, Modifier.weight(1f)); kpi("Ganancia", (if (cur.gan < 0) "-" else "") + money(abs(cur.gan)), if (cur.gan >= 0) C.green else C.rose, cur.gan, prev.gan, Modifier.weight(1f)) }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { kpi("Gastos", money(cur.gastos), C.rose, cur.gastos, prev.gastos, Modifier.weight(1f)); kpi("Ganancia neta", (if (cur.neta < 0) "-" else "") + money(abs(cur.neta)), if (cur.neta >= 0) C.green else C.rose, cur.neta, prev.neta, Modifier.weight(1f)) }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { kpi("Ventas", money(countUp(cur.ventas)), C.blue, cur.ventas, prev.ventas, Modifier.weight(1f)); kpi("Encargos", "${countUp(cur.ord.size.toDouble()).toInt()}", C.vio, cur.ord.size.toDouble(), prev.ord.size.toDouble(), Modifier.weight(1f)) }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { kpi("Libras", Js.toFixed(countUp(cur.lb), 1) + " lb", C.amber, cur.lb, prev.lb, Modifier.weight(1f)); kpi("Ganancia", (if (cur.gan < 0) "-" else "") + money(abs(cur.gan)), if (cur.gan >= 0) C.green else C.rose, cur.gan, prev.gan, Modifier.weight(1f)) }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { kpi("Gastos", money(countUp(cur.gastos)), C.rose, cur.gastos, prev.gastos, Modifier.weight(1f)); kpi("Ganancia neta", (if (cur.neta < 0) "-" else "") + money(abs(cur.neta)), if (cur.neta >= 0) C.green else C.rose, cur.neta, prev.neta, Modifier.weight(1f)) }
             }
         }
         item {

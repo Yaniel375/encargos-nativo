@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.CreditCard
+import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.LocalShipping
 import androidx.compose.material.icons.outlined.People
@@ -56,7 +57,7 @@ fun HomeScreen() {
     val ui = LocalUi.current; val app = ui.app; val core = app.core; val v = LocalVersion.current
     val d = app.stats.dashboard(); val ps = app.stats.payments()
     val active = core.activeOrders()
-    var q by rememberSaveable { mutableStateOf("") }
+    var q by rememberSaveable { mutableStateOf("") }; var week by rememberSaveable { mutableStateOf(true) }
     Page(title = null) {
         item {
             Text("¡Hola, ${core.greetName}!", Modifier.padding(top = 4.dp, start = 2.dp),
@@ -72,33 +73,50 @@ fun HomeScreen() {
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
                     Text("Por cobrar", fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(money(d.pending), fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.64).sp, maxLines = 1)
+                    Text(money(countUp(d.pending)), fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.64).sp, maxLines = 1)
                     Spacer(Modifier.size(4.dp))
-                    Legend(W.green, "Cobrado", money(d.paid)); Legend(Color(0xFF64748B), "Pendiente", money(d.pending))
+                    Legend(W.green, "Cobrado", money(countUp(d.paid)), W.green); Legend(W.rose, "Pendiente", money(countUp(d.pending)), W.rose)
                 }
             }
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    StatButton(Icons.Outlined.Inventory2, "Encargos", "${active.size}", Modifier.weight(1f)) { ui.root(Screen.Orders) }
-                    StatButton(Icons.Outlined.People, "Clientes", "${d.clients}", Modifier.weight(1f)) { ui.root(Screen.Clients) }
+                    StatButton(Icons.Outlined.Inventory2, "Encargos", "${countUp(active.size.toDouble()).toInt()}", Modifier.weight(1f)) { ui.root(Screen.Orders) }
+                    StatButton(Icons.Outlined.People, "Clientes", "${countUp(d.clients.toDouble()).toInt()}", Modifier.weight(1f)) { ui.root(Screen.Clients) }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    StatButton(Icons.Outlined.Scale, "Libras", Js.toFixed(d.pounds, 2) + " lb", Modifier.weight(1f)) { ui.go(Screen.Stats) }
-                    StatButton(Icons.Outlined.AccountBalanceWallet, "Fondos a favor", "+ " + money(d.funds), Modifier.weight(1f), W.green) { ui.go(Screen.Pending) }
+                    StatButton(Icons.Outlined.Scale, "Libras", Js.toFixed(countUp(d.pounds), 2) + " lb", Modifier.weight(1f)) { ui.go(Screen.Stats) }
+                    StatButton(Icons.Outlined.AccountBalanceWallet, "Fondos a favor", "+ " + money(countUp(d.funds)), Modifier.weight(1f), W.green) { ui.go(Screen.Pending) }
                 }
             }
         }
         item {
             val ped = d.byStatus.getOrNull(0)?.second ?: 0; val tra = (d.byStatus.getOrNull(1)?.second ?: 0) + d.received; val ent = d.byStatus.getOrNull(2)?.second ?: 0
             SectionCard("Estado de los pedidos", icon = Icons.Outlined.LocalShipping, action = { LinkText("${active.size} activos ›") { ui.root(Screen.Orders) } }) {
-                SegBar(listOf(ped.toDouble() to W.blue, tra.toDouble() to Color(0xFF64748B), ent.toDouble() to W.green))
+                SegBar(listOf(ped.toDouble() to W.blue, tra.toDouble() to C.status("En tránsito"), ent.toDouble() to W.green))
                 Row(Modifier.fillMaxWidth().padding(top = 4.dp)) {
                     StateCol("Pedido", ped, W.blue, null, Modifier.weight(1f))
-                    StateCol("En tránsito", tra, Color(0xFF94A3B8), if (d.received > 0) "incluye ${d.received} recibido${if (d.received == 1) "" else "s"}" else null, Modifier.weight(1f))
+                    StateCol("En tránsito", tra, C.status("En tránsito"), if (d.received > 0) "incluye ${d.received} recibido${if (d.received == 1) "" else "s"}" else null, Modifier.weight(1f))
                     StateCol("Entregado", ent, W.green, null, Modifier.weight(1f))
                 }
+            }
+        }
+        item {
+            // Actividad del periodo (datos reales de Estadísticas): mes en curso + ingresos recientes
+            val st = app.stats; val today = java.time.LocalDate.now()
+            val (ma, mb) = st.range(com.agencia.encargos.core.Stats.Period.MONTH, today); val m = st.calc(ma, mb)
+            SectionCard("Actividad de " + st.label(com.agencia.encargos.core.Stats.Period.MONTH, ma, mb).substringBefore(" de ").lowercase(), icon = Icons.Outlined.Insights, action = { LinkText("Estadísticas ›") { ui.go(Screen.Stats) } }) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Kpi("Cobrado", money(countUp(m.cobrado)), W.green, modifier = Modifier.weight(1f)); Kpi("Ventas", money(countUp(m.ventas)), modifier = Modifier.weight(1f))
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Kpi("Encargos", "${countUp(m.ord.size.toDouble()).toInt()}", modifier = Modifier.weight(1f))
+                    Kpi("Ganancia neta", (if (m.neta < 0) "-" else "") + money(kotlin.math.abs(countUp(m.neta))), if (m.neta >= 0) W.green else W.rose, modifier = Modifier.weight(1f))
+                }
+                Choice(listOf("w" to "Últimos 7 días", "m" to "Últimos 6 meses"), if (week) "w" else "m") { week = it == "w" }
+                val items = st.revenue(week)
+                if (items.any { it.second > 0 }) Bars(items, height = 120) else Text("Aún no hay cobros en este periodo.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         item {
@@ -132,11 +150,11 @@ private fun payDate(v: Any?): String {
         .replace(".", "").split(" ").joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
 }
 
-@Composable private fun Legend(c: Color, label: String, value: String) {
+@Composable private fun Legend(c: Color, label: String, value: String, vc: Color = MaterialTheme.colorScheme.onSurface) {
     Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(8.dp).clip(CircleShape).background(c)); Spacer(Modifier.width(7.dp))
         Text(label, Modifier.weight(1f), fontSize = 13.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, fontSize = 13.5.sp, fontWeight = FontWeight.Bold)
+        Text(value, fontSize = 13.5.sp, fontWeight = FontWeight.Bold, color = vc)
     }
 }
 

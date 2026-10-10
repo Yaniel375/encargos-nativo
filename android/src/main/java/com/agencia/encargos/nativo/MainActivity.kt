@@ -21,10 +21,13 @@ class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        com.agencia.encargos.nativo.ui.Motion.refresh()
         enableEdgeToEdge(androidx.activity.SystemBarStyle.dark(android.graphics.Color.TRANSPARENT), androidx.activity.SystemBarStyle.dark(android.graphics.Color.TRANSPARENT))
         applyPrivacy()
         // "Pedir contraseña al abrir" desactivado y con acceso ya creado: entra directo
         if (!app.unlocked && app.security.hasCredentials() && !app.security.lockCfg().onOpen) app.unlocked = true
+        // Solo en la copia de PRUEBA automática: permite elegir el tema al abrir (recorrido día/noche)
+        if (BuildConfig.CAPTURE_TEST) intent?.getStringExtra("tema")?.let { app.core.ls.set("encargos_aurora_mode", if (it == "dia") "day" else "night") }
         setContent { EncargosTheme(day = app.core.ls.get("encargos_aurora_mode", "") == "day") { AppRoot(app, this) } }
     }
     /** Privacidad en recientes: oculta el contenido en la vista de apps recientes y bloquea capturas. */
@@ -39,6 +42,7 @@ class MainActivity : FragmentActivity() {
     }
 
     override fun onResume() {
+        com.agencia.encargos.nativo.ui.Motion.refresh()
         super.onResume()
         if (hiddenAt > 0 && app.unlocked && app.security.hasCredentials() && app.security.shouldLockAfter(System.currentTimeMillis() - hiddenAt)) {
             app.security.log(true, "Bloqueo al volver a la app"); app.unlocked = false; onLock?.invoke()

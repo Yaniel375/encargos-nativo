@@ -151,13 +151,19 @@ fun AppRoot(app: EncargosApp, act: FragmentActivity) {
     var unlocked by remember { mutableStateOf(app.unlocked) }
     LaunchedEffect(notice) { notice?.let { ui.toast(it); app.notices.value = null } }
     LaunchedEffect(Unit) { (act as? com.agencia.encargos.nativo.MainActivity)?.onLock = { unlocked = false; app.unlocked = false } }
+    // iconos de la barra del sistema oscuros en modo día (dentro de la app) y claros sobre el fondo aurora
+    val dayTheme = isDay()
+    LaunchedEffect(unlocked, dayTheme) {
+        try { val c = androidx.core.view.WindowCompat.getInsetsController(act.window, act.window.decorView); val light = dayTheme && unlocked; c.isAppearanceLightStatusBars = light; c.isAppearanceLightNavigationBars = light } catch (_: Exception) {}
+    }
 
     CompositionLocalProvider(LocalUi provides ui, LocalVersion provides v + sv, androidx.compose.material3.LocalContentColor provides MaterialTheme.colorScheme.onBackground) {
         Box(Modifier.fillMaxSize()) {
-            if (isDay()) DayBackground() else AuroraBackground()
+            // el acceso siempre va sobre el fondo aurora (como la web); la app usa el fondo del tema elegido
+            if (isDay() && unlocked) DayBackground() else AuroraBackground()
             // paso suave entre la pantalla de acceso y la app (lgVeilOut)
             AnimatedContent(unlocked, transitionSpec = { fadeIn(tween(420)) togetherWith fadeOut(tween(320)) }, label = "lock") { open ->
-                if (!open) Box(Modifier.fillMaxSize()) { LockScreen { unlocked = true; app.unlocked = true; app.sync.syncNow(); (act as? com.agencia.encargos.nativo.MainActivity)?.afterUnlock() } }
+                if (!open) Box(Modifier.fillMaxSize()) { CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides NIGHT.tx) { LockScreen { unlocked = true; app.unlocked = true; app.sync.syncNow(); (act as? com.agencia.encargos.nativo.MainActivity)?.afterUnlock() } } }
                 else MainUi(ui, app) { unlocked = false; app.unlocked = false }
             }
             Toasts(ui)
@@ -189,7 +195,7 @@ private fun MainUi(ui: Ui, app: EncargosApp, lock: () -> Unit) {
 private fun Header(ui: Ui, app: EncargosApp, lock: () -> Unit, modifier: Modifier) {
     var menu by remember { mutableStateOf(false) }
     val shape = RoundedCornerShape(20.dp)
-    Row(modifier.statusBarsPadding().padding(horizontal = 14.dp, vertical = 8.dp).fillMaxWidth().clip(shape).background(if (isDay()) Color.White.copy(alpha = .9f) else W.bar).border(1.dp, W.line, shape)
+    Row(modifier.statusBarsPadding().padding(horizontal = 14.dp, vertical = 8.dp).fillMaxWidth().clip(shape).background(W.bar).border(1.dp, W.line, shape)
         .padding(start = 14.dp, end = 10.dp, top = 9.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         Image(painterResource(R.mipmap.ic_launcher), null, Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)).clickable { ui.root(Screen.Home) })
         Spacer(Modifier.width(9.dp))
@@ -200,7 +206,7 @@ private fun Header(ui: Ui, app: EncargosApp, lock: () -> Unit, modifier: Modifie
                 color = when (s.kind) { "ok" -> W.green; "error" -> W.rose; "offline", "pending" -> W.amber; else -> W.mut })
         }
         val attn = app.core.attention.badge(); val nf = app.core.notifs.unreadCount()
-        HeadBtn(Icons.Outlined.TrackChanges, "Centro de atención", attn, Color(0xFFF43F5E)) { ui.go(Screen.Attention) }
+        HeadBtn(Icons.Outlined.TrackChanges, "Centro de atención", attn, Color(0xFFE11D48)) { ui.go(Screen.Attention) }
         Spacer(Modifier.width(6.dp))
         HeadBtn(Icons.Outlined.Notifications, "Notificaciones", nf, W.blue) { ui.go(Screen.Notifs) }
         Spacer(Modifier.width(6.dp))
@@ -209,12 +215,12 @@ private fun Header(ui: Ui, app: EncargosApp, lock: () -> Unit, modifier: Modifie
             Row(Modifier.pressBounce(src, .94f).height(40.dp).clip(sh).background(W.btnBg).border(1.dp, W.btnLine, sh).clickable(src, null) { tapFeedback(); menu = true }.padding(start = 3.dp, end = 4.dp),
                 verticalAlignment = Alignment.CenterVertically) {
                 val ash = RoundedCornerShape(11.dp)
-                Box(Modifier.size(33.dp).clip(ash).background(Color(0xFF1E293B)).border(1.dp, Color(96, 165, 250, 115), ash), contentAlignment = Alignment.Center) {
-                    Text(app.core.greetName.trim().take(1).uppercase().ifEmpty { "E" }, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, color = Color(0xFFE2E8F0))
+                Box(Modifier.size(33.dp).clip(ash).background(W.avatarBg).border(1.dp, W.blue.copy(alpha = .45f), ash), contentAlignment = Alignment.Center) {
+                    Text(app.core.greetName.trim().take(1).uppercase().ifEmpty { "E" }, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, color = W.tx)
                 }
                 Icon(Icons.Filled.KeyboardArrowDown, "Más", Modifier.size(18.dp), tint = W.mut)
             }
-            DropdownMenu(menu, { menu = false }, shape = RoundedCornerShape(16.dp), containerColor = Color(0xFF0E1628)) {
+            DropdownMenu(menu, { menu = false }, shape = RoundedCornerShape(16.dp), containerColor = W.menu) {
                 listOf(Screen.Payments, Screen.Pending, Screen.Stats, Screen.Completed, Screen.Backup, Screen.Security, Screen.Sync, Screen.Settings).forEach { s ->
                     DropdownMenuItem(text = { Text(s.title, fontWeight = FontWeight.SemiBold) }, onClick = { menu = false; tapFeedback(); ui.go(s) }) }
                 DropdownMenuItem(text = { Text("Bloquear ahora", color = C.rose, fontWeight = FontWeight.Bold) }, onClick = { menu = false; lock() })
@@ -235,7 +241,7 @@ private fun HeadBtn(icon: ImageVector, desc: String, count: Int, badge: Color, o
             val k = remember { Animatable(.8f) }
             LaunchedEffect(count) { k.snapTo(.8f); k.animateTo(1f, tween(300, easing = EaseBounce)) }
             Box(Modifier.align(Alignment.TopEnd).offset(5.dp, (-5).dp).graphicsLayer { scaleX = k.value; scaleY = k.value }.height(18.dp).widthIn(min = 18.dp).clip(RoundedCornerShape(9.dp)).background(badge)
-                .border(2.dp, Color(0xFF090D18), RoundedCornerShape(9.dp)).padding(horizontal = 4.dp), contentAlignment = Alignment.Center) {
+                .border(2.dp, W.badgeRing, RoundedCornerShape(9.dp)).padding(horizontal = 4.dp), contentAlignment = Alignment.Center) {
                 Text(if (count > 99) "99+" else "$count", fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, color = Color.White, maxLines = 1)
             }
         }
@@ -247,7 +253,7 @@ private fun HeadBtn(icon: ImageVector, desc: String, count: Int, badge: Color, o
 private fun BottomNav(ui: Ui, modifier: Modifier) {
     val cur = ui.current
     Box(modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxWidth().background(if (isDay()) Color.White.copy(alpha = .96f) else W.nav).border(1.dp, W.line, RoundedCornerShape(0.dp)).navigationBarsPadding().padding(horizontal = 6.dp, vertical = 6.dp),
+        Row(Modifier.fillMaxWidth().background(W.nav).border(1.dp, W.line, RoundedCornerShape(0.dp)).navigationBarsPadding().padding(horizontal = 6.dp, vertical = 6.dp),
             verticalAlignment = Alignment.Bottom) {
             TABS.forEach { t ->
                 val on = cur == t.s || (t.s == Screen.NewOrder && cur is Screen.NewFor)
@@ -321,7 +327,7 @@ const val AUTO_TITLE = "\u0000"
         SnackbarHost(ui.snack, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 92.dp)) { d ->
             val msg = d.visuals.message; val ok = msg.startsWith("✅"); val bad = !ok && Regex("^(No se pudo|Error|⚠️)|no es válid|incorrect", RegexOption.IGNORE_CASE).containsMatchIn(msg)
             val sh = RoundedCornerShape(16.dp)
-            Row(Modifier.fillMaxWidth().clip(sh).background(Color(0xFF070B14)).glass(sh, W.line2).padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().clip(sh).background(W.toast).glass(sh, W.line2).padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (ok || bad) {
                     Box(Modifier.size(24.dp).clip(CircleShape).background((if (ok) W.green else W.rose).copy(alpha = .18f)), contentAlignment = Alignment.Center) {
                         Icon(if (ok) Icons.Filled.Check else Icons.Filled.ErrorOutline, null, Modifier.size(15.dp), tint = if (ok) W.green else W.rose)

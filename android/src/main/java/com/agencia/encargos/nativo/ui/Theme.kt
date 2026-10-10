@@ -66,21 +66,53 @@ val Manrope = FontFamily(
     Font(R.font.manrope_semibold, FontWeight.SemiBold), Font(R.font.manrope_bold, FontWeight.Bold), Font(R.font.manrope_extrabold, FontWeight.ExtraBold),
     Font(R.font.manrope_extrabold, FontWeight.Black))
 
-/** Colores de la app web (tema aurora, modo noche). */
+/**
+ * Paleta única de la app (modo noche "aurora" y modo día). Todos los componentes leen sus colores de aquí:
+ * no hay colores fijos que rompan el tema. El modo se elige en EncargosTheme(day).
+ */
+class Palette(
+    val day: Boolean, val base: Color, val tx: Color, val mut: Color, val navOff: Color,
+    val glassA: Color, val glassB: Color, val line: Color, val line2: Color, val tile: Color, val bar: Color, val nav: Color,
+    val btnBg: Color, val btnLine: Color, val blue: Color, val blueTop: Color, val blueDeep: Color, val blueInk: Color, val blueSoft: Color,
+    val green: Color, val greenInk: Color, val rose: Color, val amber: Color, val cyan: Color, val vio: Color, val teal: Color,
+    val inputBg: Color, val track: Color, val icon: Color, val chipTx: Color, val avatarBg: Color, val menu: Color, val toast: Color, val badgeRing: Color,
+)
+val NIGHT = Palette(false, base = Color(0xFF020611), tx = Color(0xFFF1F5F9), mut = Color(0xFF9AA6B8), navOff = Color(0xFF7C8BA5),
+    glassA = Color(30, 41, 59, 158), glassB = Color(15, 23, 42, 184), line = Color(148, 163, 184, 36), line2 = Color(148, 163, 184, 61), tile = Color(148, 163, 184, 20),
+    bar = Color(9, 13, 24, 199), nav = Color(9, 13, 24, 240), btnBg = Color(255, 255, 255, 15), btnLine = Color(255, 255, 255, 26),
+    blue = Color(0xFF3B82F6), blueTop = Color(0xFF4F8DF7), blueDeep = Color(0xFF2563EB), blueInk = Color(0xFF93C5FD), blueSoft = Color(0xFF0F2544),
+    green = Color(0xFF34D399), greenInk = Color(0xFF6EE7B7), rose = Color(0xFFFB7185), amber = Color(0xFFFBBF24), cyan = Color(0xFF22D3EE), vio = Color(0xFFA78BFA), teal = Color(0xFF2DD4BF),
+    inputBg = Color(15, 23, 42, 140), track = Color(148, 163, 184, 40), icon = Color(0xFFCBD5E1), chipTx = Color(0xFFCBD5E1), avatarBg = Color(0xFF1E293B),
+    menu = Color(0xFF0E1628), toast = Color(0xFF070B14), badgeRing = Color(0xFF090D18))
+/** Modo día: claro y legible (contraste AA para textos; rojo = pendiente, verde = a favor). */
+val DAY = Palette(true, base = Color(0xFFEEF2F8), tx = Color(0xFF0F172A), mut = Color(0xFF526079), navOff = Color(0xFF64748B),
+    glassA = Color(0xFFFFFFFF), glassB = Color(0xFFF8FAFC), line = Color(15, 23, 42, 26), line2 = Color(15, 23, 42, 41), tile = Color(15, 23, 42, 10),
+    bar = Color(255, 255, 255, 230), nav = Color(255, 255, 255, 245), btnBg = Color(15, 23, 42, 10), btnLine = Color(15, 23, 42, 26),
+    blue = Color(0xFF2563EB), blueTop = Color(0xFF3B82F6), blueDeep = Color(0xFF1D4ED8), blueInk = Color(0xFF1D4ED8), blueSoft = Color(0xFFDBEAFE),
+    green = Color(0xFF047857), greenInk = Color(0xFF065F46), rose = Color(0xFFE11D48), amber = Color(0xFFB45309), cyan = Color(0xFF0891B2), vio = Color(0xFF7C3AED), teal = Color(0xFF0F766E),
+    inputBg = Color(0xFFF8FAFC), track = Color(15, 23, 42, 22), icon = Color(0xFF475569), chipTx = Color(0xFF334155), avatarBg = Color(0xFFE2E8F0),
+    menu = Color(0xFFFFFFFF), toast = Color(0xFFFFFFFF), badgeRing = Color(0xFFFFFFFF))
+
+/** Colores vigentes (los lee toda la interfaz). */
 object W {
-    val base = Color(0xFF020611)
-    val tx = Color(0xFFF1F5F9); val mut = Color(0xFF9AA6B8); val navOff = Color(0xFF7C8BA5)
-    val glassA = Color(30, 41, 59, (0.62f * 255).toInt()); val glassB = Color(15, 23, 42, (0.72f * 255).toInt())
-    val line = Color(148, 163, 184, (0.14f * 255).toInt()); val line2 = Color(148, 163, 184, (0.24f * 255).toInt())
-    val tile = Color(148, 163, 184, (0.08f * 255).toInt())
-    val bar = Color(9, 13, 24, (0.78f * 255).toInt()); val nav = Color(9, 13, 24, (0.94f * 255).toInt())
-    val btnBg = Color(255, 255, 255, (0.06f * 255).toInt()); val btnLine = Color(255, 255, 255, (0.10f * 255).toInt())
-    val blue = Color(0xFF3B82F6); val blueTop = Color(0xFF4F8DF7); val blueDeep = Color(0xFF2563EB); val blueInk = Color(0xFF93C5FD); val blueSoft = Color(0xFF0F2544)
-    val green = Color(0xFF34D399); val greenInk = Color(0xFF6EE7B7); val rose = Color(0xFFFB7185); val amber = Color(0xFFFBBF24); val cyan = Color(0xFF22D3EE)
-    val inputBg = Color(15, 23, 42, (0.55f * 255).toInt())
-    val glass = Brush.linearGradient(listOf(glassA, glassB), start = Offset(0f, 0f), end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY))
-    val primary = Brush.linearGradient(listOf(blueTop, blueDeep), start = Offset(0f, 0f), end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY))
-    val success = Brush.linearGradient(listOf(Color(0xFF34D399), Color(0xFF059669)), start = Offset(0f, 0f), end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY))
+    var p: Palette = NIGHT
+    val day get() = p.day
+    val base get() = p.base; val tx get() = p.tx; val mut get() = p.mut; val navOff get() = p.navOff
+    val glassA get() = p.glassA; val glassB get() = p.glassB; val line get() = p.line; val line2 get() = p.line2; val tile get() = p.tile
+    val bar get() = p.bar; val nav get() = p.nav; val btnBg get() = p.btnBg; val btnLine get() = p.btnLine
+    val blue get() = p.blue; val blueTop get() = p.blueTop; val blueDeep get() = p.blueDeep; val blueInk get() = p.blueInk; val blueSoft get() = p.blueSoft
+    val green get() = p.green; val greenInk get() = p.greenInk; val rose get() = p.rose; val amber get() = p.amber; val cyan get() = p.cyan; val vio get() = p.vio; val teal get() = p.teal
+    val inputBg get() = p.inputBg; val track get() = p.track; val icon get() = p.icon; val chipTx get() = p.chipTx; val avatarBg get() = p.avatarBg
+    val menu get() = p.menu; val toast get() = p.toast; val badgeRing get() = p.badgeRing
+    val glass: Brush get() = Brush.linearGradient(listOf(glassA, glassB), start = Offset(0f, 0f), end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY))
+    val primary: Brush get() = Brush.linearGradient(listOf(blueTop, blueDeep), start = Offset(0f, 0f), end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY))
+    val success: Brush get() = Brush.linearGradient(listOf(Color(0xFF34D399), Color(0xFF059669)), start = Offset(0f, 0f), end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY))
+}
+
+/** ¿Animaciones activadas en el sistema? (Ajustes → Accesibilidad → Quitar animaciones = equivalente a prefers-reduced-motion). */
+object Motion {
+    @Volatile var enabled = true
+    fun refresh() { enabled = try { android.animation.ValueAnimator.areAnimatorsEnabled() } catch (_: Throwable) { true } }
 }
 
 /** Curvas de la web: cubic-bezier(.2,.8,.2,1) y el rebote (.34,1.56,.64,1). */
@@ -89,13 +121,12 @@ val EaseBounce = CubicBezierEasing(.34f, 1.56f, .64f, 1f)
 val EaseInOut = CubicBezierEasing(.42f, 0f, .58f, 1f)
 
 /** Tarjeta de vidrio (.aCard): degradado oscuro translúcido + borde fino. */
-fun Modifier.glass(shape: Shape = RoundedCornerShape(18.dp), border: Color = W.line, day: Boolean = false): Modifier =
-    if (day) this.clip(shape).background(Color.White).border(1.dp, Color(0x1F0F172A), shape)
-    else this.clip(shape).background(W.glass).border(1.dp, border, shape)
+fun Modifier.glass(shape: Shape = RoundedCornerShape(18.dp), border: Color = W.line, @Suppress("UNUSED_PARAMETER") day: Boolean = false): Modifier =
+    this.clip(shape).background(W.glass).border(1.dp, border, shape)
 
 /** Animación de entrada (aUp): sube 14 px y aparece en 0,55 s, escalonada 70 ms. */
 fun Modifier.enterUp(index: Int, enabled: Boolean = true): Modifier = composed {
-    if (!enabled) return@composed this
+    if (!enabled || !Motion.enabled) return@composed this
     val k = remember { Animatable(0f) }
     val dy = with(LocalDensity.current) { 14.dp.toPx() }
     LaunchedEffect(Unit) { delay(min(index, 9) * 70L); k.animateTo(1f, tween(550, easing = EaseOut)) }
@@ -151,6 +182,11 @@ private fun svgPath(d: String): Path {
 /** Fondo "aurora" de la web: imagen con deriva lenta, haces de luz que recorren las líneas, pulso azul y chispas. */
 @Composable
 fun AuroraBackground(modifier: Modifier = Modifier) {
+    if (!Motion.enabled) {
+        // "Quitar animaciones" activado: el mismo fondo, quieto
+        Box(modifier.fillMaxSize().background(NIGHT.base)) { Image(painterResource(R.drawable.aurora_bg), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
+        return
+    }
     val inf = rememberInfiniteTransition(label = "bg")
     val drift by inf.animateFloat(0f, 1f, infiniteRepeatable(tween(48000, easing = EaseInOut), RepeatMode.Reverse), label = "drift")
     val drift2 by inf.animateFloat(0f, 1f, infiniteRepeatable(tween(30000, easing = EaseInOut), RepeatMode.Reverse), label = "drift2")
@@ -158,7 +194,7 @@ fun AuroraBackground(modifier: Modifier = Modifier) {
     val clock by inf.animateFloat(0f, 1f, infiniteRepeatable(tween(1_000_000, easing = LinearEasing)), label = "clock") // reloj de 1000 s
     val paths = remember { RUNS.map { r -> val p = svgPath(r.d); val m = PathMeasure(); m.setPath(p, false); Triple(r, m, m.length) } }
     val seg = remember { Path() }
-    Box(modifier.fillMaxSize().background(W.base)) {
+    Box(modifier.fillMaxSize().background(NIGHT.base)) {
         // escena: imagen + líneas, con la misma deriva (translate -1.2 %, 1 % y scale 1.035)
         Box(Modifier.fillMaxSize().graphicsLayer {
             val s = 1.04f + 0.035f * drift; scaleX = s; scaleY = s
@@ -203,12 +239,16 @@ fun AuroraBackground(modifier: Modifier = Modifier) {
 }
 
 /** Fondo claro (modo día de la web). */
-@Composable fun DayBackground(modifier: Modifier = Modifier) = Box(modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFFF4F6FB), Color(0xFFE9EEF8)))))
+@Composable fun DayBackground(modifier: Modifier = Modifier) = Box(modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFFF4F6FB), Color(0xFFE9EEF8))))
+    .drawBehind {
+        drawCircle(Brush.radialGradient(listOf(Color(37, 99, 235, 26), Color.Transparent), Offset(size.width * .85f, size.height * .08f), size.width * .9f), size.width * .9f, Offset(size.width * .85f, size.height * .08f))
+        drawCircle(Brush.radialGradient(listOf(Color(34, 211, 238, 20), Color.Transparent), Offset(size.width * .1f, size.height * .92f), size.width * .8f), size.width * .8f, Offset(size.width * .1f, size.height * .92f))
+    })
 
 /** Brillo que recorre el título una vez (aShine, 1,5 s tras 0,45 s). */
 @Composable fun shineBrush(base: Color, glow: Color = W.blueInk): Brush {
-    val k = remember { Animatable(-0.4f) }
-    LaunchedEffect(Unit) { delay(450); k.animateTo(1.4f, tween(1500, easing = EaseInOut)) }
+    val k = remember { Animatable(if (Motion.enabled) -0.4f else 1.4f) }
+    LaunchedEffect(Unit) { if (Motion.enabled) { delay(450); k.animateTo(1.4f, tween(1500, easing = EaseInOut)) } }
     val p = k.value
     return Brush.linearGradient(0f to base, max(0f, p - .12f) to base, p.coerceIn(0f, 1f) to glow, min(1f, p + .12f) to base, 1f to base,
         start = Offset(0f, 0f), end = Offset(900f, 160f))
@@ -225,10 +265,20 @@ fun Modifier.glow(color: Color, radius: Dp = 18.dp, dy: Dp = 8.dp, alpha: Float 
 /** Un toque háptico breve (Haptics.tap de la web). */
 fun tapFeedback() = Feedback.tap()
 
+/** Cifra que "cuenta" hasta su valor (transición numérica discreta, 0,7 s); sin animación si el sistema las quitó. */
+@Composable fun countUp(value: Double, durationMs: Int = 700): Double {
+    val k = remember { Animatable(if (Motion.enabled) 0f else value.toFloat()) }
+    LaunchedEffect(value) { if (!Motion.enabled || !value.isFinite()) k.snapTo(value.toFloat()) else k.animateTo(value.toFloat(), tween(durationMs, easing = EaseOut)) }
+    return if (k.isRunning) k.value.toDouble() else value
+}
+
 /** Para animaciones de "dibujo" (anillos, barras): 0→1 con retardo. */
-@Composable fun drawIn(target: Float, durationMs: Int = 1100, delayMs: Int = 250): Float {
-    val k = remember { Animatable(0f) }
-    LaunchedEffect(target) { delay(delayMs.toLong()); k.animateTo(target, tween(durationMs, easing = EaseOut)) }
+@Composable fun drawIn(target: Float, durationMs: Int = 1100, delayMs: Int = 250, key: Any? = null): Float {
+    val k = remember { Animatable(if (Motion.enabled) 0f else target) }
+    LaunchedEffect(target, key) {
+        if (!Motion.enabled) { k.snapTo(target); return@LaunchedEffect }
+        if (key != null) k.snapTo(0f)
+        delay(delayMs.toLong()); k.animateTo(target, tween(durationMs, easing = EaseOut)) }
     return k.value
 }
 

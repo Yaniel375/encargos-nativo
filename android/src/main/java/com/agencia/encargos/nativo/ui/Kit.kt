@@ -89,15 +89,20 @@ import kotlin.math.max
 
 /* ======================= Colores (los de la app web, tema aurora) ======================= */
 object C {
-    val bg = W.base; val surface = Color(0xFF0B1220); val card = Color(0xFF111A2C); val line = Color(0xFF243049)
-    val tx = W.tx; val mut = W.mut
-    val blue = W.blue; val green = W.green; val rose = W.rose; val amber = W.amber; val vio = Color(0xFFA78BFA); val teal = Color(0xFF2DD4BF)
-    fun status(s: String?): Color = when (s) { "En tránsito" -> Color(0xFF94A3B8); "Recibido" -> Color(0xFF7DD3FC); "Entregado" -> green; "Cancelado" -> Color(0xFF64748B); else -> blue }
+    val bg get() = W.base; val surface get() = if (W.day) Color.White else Color(0xFF0B1220); val card get() = if (W.day) Color.White else Color(0xFF111A2C); val line get() = if (W.day) Color(0xFFE2E8F0) else Color(0xFF243049)
+    val tx get() = W.tx; val mut get() = W.mut
+    val blue get() = W.blue; val green get() = W.green; val rose get() = W.rose; val amber get() = W.amber; val vio get() = W.vio; val teal get() = W.teal
+    /** Colores de estado (mismos en ambos temas, más oscuros de día para que se lean). */
+    fun status(s: String?): Color = when (s) {
+        "En tránsito" -> if (W.day) Color(0xFF475569) else Color(0xFF94A3B8); "Recibido" -> if (W.day) Color(0xFF0369A1) else Color(0xFF7DD3FC)
+        "Entregado" -> green; "Cancelado" -> Color(0xFF64748B); else -> blue }
 }
-private val Dark = darkColorScheme(primary = C.blue, onPrimary = Color.White, secondary = C.green, background = C.bg, surface = C.surface, onSurface = C.tx, onBackground = C.tx,
-    surfaceVariant = C.card, onSurfaceVariant = C.mut, outline = C.line, outlineVariant = W.line, error = C.rose, surfaceContainer = Color(0xFF0E1628), surfaceContainerHigh = Color(0xFF0E1628),
-    surfaceContainerHighest = Color(0xFF16213A), surfaceContainerLow = Color(0xFF0B1220), primaryContainer = W.blueSoft, onPrimaryContainer = W.blueInk, secondaryContainer = Color(0xFF16213A), onSecondaryContainer = W.tx)
-private val Light = lightColorScheme(primary = Color(0xFF2563EB), secondary = Color(0xFF059669), background = Color(0xFFF4F6FB), surface = Color.White, error = Color(0xFFE11D48))
+private fun darkScheme() = darkColorScheme(primary = NIGHT.blue, onPrimary = Color.White, secondary = NIGHT.green, background = NIGHT.base, surface = Color(0xFF0B1220), onSurface = NIGHT.tx, onBackground = NIGHT.tx,
+    surfaceVariant = Color(0xFF111A2C), onSurfaceVariant = NIGHT.mut, outline = Color(0xFF243049), outlineVariant = NIGHT.line, error = NIGHT.rose, surfaceContainer = NIGHT.menu, surfaceContainerHigh = NIGHT.menu,
+    surfaceContainerHighest = Color(0xFF16213A), surfaceContainerLow = Color(0xFF0B1220), primaryContainer = NIGHT.blueSoft, onPrimaryContainer = NIGHT.blueInk, secondaryContainer = Color(0xFF16213A), onSecondaryContainer = NIGHT.tx)
+private fun lightScheme() = lightColorScheme(primary = DAY.blue, onPrimary = Color.White, secondary = DAY.green, background = DAY.base, surface = Color.White, onSurface = DAY.tx, onBackground = DAY.tx,
+    surfaceVariant = Color(0xFFF1F5F9), onSurfaceVariant = DAY.mut, outline = Color(0xFFCBD5E1), outlineVariant = DAY.line, error = DAY.rose, surfaceContainer = Color.White, surfaceContainerHigh = Color.White,
+    surfaceContainerHighest = Color(0xFFF1F5F9), surfaceContainerLow = Color(0xFFF8FAFC), primaryContainer = DAY.blueSoft, onPrimaryContainer = DAY.blueInk, secondaryContainer = Color(0xFFE2E8F0), onSecondaryContainer = DAY.tx)
 
 private fun manropeTypography(): Typography {
     val t = Typography()
@@ -108,13 +113,16 @@ private fun manropeTypography(): Typography {
         labelLarge = f(t.labelLarge).copy(fontWeight = FontWeight.Bold), labelMedium = f(t.labelMedium), labelSmall = f(t.labelSmall))
 }
 
-@Composable fun EncargosTheme(day: Boolean = false, content: @Composable () -> Unit) = MaterialTheme(colorScheme = if (day) Light else Dark, typography = manropeTypography(), content = content)
+@Composable fun EncargosTheme(day: Boolean = false, content: @Composable () -> Unit) {
+    W.p = if (day) DAY else NIGHT   // tema central: lo leen todos los componentes
+    MaterialTheme(colorScheme = if (day) lightScheme() else darkScheme(), typography = manropeTypography(), content = content)
+}
 
 fun money(v: Any?) = Js.money(v)
 fun lb(v: Double) = Js.toFixed(v, 2) + " lb"
 
 /** ¿Modo día? (los componentes de vidrio cambian a tarjetas blancas). */
-@Composable fun isDay() = MaterialTheme.colorScheme.background != C.bg
+@Composable fun isDay() = W.day
 
 /* ======================= Piezas reutilizables ======================= */
 
@@ -150,7 +158,7 @@ fun lb(v: Double) = Js.toFixed(v, 2) + " lb"
         Box(Modifier.size(6.dp).clip(CircleShape).background(color)); Spacer(Modifier.width(6.dp)); Text(text, color = lerpInk(color), fontSize = 11.5.sp, fontWeight = FontWeight.Bold, maxLines = 1)
     }
 }
-private fun lerpInk(c: Color) = Color(c.red + (1 - c.red) * .45f, c.green + (1 - c.green) * .45f, c.blue + (1 - c.blue) * .45f, 1f)
+private fun lerpInk(c: Color) = if (W.day) Color(c.red * .8f, c.green * .8f, c.blue * .8f, 1f) else Color(c.red + (1 - c.red) * .45f, c.green + (1 - c.green) * .45f, c.blue + (1 - c.blue) * .45f, 1f)
 @Composable fun StatusChip(s: String?, onClick: (() -> Unit)? = null) = Chip(s?.ifEmpty { null } ?: "Pedido", C.status(s), onClick = onClick)
 
 /** Filtros en pastilla (Todos · Pedido · En tránsito…). */
@@ -158,12 +166,12 @@ private fun lerpInk(c: Color) = Color(c.red + (1 - c.red) * .45f, c.green + (1 -
     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         options.forEach { (v, l) ->
             val on = v == selected; val shape = RoundedCornerShape(50)
-            val bg by animateColorAsState(if (on) W.blue.copy(alpha = .20f) else Color(148, 163, 184, 15), tween(240), label = "chip")
+            val bg by animateColorAsState(if (on) W.blue.copy(alpha = if (W.day) .12f else .20f) else W.tile, tween(240), label = "chip")
             val bd by animateColorAsState(if (on) W.blue.copy(alpha = .65f) else W.line, tween(240), label = "chipB")
             val src = remember { MutableInteractionSource() }
             Box(Modifier.pressBounce(src, .95f).clip(shape).background(bg).border(1.dp, bd, shape)
                 .clickable(src, null) { tapFeedback(); onSelect(v) }.padding(horizontal = 15.dp, vertical = 9.dp)) {
-                Text(l, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (on) Color.White else Color(0xFFCBD5E1), maxLines = 1)
+                Text(l, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (on) (if (W.day) W.blueDeep else Color.White) else W.chipTx, maxLines = 1)
             }
         }
     }
@@ -183,7 +191,7 @@ private fun lerpInk(c: Color) = Color(c.red + (1 - c.red) * .45f, c.green + (1 -
             visualTransformation = if (password && !show) PasswordVisualTransformation() else VisualTransformation.None,
             keyboardOptions = KeyboardOptions(keyboardType = if (number) KeyboardType.Decimal else if (password) KeyboardType.Password else KeyboardType.Text),
             decorationBox = { inner ->
-                Row(Modifier.fillMaxWidth().clip(shape).background(if (day) Color(0xFFF1F5F9) else W.inputBg).border(1.dp, bd, shape).padding(horizontal = 14.dp, vertical = if (singleLine) 14.dp else 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().clip(shape).background(W.inputBg).border(1.dp, bd, shape).padding(horizontal = 14.dp, vertical = if (singleLine) 14.dp else 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (prefix != null) Text(prefix + " ", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                     Box(Modifier.weight(1f)) { inner() }
                     if (suffix != null) Text(" $suffix", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
@@ -209,11 +217,17 @@ private fun lerpInk(c: Color) = Color(c.red + (1 - c.red) * .45f, c.green + (1 -
 }
 
 /** Botón principal: degradado azul, brillo, rebote al tocar y vibración breve. */
+/** Evita que un doble toque registre dos veces la misma operación (700 ms). */
+@Composable fun rememberOnce(onClick: () -> Unit): () -> Unit {
+    val last = remember { longArrayOf(0L) }
+    return { val now = android.os.SystemClock.elapsedRealtime(); if (now - last[0] > 700) { last[0] = now; onClick() } }
+}
+
 @Composable fun Primary(text: String, modifier: Modifier = Modifier, icon: ImageVector? = null, enabled: Boolean = true, color: Color = C.blue, onClick: () -> Unit) {
-    val src = remember { MutableInteractionSource() }; val shape = RoundedCornerShape(14.dp)
+    val src = remember { MutableInteractionSource() }; val shape = RoundedCornerShape(14.dp); val once = rememberOnce(onClick)
     val brush = if (color == C.blue) W.primary else Brush.linearGradient(listOf(Color(color.red + (1 - color.red) * .15f, color.green + (1 - color.green) * .15f, color.blue + (1 - color.blue) * .15f), color))
     Row(modifier.height(52.dp).pressBounce(src).graphicsLayer { alpha = if (enabled) 1f else .5f }.glow(color, 14.dp, 8.dp, if (enabled) .45f else 0f)
-        .clip(shape).background(brush).clickable(src, null, enabled = enabled) { tapFeedback(); onClick() }.padding(horizontal = 16.dp),
+        .clip(shape).background(brush).clickable(src, null, enabled = enabled) { tapFeedback(); once() }.padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
         if (icon != null) { Icon(icon, null, Modifier.size(18.dp), tint = Color.White); Spacer(Modifier.width(8.dp)) }
         Text(text, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -221,10 +235,10 @@ private fun lerpInk(c: Color) = Color(c.red + (1 - c.red) * .45f, c.green + (1 -
 }
 /** Botón secundario (.secondary): vidrio gris con borde. */
 @Composable fun Secondary(text: String, modifier: Modifier = Modifier, icon: ImageVector? = null, color: Color? = null, onClick: () -> Unit) {
-    val src = remember { MutableInteractionSource() }; val shape = RoundedCornerShape(14.dp)
+    val src = remember { MutableInteractionSource() }; val shape = RoundedCornerShape(14.dp); val once = rememberOnce(onClick)
     val fg = color ?: MaterialTheme.colorScheme.onSurface
     Row(modifier.height(48.dp).pressBounce(src).clip(shape).background(if (color != null) color.copy(alpha = .08f) else W.tile).border(1.dp, if (color != null) color.copy(alpha = .35f) else W.line2, shape)
-        .clickable(src, null) { tapFeedback(); onClick() }.padding(horizontal = 14.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+        .clickable(src, null) { tapFeedback(); once() }.padding(horizontal = 14.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
         if (icon != null) { Icon(icon, null, Modifier.size(17.dp), tint = fg); Spacer(Modifier.width(7.dp)) }
         Text(text, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
@@ -241,7 +255,7 @@ private fun lerpInk(c: Color) = Color(c.red + (1 - c.red) * .45f, c.green + (1 -
 /** Estado vacío: icono, título y texto centrados (como "Aún no tienes notas"). */
 @Composable fun Empty(title: String, text: String = "", icon: ImageVector = Icons.Outlined.Description, action: (@Composable () -> Unit)? = null) {
     Column(Modifier.fillMaxWidth().glass(day = isDay()).padding(vertical = 26.dp, horizontal = 18.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Icon(icon, null, Modifier.size(52.dp), tint = Color(0xFFCBD5E1))
+        Icon(icon, null, Modifier.size(52.dp), tint = W.icon)
         Text(title, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, textAlign = TextAlign.Center); if (text.isNotEmpty()) Text(text, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, fontSize = 13.sp); action?.invoke()
     }
 }
@@ -249,15 +263,15 @@ private fun lerpInk(c: Color) = Color(c.red + (1 - c.red) * .45f, c.green + (1 -
 /** Inicial del cliente en recuadro (como en la web). */
 @Composable fun Avatar(name: String, color: Color = C.blue, size: Int = 42) {
     val shape = RoundedCornerShape((size * .3).dp)
-    Box(Modifier.size(size.dp).clip(shape).background(Color(148, 163, 184, 26)).border(1.dp, if (color == C.rose) C.rose.copy(alpha = .35f) else W.line2, shape), contentAlignment = Alignment.Center) {
+    Box(Modifier.size(size.dp).clip(shape).background(W.tile).border(1.dp, if (color == C.rose) C.rose.copy(alpha = .35f) else W.line2, shape), contentAlignment = Alignment.Center) {
         Text(name.trim().take(1).uppercase().ifEmpty { "?" }, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface, fontSize = (size / 2.4).sp)
     }
 }
 
 /** Icono en recuadro (.ic) de las tarjetas de la web. */
-@Composable fun IconTile(icon: ImageVector, tint: Color = Color(0xFFCBD5E1), size: Int = 40) {
+@Composable fun IconTile(icon: ImageVector, tint: Color = W.icon, size: Int = 40) {
     val shape = RoundedCornerShape(12.dp)
-    Box(Modifier.size(size.dp).clip(shape).background(Color(148, 163, 184, 26)).border(1.dp, W.line, shape), contentAlignment = Alignment.Center) { Icon(icon, null, Modifier.size((size * .48).dp), tint = tint) }
+    Box(Modifier.size(size.dp).clip(shape).background(W.tile).border(1.dp, W.line, shape), contentAlignment = Alignment.Center) { Icon(icon, null, Modifier.size((size * .48).dp), tint = tint) }
 }
 
 /** Indicador "agua": el círculo se llena de azul hasta el % cobrado (sube al aparecer). */
@@ -266,7 +280,7 @@ private fun lerpInk(c: Color) = Color(c.red + (1 - c.red) * .45f, c.green + (1 -
     Box(Modifier.size(size.dp), contentAlignment = Alignment.Center) {
         Canvas(Modifier.size(size.dp)) {
             val r = this.size.minDimension / 2
-            drawCircle(Color(15, 23, 42, 200), r)
+            drawCircle(if (W.day) Color(0xFFE2E8F0) else Color(15, 23, 42, 200), r)
             val top = this.size.height * (1 - fill)
             val path = androidx.compose.ui.graphics.Path().apply { addOval(androidx.compose.ui.geometry.Rect(Offset.Zero, this@Canvas.size)) }
             clipPath(path) {
@@ -275,7 +289,7 @@ private fun lerpInk(c: Color) = Color(c.red + (1 - c.red) * .45f, c.green + (1 -
             }
             drawCircle(W.blue.copy(alpha = .45f), r - 1.5f, style = Stroke(3f))
         }
-        Column(horizontalAlignment = Alignment.CenterHorizontally) { Text("${Math.round(pct)}%", fontSize = (size / 6).sp, fontWeight = FontWeight.ExtraBold, color = Color.White); Text(label, fontSize = 11.sp, color = Color.White.copy(alpha = .85f)) }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) { val onWater = !W.day || fill > .55f; Text("${Math.round(pct)}%", fontSize = (size / 6).sp, fontWeight = FontWeight.ExtraBold, color = if (onWater) Color.White else W.tx); Text(label, fontSize = 11.sp, color = if (onWater) Color.White.copy(alpha = .85f) else W.mut) }
     }
 }
 
@@ -286,7 +300,7 @@ private fun lerpInk(c: Color) = Color(c.red + (1 - c.red) * .45f, c.green + (1 -
         Canvas(Modifier.size(size.dp)) {
             val sw = this.size.minDimension * .085f; val inset = sw / 2 + 2f
             val sz = Size(this.size.width - inset * 2, this.size.height - inset * 2)
-            drawArc(Color(148, 163, 184, 40), 0f, 360f, false, Offset(inset, inset), sz, style = Stroke(sw))
+            drawArc(W.track, 0f, 360f, false, Offset(inset, inset), sz, style = Stroke(sw))
             if (k > 0f) drawArc(Brush.sweepGradient(listOf(W.cyan, W.blue, Color(0xFF60A5FA), W.cyan)), -90f, 360f * k, false, Offset(inset, inset), sz, style = Stroke(sw, cap = StrokeCap.Round))
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) { Text("${Math.round(pct)}%", fontSize = (size / 4.6).sp, fontWeight = FontWeight.ExtraBold); Text(label, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -296,13 +310,13 @@ private fun lerpInk(c: Color) = Color(c.red + (1 - c.red) * .45f, c.green + (1 -
 /** Gráfica de barras: crecen desde abajo (sGrow). */
 @Composable fun Bars(items: List<Pair<String, Double>>, color: Color = C.blue, height: Int = 150) {
     val mx = max(1.0, items.maxOfOrNull { it.second } ?: 1.0)
-    val k = drawIn(1f, 800, 200)
+    val k = drawIn(1f, 800, 200, key = items)
     Row(Modifier.fillMaxWidth().height(height.dp), horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.Bottom) {
         items.forEach { (l, v) ->
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                 if (v > 0) Text("$" + Js.toFixed(v, 0), fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                 Box(Modifier.fillMaxWidth().height(max(2.0, (v / mx) * (height - 40) * k).dp).clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp, bottomStart = 2.dp, bottomEnd = 2.dp))
-                    .background(if (v > 0) Brush.verticalGradient(listOf(Color(0xFF60A5FA), color)) else SolidColor(Color(148, 163, 184, 40))))
+                    .background(if (v > 0) Brush.verticalGradient(listOf(Color(0xFF60A5FA), color)) else SolidColor(W.track)))
                 Text(l, fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             }
         }
@@ -313,7 +327,7 @@ private fun lerpInk(c: Color) = Color(c.red + (1 - c.red) * .45f, c.green + (1 -
 @Composable fun ProgressBar(k: Double, color: Color = C.green) {
     val v = drawIn(k.coerceIn(0.0, 1.0).toFloat(), 900, 300)
     Canvas(Modifier.fillMaxWidth().height(6.dp)) {
-        drawRoundRect(Color(148, 163, 184, 36), size = this.size, cornerRadius = CornerRadius(this.size.height, this.size.height))
+        drawRoundRect(W.track, size = this.size, cornerRadius = CornerRadius(this.size.height, this.size.height))
         if (v > 0f) drawRoundRect(color, size = Size(this.size.width * v, this.size.height), cornerRadius = CornerRadius(this.size.height, this.size.height))
     }
 }
@@ -321,10 +335,10 @@ private fun lerpInk(c: Color) = Color(c.red + (1 - c.red) * .45f, c.green + (1 -
 /** Barra segmentada (Estado de los pedidos). */
 @Composable fun SegBar(parts: List<Pair<Double, Color>>) {
     val total = parts.sumOf { it.first }.let { if (it <= 0) 1.0 else it }
-    val k = drawIn(1f, 900, 300)
+    val k = drawIn(1f, 900, 300, key = parts.map { it.first })
     Row(Modifier.fillMaxWidth().height(10.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
         parts.filter { it.first > 0 }.forEach { (v, c) -> Box(Modifier.weight((v / total).toFloat()).fillMaxWidth().height(10.dp).graphicsLayer { scaleX = k; transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, .5f) }.clip(RoundedCornerShape(99.dp)).background(c)) }
-        if (parts.all { it.first <= 0 }) Box(Modifier.weight(1f).height(10.dp).clip(RoundedCornerShape(99.dp)).background(Color(148, 163, 184, 36)))
+        if (parts.all { it.first <= 0 }) Box(Modifier.weight(1f).height(10.dp).clip(RoundedCornerShape(99.dp)).background(W.track))
     }
 }
 
