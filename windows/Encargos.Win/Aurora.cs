@@ -144,14 +144,14 @@ public static class Fx
     static bool ReadEnabled() { try { return new Windows.UI.ViewManagement.UISettings().AnimationsEnabled; } catch { return true; } }
 
     /// <summary>Cifra que "cuenta" hasta su valor en 0,7 s (transición numérica discreta).</summary>
-    public static void Count(TextBlock tb, double to, Func<double, string> fmt, double ms = 700)
+    public static void Count(TextBlock tb, double to, Func<double, string> fmt, double ms = 700, double delayMs = 0)
     {
         tb.Text = fmt(Enabled ? 0 : to); if (!Enabled || !double.IsFinite(to)) { tb.Text = fmt(to); return; }
         var q = tb.DispatcherQueue; if (q == null) { tb.Text = fmt(to); return; }
-        var t = q.CreateTimer(); t.Interval = TimeSpan.FromMilliseconds(16); var start = DateTime.UtcNow;
+        var t = q.CreateTimer(); t.Interval = TimeSpan.FromMilliseconds(16); var start = DateTime.UtcNow.AddMilliseconds(delayMs);
         t.Tick += (_, _) =>
         {
-            var k = Math.Min(1, (DateTime.UtcNow - start).TotalMilliseconds / ms); var e = 1 - Math.Pow(1 - k, 3);
+            var k = Math.Clamp((DateTime.UtcNow - start).TotalMilliseconds / ms, 0, 1); var e = 1 - Math.Pow(1 - k, 3);
             tb.Text = fmt(k >= 1 ? to : to * e); if (k >= 1) t.Stop();
         };
         t.Start();

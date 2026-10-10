@@ -159,9 +159,10 @@ public sealed class OrderPage : Screen
             b > 0.005 ? Btn("Recordar pago", () => S.WhatsApp(x.Str("phone"), Core.ReminderOrder(x), x.Str("name")), false, Rose) : Btn("Agradecer", () => S.WhatsApp(x.Str("phone"), Core.ThanksOrder(x), x.Str("name")))));
         p.Children.Add(Card("Nota interna", Link(x.Str("note").Length == 0 ? "Agregar" : "Editar", () => OrderActions.EditNote(x)),
             x.Str("note").Length == 0 ? Muted("Solo para ti: el cliente nunca la ve.", 14) : T(x.Str("note"))));
-        var ph = Hs(8, photos.Select((s, i) => (UIElement)Media.Photo(s, 110, 110, () => OrderActions.ViewPhotos(x, i))).ToArray());
         p.Children.Add(Card($"Fotos ({photos.Count})", Link("Agregar foto", async () => { var d = await Media.PickPhoto(900, 0.55); if (d != null && Core.AddOrderPhoto(x["id"], d)) S.Toast("✅ Foto guardada."); }),
-            photos.Count == 0 ? (UIElement)Muted("Todavía no hay fotos de esta compra.", 14) : new ScrollViewer { Content = ph, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled, HorizontalScrollMode = ScrollMode.Enabled }));
+            photos.Count == 0 ? (UIElement)Muted("Todavía no hay fotos de esta compra.", 14)
+            : photos.Count == 1 ? Media.Photo(photos[0], double.NaN, 320, () => OrderActions.ViewPhotos(x, 0), 1200)
+            : Media.Strip(photos, 140, i => OrderActions.ViewPhotos(x, i))));
         var ev = new List<(object? d, string txt, string val, Microsoft.UI.Xaml.Media.Brush col)>();
         ev.Add((x["date"], $"Encargo creado · {Core.ShippingName(Core.TypeOf(x))} · {Money(x["lbCost"])}/lb", Money(x["cost"]), Blue));
         foreach (var h in (x["paymentHistory"] as JArr)?.Objs() ?? new()) ev.Add((h["date"], "Pago · " + h.Str("method").IfEmpty("Efectivo") + (h.Str("note").Length > 0 ? " · " + h.Str("note") : ""), "+" + Money(h["amount"]), Green));
@@ -206,7 +207,7 @@ public sealed class EditOrderPage : Screen
         p.Children.Add(Btn("Guardar cambios", () => Save(x), true, null, ""));
         var photos = Core.OrderPhotos(x);
         p.Children.Add(Card("Fotos del encargo", null,
-            Hs(8, photos.Select((s, i) => (UIElement)Media.Photo(s, 96, 96, () => OrderActions.ViewPhotos(x, i))).ToArray()),
+            photos.Count > 0 ? Media.Strip(photos, 110, i => OrderActions.ViewPhotos(x, i)) : null,
             Btn("Agregar foto", async () => { var d = await Media.PickPhoto(900, 0.55); if (d != null && Core.AddOrderPhoto(x["id"], d)) { S.Toast("✅ Foto guardada."); Redraw(); } }, false, null, "")));
         var ph = (x["paymentHistory"] as JArr)?.Objs() ?? new();
         var rows = new List<UIElement>();

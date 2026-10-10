@@ -73,7 +73,12 @@ public sealed class HomePage : Screen
             var done = x != null && Js.Num(x["total"]) > 0 && Js.Num(x["balance"]) <= 0.005;
             var id = it.OrderId;
             if (i > 0) rows.Add(new Border { Height = 1, Background = LineBr });
-            rows.Add(Click(Row(V(0, T(PayDate(it.P["date"]), 12.5, true), T(it.Client, 13.5, true, null, false, 1)), T(it.P.Str("method").IfEmpty("Efectivo"), 12, false, Mut, false), T(Money(it.P["amount"]), 15, true, null, false), done ? Chip("Completado", Green) : null), () => S.Go(new OrderPage(id))));
+            // fila compacta: inicial · cliente y fecha/método · importe (y "Saldado" si ya no debe nada)
+            var amt = V(0, T("+ " + Money(it.P["amount"]), 14, true, Green, false), done ? T("Saldado", 10.5, true, Mut, false) : null);
+            foreach (var ch in amt.Children) ((FrameworkElement)ch).HorizontalAlignment = HorizontalAlignment.Right;
+            var row = Lead(Avatar(it.Client, Green, 32), V(0, T(it.Client, 13.5, true, null, false, 1), Muted(PayDate(it.P["date"]) + " · " + it.P.Str("method").IfEmpty("Efectivo"), 11.5)), amt);
+            row.ColumnSpacing = 10;
+            var rb = Click(row, () => S.Go(new OrderPage(id))); rb.Padding = new Thickness(2, 7, 2, 7); rows.Add(rb);
         }
         var pagos = IconCard("", "Últimos pagos", Link("Ver todos ›", () => S.Go(new PaymentsPage())), rows.ToArray());
         if (narrow) { p.Children.Add(estado); p.Children.Add(pagos); } else p.Children.Add(Cols(estado, pagos));

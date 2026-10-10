@@ -261,6 +261,8 @@ public static partial class K
         g.Loaded += (_, _) => { var to = 1 - fill; var sb = new Storyboard(); sb.Children.Add(Fx.Anim(s1, "Offset", 1, to, 1300, 250, dependent: true)); sb.Children.Add(Fx.Anim(s2, "Offset", 1, to, 1300, 250, dependent: true)); sb.Completed += (_, _) => { s1.Offset = to; s2.Offset = to; }; sb.Begin(); };
         var onWater = !Day || fill > .55;
         var big = Big(Js.ToFixed(Math.Max(0, pct), 0) + "%", onWater ? White : Text, size / 6); var lab = T(label, 11, false, onWater ? Br(0xD9FFFFFFu) : Mut, false);
+        var finalPct = Math.Max(0, pct); g.Loaded += (_, _) => Fx.Count(big, finalPct, v => Js.ToFixed(v, 0) + "%", 1300, 250);
+
         var t = V(0, big, lab); t.HorizontalAlignment = HorizontalAlignment.Center; t.VerticalAlignment = VerticalAlignment.Center;
         foreach (var c in t.Children) ((FrameworkElement)c).HorizontalAlignment = HorizontalAlignment.Center;
         g.Children.Add(t); return g;
@@ -273,30 +275,40 @@ public static partial class K
         var ring = new ProgressRing { IsIndeterminate = false, Minimum = 0, Maximum = 100, Value = 0, Width = size, Height = size, Foreground = Blue, Background = Track };
         g.Children.Add(ring);
         ring.Loaded += (_, _) => { var sb = new Storyboard(); sb.Children.Add(Fx.Anim(ring, "Value", 0, pct, 1100, 250, dependent: true)); sb.Completed += (_, _) => ring.Value = pct; sb.Begin(); };
-        var t = V(0, Big(Js.ToFixed(pct, 0) + "%", null, size / 4.6), Muted(label, 11)); t.HorizontalAlignment = HorizontalAlignment.Center; t.VerticalAlignment = VerticalAlignment.Center;
+        var rb = Big(Js.ToFixed(pct, 0) + "%", null, size / 4.6); var rp = pct; g.Loaded += (_, _) => Fx.Count(rb, rp, v => Js.ToFixed(v, 0) + "%", 1100, 250);
+        var t = V(0, rb, Muted(label, 11)); t.HorizontalAlignment = HorizontalAlignment.Center; t.VerticalAlignment = VerticalAlignment.Center;
         foreach (var c in t.Children) ((FrameworkElement)c).HorizontalAlignment = HorizontalAlignment.Center;
         g.Children.Add(t); return g;
     }
-    /// <summary>Gráfica de barras: crecen desde abajo (sGrow).</summary>
-    public static Grid Bars(List<(string Label, double Value)> items, Brush? color = null, double height = 140)
+    /// <summary>Gráfica de barras: se llenan desde la base una tras otra; al pulsar una barra se resalta y se muestra su importe.</summary>
+    public static StackPanel Bars(List<(string Label, double Value)> items, Brush? color = null, double height = 140)
     {
+        var info = T("Pulsa una barra para ver su importe", 11, false, Mut, false);
         var g = new Grid { ColumnSpacing = 6, Height = height + 36 };
         var mx = Math.Max(1e-9, items.Count == 0 ? 1 : items.Max(i => i.Value));
+        var bars = new List<(Border bar, TextBlock lab)>(); var sel = -1;
         for (var i = 0; i < items.Count; i++)
         {
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             var (l, v) = items[i];
-            var col = new Grid(); col.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }); col.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            var bar = new Border { Height = Math.Max(2, v / mx * height), VerticalAlignment = VerticalAlignment.Bottom, CornerRadius = new CornerRadius(6, 6, 2, 2),
+            var col = new Grid { Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent) }; col.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }); col.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            var bar = new Border { Height = Math.Max(2, v / mx * height), VerticalAlignment = VerticalAlignment.Bottom, CornerRadius = new CornerRadius(6, 6, 2, 2), BorderThickness = new Thickness(0),
                 Background = v > 0 ? new LinearGradientBrush { StartPoint = new Point(.5, 0), EndPoint = new Point(.5, 1), GradientStops = { new GradientStop { Color = Color.FromArgb(255, 0x60, 0xA5, 0xFA), Offset = 0 }, new GradientStop { Color = ((SolidColorBrush)(color ?? Blue)).Color, Offset = 1 } } } : Br(0x2894A3B8u) };
             var ct = new CompositeTransform { ScaleY = 0 }; bar.RenderTransform = ct; bar.RenderTransformOrigin = new Point(.5, 1);
-            var delay = 200 + i * 40; bar.Loaded += (_, _) => { var sb = new Storyboard(); sb.Children.Add(Fx.Anim(ct, "ScaleY", 0, 1, 800, delay)); sb.Completed += (_, _) => ct.ScaleY = 1; sb.Begin(); };
-            ToolTipService.SetToolTip(bar, Js.Money(v));
+            var delay = 200 + i * 45; bar.Loaded += (_, _) => { var sb = new Storyboard(); sb.Children.Add(Fx.Anim(ct, "ScaleY", 0, 1, 900, delay)); sb.Completed += (_, _) => ct.ScaleY = 1; sb.Begin(); };
+            ToolTipService.SetToolTip(bar, l + " · " + Js.Money(v));
             col.Children.Add(bar);
             var lab = Muted(l, 11); lab.HorizontalAlignment = HorizontalAlignment.Center; lab.TextWrapping = TextWrapping.NoWrap; Grid.SetRow(lab, 1); col.Children.Add(lab);
-            Grid.SetColumn(col, i); g.Children.Add(col);
+            Grid.SetColumn(col, i); g.Children.Add(col); bars.Add((bar, lab));
+            var idx = i; var txt = l + " · " + Js.Money(v);
+            col.Tapped += (_, _) =>
+            {
+                sel = sel == idx ? -1 : idx;
+                for (var j = 0; j < bars.Count; j++) { bars[j].bar.Opacity = sel < 0 || sel == j ? 1 : .45; bars[j].bar.BorderThickness = new Thickness(sel == j ? 1.5 : 0); bars[j].bar.BorderBrush = BlueInk; bars[j].lab.Foreground = sel == j ? BlueInk : Mut; }
+                info.Text = sel < 0 ? "Pulsa una barra para ver su importe" : txt; info.Foreground = sel < 0 ? Mut : BlueInk; info.FontWeight = sel < 0 ? Microsoft.UI.Text.FontWeights.Normal : Microsoft.UI.Text.FontWeights.ExtraBold;
+            };
         }
-        return g;
+        return V(6, info, g);
     }
     /// <summary>Inicial del cliente en recuadro (como en la web).</summary>
     public static Border Avatar(string name, Brush? color = null, double size = 40)

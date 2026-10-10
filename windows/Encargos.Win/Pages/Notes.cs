@@ -47,7 +47,8 @@ public sealed class NotesPage : Screen
             items.Add(new Border { Child = lb, CornerRadius = new CornerRadius(10), Background = Tile, BorderBrush = LineBr, BorderThickness = new Thickness(1) });
         }
         var ph = (n["photos"] as JArr)?.OfType<string>().ToList() ?? new();
-        if (ph.Count > 0) items.Add(Hs(6, ph.Take(4).Select(s => (UIElement)Media.Photo(s, 60, 60)).ToArray()));
+        if (ph.Count == 1) items.Add(Media.Photo(ph[0], double.NaN, 170, () => Media.Viewer(ph, 0, null), 700));
+        else if (ph.Count > 1) items.Add(Media.Strip(ph, 84, i => Media.Viewer(ph, i, null)));
         items.Add(Muted(DayLabel(n["updated"]), 11));
         var id = n.Str("id");
         return ClickCard(() => S.Go(new NoteEditorPage(id)), items.ToArray());
@@ -124,7 +125,7 @@ public sealed class NoteEditorPage : Screen
     void DrawPhotos()
     {
         _photoRow.Children.Clear();
-        for (var i = 0; i < _photos.Count; i++) { var idx = i; _photoRow.Children.Add(Media.Photo(_photos[i], 84, 84, () => Media.Viewer(_photos.ToList(), idx, k => { _photos.RemoveAt(k); DrawPhotos(); }))); }
+        for (var i = 0; i < _photos.Count; i++) { var idx = i; _photoRow.Children.Add(Media.Thumb(_photos[i], 100, i, _photos.Count, () => Media.Viewer(_photos.ToList(), idx, k => { _photos.RemoveAt(k); DrawPhotos(); }))); }
     }
     void Save()
     {
