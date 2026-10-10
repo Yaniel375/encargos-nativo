@@ -60,8 +60,13 @@ def type_in(label, value):
     target = None
     if lab is not None:
         ly = center(lab)[1]
+        lx = center(lab)[0]
         below = [e for e in es if center(e)[1] > ly]
-        if below: target = below[0]
+        if below:
+            row = min(center(e)[1] for e in below)
+            same = [e for e in below if abs(center(e)[1] - row) < 40]
+            # el campo de esa fila que está bajo la etiqueta (por la izquierda del campo)
+            target = min(same, key=lambda e: abs(int(re.findall(r"\d+", e.get("bounds"))[0]) - (lx - 200)))
     if target is None: target = find(label, "EditText")
     if target is None: say(f"  ✗ campo '{label}'"); return
     x, y = center(target); adb("shell", "input", "tap", str(x), str(y)); time.sleep(0.6)

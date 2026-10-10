@@ -33,8 +33,8 @@ public sealed class HomePage : Screen
         hero.Padding = new Thickness(20);
         UIElement Stat(string glyph, string label, string value, Brush? vc, Action go)
         {
-            var lab = T(label, 12.5, true, Mut, false);
-            var c = ClickCard(go, Lead(IconTile(glyph), V(1, lab, Big(value, vc, 18.5)), new FontIcon { Glyph = "", FontSize = 11, Foreground = Mut }));
+            var lab = T(label, 12.5, true, Mut, false, 1);
+            var c = ClickCard(go, Lead(IconTile(glyph), V(1, lab, NoWrap(Big(value, vc, 18.5))), new FontIcon { Glyph = "", FontSize = 11, Foreground = Mut }));
             c.Padding = new Thickness(0); ((Button)c.Child).Padding = new Thickness(12); return c;
         }
         var stats = new Grid { RowSpacing = 12, ColumnSpacing = 12 };
@@ -44,7 +44,7 @@ public sealed class HomePage : Screen
             Stat("", "Libras", Js.ToFixed(d.Pounds, 2) + " lb", null, () => S.Root(new StatsPage())), Stat("", "Fondos a favor", "+ " + Money(d.Funds), Green, () => S.Root(new PendingPage())) };
         for (var i = 0; i < 4; i++) { var fe = (FrameworkElement)cells[i]; Grid.SetRow(fe, i / 2); Grid.SetColumn(fe, i % 2); stats.Children.Add(fe); }
         var top = new Grid { ColumnSpacing = 12 };
-        top.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.25, GridUnitType.Star) }); top.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        top.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }); top.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         top.Children.Add(hero); Grid.SetColumn(stats, 1); top.Children.Add(stats);
         p.Children.Add(top);
 
@@ -73,6 +73,7 @@ public sealed class HomePage : Screen
         p.Children.Add(Cols(estado, pagos));
     }
 
+    static TextBlock NoWrap(TextBlock t) { t.TextWrapping = TextWrapping.NoWrap; t.TextTrimming = TextTrimming.CharacterEllipsis; return t; }
     static string PayDate(object? v)
     {
         var t = Js.ParseDate(v); if (double.IsNaN(t)) return "";
