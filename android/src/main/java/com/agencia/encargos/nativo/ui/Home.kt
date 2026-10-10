@@ -107,7 +107,7 @@ fun HomeScreen() {
                 if (list.isEmpty()) Text("Aún no hay pagos registrados.", Modifier.fillMaxWidth().padding(vertical = 6.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp, textAlign = TextAlign.Center)
                 list.forEachIndexed { i, p ->
                     if (i > 0) HorizontalDivider(color = W.line)
-                    val x = core.data.firstOrNull { Js.str(it["id"]) == p.orderId }
+                    val x = core.orders().firstOrNull { Js.str(it["id"]) == p.orderId }
                     Row(Modifier.fillMaxWidth().clickable { ui.go(Screen.Order(p.orderId)) }.padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text(payDate(p.p["date"]), fontSize = 12.5.sp, fontWeight = FontWeight.Bold)
