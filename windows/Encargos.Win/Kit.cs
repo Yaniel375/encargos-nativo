@@ -200,8 +200,8 @@ public static class K
         foreach (var (k, l) in options)
         {
             var on = k == selected;
-            var b = new Button { Content = T(l, 13, true, on ? Br(0xFFFFFFFFu) : Br(Day ? 0xFF334155u : 0xFFCBD5E1u), false), CornerRadius = new CornerRadius(99), Padding = new Thickness(15, 8, 15, 8), MinHeight = 0,
-                Background = on ? Alpha(Blue, .2) : Br(Day ? 0x0A0F172Au : 0x0F94A3B8u), BorderBrush = on ? Alpha(Blue, .65) : LineBr, BorderThickness = new Thickness(1) };
+            var b = new Button { Content = T(l, 13, true, on ? (Day ? Br(0xFF1D4ED8u) : White) : Br(Day ? 0xFF334155u : 0xFFCBD5E1u), false), CornerRadius = new CornerRadius(99), Padding = new Thickness(15, 8, 15, 8), MinHeight = 0,
+                Background = on ? Alpha(Blue, Day ? .12 : .2) : Br(Day ? 0x0A0F172Au : 0x0F94A3B8u), BorderBrush = on ? Alpha(Blue, .65) : LineBr, BorderThickness = new Thickness(1) };
             if (BtnStyle != null) b.Style = BtnStyle;
             var key = k; b.Click += (_, _) => onSelect(key);
             s.Children.Add(Fx.Bounce(b, .95));
