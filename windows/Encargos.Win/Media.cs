@@ -105,11 +105,12 @@ public static class Media
         var counter = T("", 15, true, White, false); counter.FontWeight = Microsoft.UI.Text.FontWeights.ExtraBold;
         foreach (var src in list)
         {
-            var img = new Image { Stretch = Stretch.Uniform };
-            var sv = new ScrollViewer { ZoomMode = ZoomMode.Enabled, MinZoomFactor = 1, MaxZoomFactor = 5, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                HorizontalScrollMode = ScrollMode.Auto, VerticalScrollMode = ScrollMode.Auto, Content = img };
-            // la foto ocupa justo el área visible (entera); al ampliar se puede recorrer
-            sv.SizeChanged += (_, e) => { img.Width = e.NewSize.Width; img.Height = e.NewSize.Height; };
+            // la foto se centra dentro de un lienzo del tamaño exacto del área visible: se ve entera; al ampliar se recorre
+            var img = new Image { Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            var frame = new Grid { Children = { img } };
+            var sv = new ScrollViewer { ZoomMode = ZoomMode.Enabled, MinZoomFactor = 1, MaxZoomFactor = 5, HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden, VerticalScrollBarVisibility = ScrollBarVisibility.Hidden,
+                HorizontalScrollMode = ScrollMode.Auto, VerticalScrollMode = ScrollMode.Auto, Content = frame, Padding = new Thickness(0) };
+            sv.SizeChanged += (_, e) => { frame.Width = e.NewSize.Width; frame.Height = e.NewSize.Height; };
             sv.DoubleTapped += (_, e) => { var p = e.GetPosition(img); if (sv.ZoomFactor > 1.01f) sv.ChangeView(0, 0, 1); else sv.ChangeView(p.X * 1.5, p.Y * 1.5, 2.5f); };
             _ = SetAsync(img, src, 1800);
             flip.Items.Add(sv);
