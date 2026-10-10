@@ -142,10 +142,15 @@ for dest in ["Registro de pagos", "Estadísticas", "Ajustes"]:
 # lo que salió del menú sigue accesible desde Ajustes → Datos y seguridad
 for dest, row in [("respaldo", "Respaldo e importación"), ("seguridad", "Seguridad"), ("sincronización", "Sincronización (Telegram)")]:
     if tap("Más", wait=1.2) and tap("Ajustes", wait=2.5):
-        for _ in range(3):
-            if find(row, exact=True) is not None: break
+        for _ in range(5):
+            nd = find(row, exact=True)
+            if nd is not None and center(nd)[1] < 1550: break  # por encima de la barra inferior
             adb("shell", "input", "swipe", "540", "1500", "540", "700", "400"); time.sleep(1)
-        if tap(row, exact=True, wait=2.5): shot(dest)
+        if tap(row, exact=True, wait=2.5):
+            shot(dest)
+            # al volver atrás, Ajustes debe seguir desplazado donde estaba (la fila sigue a la vista)
+            hide_kb(); adb("shell", "input", "keyevent", "4"); time.sleep(1.8); shot(f"volver_de_{dest}")
+            say(f"  al volver de {dest}, Ajustes conserva su posición: " + ("sí" if find(row, exact=True) is not None else "NO"))
     home()
 if tap("Más", wait=1.5): shot("menu_perfil"); adb("shell", "input", "keyevent", "4"); time.sleep(1)
 if tap("Más", wait=1.2) and tap("Ajustes", wait=2.5):

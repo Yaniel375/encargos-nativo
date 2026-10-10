@@ -66,6 +66,16 @@ static class Funcional
         Check("Eliminar y deshacer", r != null && app.UndoRemove(r) && app.Orders().Count == before);
         Check("Deshacer dos veces no duplica", !app.UndoRemove(r!) && app.Orders().Count == before);
 
+        // ---------- Vista reutilizada: se actualiza en cuanto cambian los datos ----------
+        var n0 = app.ActiveOrders().Count; var c0 = app.Clients().Count;
+        var nv = app.CreateOrder(new EncargosApp.NewOrder("Vista Prueba", "5355500009", 5, 7, 1, 0)).GetOrThrow();
+        Check("Vista: el encargo nuevo aparece al momento en activos", app.ActiveOrders().Count == n0 + 1 && app.ActiveOrders().Any(o => Js.Eq(o["id"], nv["id"])));
+        Check("Vista: el cliente nuevo aparece al momento", app.Clients().Count == c0 + 1 && app.FindClient("vista prueba") != null);
+        app.SaveEdit(nv["id"], 0, 12, "Efectivo", "", "Entregado");
+        Check("Vista: al saldarlo pasa a completados", app.CompletedClients().Any(c => c.Key == "vista prueba") && !app.ActiveOrders().Any(o => Js.Eq(o["id"], nv["id"])));
+        var rv = app.RemoveOrder(nv["id"]); Check("Vista: al eliminarlo desaparece", app.FindClient("Vista Prueba") == null);
+        app.UndoRemove(rv!); Check("Vista: deshacer lo devuelve", app.FindClient("Vista Prueba") != null);
+
         var dir = Path.Combine(Path.GetTempPath(), "encargos-prueba-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(dir);
         try
         {

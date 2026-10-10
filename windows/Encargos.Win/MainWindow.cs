@@ -371,10 +371,22 @@ public sealed class MainWindow : Window
     };
 
     /* ---------------- navegación ---------------- */
-    public void Go(Screen p) { _stack.Add(p); Render(true, true); }
-    public void Root(Screen p) { _stack.Clear(); _stack.Add(p); Render(true, true); }
-    public void Replace(Screen p) { _stack.RemoveAt(_stack.Count - 1); _stack.Add(p); Render(true, true); }
-    public void Back() { if (_stack.Count > 1) { _stack.RemoveAt(_stack.Count - 1); Render(true, true); } else if (Top is not HomePage) Root(new HomePage()); }
+    /// <summary>Posición de desplazamiento de cada pantalla que sigue en el historial: al volver atrás aparece donde la dejaste.</summary>
+    readonly Dictionary<Screen, double> _scrollMemo = new();
+    public void Go(Screen p) { if (_stack.Count > 0) _scrollMemo[Top] = _scroll.VerticalOffset; _stack.Add(p); Render(true, true); }
+    public void Root(Screen p) { _stack.Clear(); _scrollMemo.Clear(); _stack.Add(p); Render(true, true); }
+    public void Replace(Screen p) { _scrollMemo.Remove(Top); _stack.RemoveAt(_stack.Count - 1); _stack.Add(p); Render(true, true); }
+    public void Back()
+    {
+        if (_stack.Count > 1)
+        {
+            _scrollMemo.Remove(Top); _stack.RemoveAt(_stack.Count - 1); Render(true, true);
+            if (_scrollMemo.TryGetValue(Top, out var off) && off > 0)
+                // tras dibujar la pantalla (y su entrada animada), se vuelve a la posición guardada
+                DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () => { _scroll.UpdateLayout(); _scroll.ChangeView(null, off, null, true); });
+        }
+        else if (Top is not HomePage) Root(new HomePage());
+    }
     public bool IsCurrent(Screen p) => _stack.Count > 0 && ReferenceEquals(Top, p);
 
     /// <summary>Dibuja la pantalla actual. force=false solo redibuja si la pantalla es "viva". Al navegar, las tarjetas entran escalonadas (aUp).</summary>

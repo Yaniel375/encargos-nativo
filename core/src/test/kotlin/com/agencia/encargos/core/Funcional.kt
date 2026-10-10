@@ -114,6 +114,16 @@ object Funcional {
         check("Deshacer eliminación", app.undoRemove(r!!) && app.orders().size == before)
         check("Deshacer dos veces no duplica", !app.undoRemove(r) && app.orders().size == before)
 
+        // ---------- Vista reutilizada: se actualiza en cuanto cambian los datos ----------
+        val n0 = app.activeOrders().size; val c0 = app.clients().size
+        val nv = app.createOrder(Encargos.NewOrder("Vista Prueba", "5355500009", 5.0, 7.0, 1.0, 0.0)).getOrThrow()
+        check("Vista: el encargo nuevo aparece al momento en activos", app.activeOrders().size == n0 + 1 && app.activeOrders().any { it["id"] == nv["id"] })
+        check("Vista: el cliente nuevo aparece al momento", app.clients().size == c0 + 1 && app.findClient("vista prueba") != null)
+        app.saveEdit(nv["id"], 0.0, 12.0, "Efectivo", "", "Entregado").getOrThrow()
+        check("Vista: al saldarlo pasa a completados sin reiniciar", app.completedClients().any { it.key == "vista prueba" } && app.activeOrders().none { it["id"] == nv["id"] })
+        val rv = app.removeOrder(nv["id"]); check("Vista: al eliminarlo desaparece de las listas", app.findClient("Vista Prueba") == null)
+        app.undoRemove(rv!!); check("Vista: deshacer lo devuelve", app.findClient("Vista Prueba") != null)
+
         // ---------- Persistencia al reabrir ----------
         val dir = File(System.getProperty("java.io.tmpdir"), "encargos-prueba-" + System.nanoTime()).apply { mkdirs() }
         try {

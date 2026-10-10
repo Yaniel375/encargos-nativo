@@ -128,10 +128,13 @@ class Ui(val app: EncargosApp, val act: FragmentActivity, val snack: SnackbarHos
     var confirm by mutableStateOf<ConfirmReq?>(null)
     var auth by mutableStateOf<AuthReq?>(null)
     var busy by mutableStateOf<String?>(null)
+    /** Se llama con cada pantalla que sale del historial: su estado guardado (desplazamiento, búsqueda, filtros) se descarta. */
+    var onDrop: ((Screen) -> Unit)? = null
+    private fun drop(s: Screen) { if (!stack.contains(s)) onDrop?.invoke(s) }
     fun go(s: Screen) { if (stack.last() != s) stack.add(s) }
-    fun root(s: Screen) { stack.clear(); stack.add(s) }
-    fun back(): Boolean { if (stack.size > 1) { stack.removeAt(stack.size - 1); return true }; if (stack.last() != Screen.Home) { root(Screen.Home); return true }; return false }
-    fun replace(s: Screen) { stack.removeAt(stack.size - 1); stack.add(s) }
+    fun root(s: Screen) { val old = stack.toList(); stack.clear(); stack.add(s); old.forEach { drop(it) } }
+    fun back(): Boolean { if (stack.size > 1) { val p = stack.removeAt(stack.size - 1); drop(p); return true }; if (stack.last() != Screen.Home) { root(Screen.Home); return true }; return false }
+    fun replace(s: Screen) { val p = stack.removeAt(stack.size - 1); stack.add(s); drop(p) }
     fun toast(msg: String, undo: (() -> Unit)? = null) {
         if (msg.startsWith("✅")) com.agencia.encargos.nativo.util.Feedback.success()
         else if (Regex("^(No se pudo|Error|⚠️)|no es válid|incorrect", RegexOption.IGNORE_CASE).containsMatchIn(msg)) com.agencia.encargos.nativo.util.Feedback.error()
@@ -197,7 +200,11 @@ private fun MainUi(ui: Ui, app: EncargosApp, lock: () -> Unit) {
     val cur = ui.current
     Box(Modifier.fillMaxSize()) {
         // contenido de la pantalla actual (cada pantalla anima sus tarjetas al entrar)
-        Box(Modifier.fillMaxSize().imePadding()) { androidx.compose.runtime.key(cur) { ScreenHost(cur) } }
+        // cada pantalla conserva su estado (desplazamiento, búsqueda, filtros) mientras siga en el historial:
+        // al volver atrás aparece donde la dejaste; al cerrarla, su estado se descarta
+        val holder = androidx.compose.runtime.saveable.rememberSaveableStateHolder()
+        androidx.compose.runtime.DisposableEffect(holder) { ui.onDrop = { s -> holder.removeState(s.toString()) }; onDispose { ui.onDrop = null } }
+        Box(Modifier.fillMaxSize().imePadding()) { androidx.compose.runtime.key(cur) { holder.SaveableStateProvider(cur.toString()) { ScreenHost(cur) } } }
         Header(ui, app, lock, Modifier.align(Alignment.TopCenter))
         BottomNav(ui, Modifier.align(Alignment.BottomCenter))
     }

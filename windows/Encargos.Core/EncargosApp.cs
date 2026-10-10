@@ -364,7 +364,24 @@ public sealed class EncargosApp
         public Client(string name, string phone) { Name = name; Phone = phone; }
         public string Key => Name.Trim().ToLowerInvariant();
     }
-    public List<Client> Clients()
+    /* Vista calculada una sola vez por versión de los datos (igual que en Android): se recalcula solo cuando cambia
+     * Version, es decir, tras guardar un cambio. Se devuelven copias de las listas para que nadie altere la vista compartida. */
+    long _cacheVer = -1; readonly object _cacheLock = new();
+    List<Client> _cClients = new(), _cActive = new(), _cDone = new(); List<JObj> _cActiveOrders = new(); Dictionary<string, Client> _cByKey = new();
+    void View()
+    {
+        lock (_cacheLock)
+        {
+            if (_cacheVer == Version) return;
+            var all = ComputeClients(); var done = all.Where(IsCompletedClient).ToList(); var doneKeys = done.Select(c => c.Key).ToHashSet();
+            _cClients = all; _cDone = done; _cActive = all.Where(c => !IsCompletedClient(c)).ToList();
+            _cActiveOrders = Orders().Where(o => !doneKeys.Contains(o.Str("name").Trim().ToLowerInvariant())).ToList();
+            _cByKey = new Dictionary<string, Client>(); foreach (var c in all) _cByKey[c.Name.ToLowerInvariant()] = c;
+            _cacheVer = Version;
+        }
+    }
+    public List<Client> Clients() { View(); return new List<Client>(_cClients); }
+    List<Client> ComputeClients()
     {
         var map = new Dictionary<string, Client>(); var order = new List<string>();
         foreach (var x in Orders())
@@ -378,10 +395,10 @@ public sealed class EncargosApp
     }
     static bool Settled(JObj o) => Js.Eq(o["status"], "Cancelado") || (Js.Num(o["total"]) > 0 && Math.Abs(Js.Num(o["balance"])) < 0.005);
     public bool IsCompletedClient(Client? c) => c != null && c.OrderList.Count > 0 && c.OrderList.All(Settled);
-    public List<Client> ActiveClients() => Clients().Where(c => !IsCompletedClient(c)).ToList();
-    public List<Client> CompletedClients() => Clients().Where(IsCompletedClient).ToList();
-    public List<JObj> ActiveOrders() { var done = CompletedClients().Select(c => c.Key).ToHashSet(); return Orders().Where(o => !done.Contains(o.Str("name").Trim().ToLowerInvariant())).ToList(); }
-    public Client? FindClient(string name) => Clients().FirstOrDefault(c => c.Name.ToLowerInvariant() == name.ToLowerInvariant());
+    public List<Client> ActiveClients() { View(); return new List<Client>(_cActive); }
+    public List<Client> CompletedClients() { View(); return new List<Client>(_cDone); }
+    public List<JObj> ActiveOrders() { View(); return new List<JObj>(_cActiveOrders); }
+    public Client? FindClient(string name) { View(); return _cByKey.TryGetValue(name.ToLowerInvariant(), out var c) ? c : _cClients.FirstOrDefault(x => x.Name.ToLowerInvariant() == name.ToLowerInvariant()); }
 
     public JObj ClientInfo(string name) => (Ls.JsonOf("encargos_client_info") as JObj)?[name.Trim().ToLowerInvariant()] as JObj ?? new JObj();
     public bool SaveClientInfo(string name, string address, string note)
