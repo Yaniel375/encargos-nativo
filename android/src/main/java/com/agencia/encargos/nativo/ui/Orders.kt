@@ -130,8 +130,8 @@ fun OrderCard(x: JObj) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             CardBtn("Ficha", Icons.Outlined.Description, Modifier.weight(1f)) { ui.go(Screen.Order(id)) }
             CardBtn("Editar", Icons.Filled.Edit, Modifier.weight(1f)) { ui.go(Screen.EditOrder(id)) }
-            CardBtn("WhatsApp", Icons.Filled.Chat, Modifier.weight(1.25f), tint = C.green) { ui.whatsapp(x.str("phone"), "", x.str("name")) }
-            Box { CardBtn(null, Icons.Filled.MoreHoriz, Modifier.width(44.dp), desc = "Opciones del encargo") { menu = true }; OrderMenu(x, menu) { menu = false } }
+            CardBtn("WhatsApp", Icons.Filled.Chat, Modifier.weight(1.45f), tint = C.green) { ui.whatsapp(x.str("phone"), "", x.str("name")) }
+            Box { CardBtn(null, Icons.Filled.MoreHoriz, Modifier.width(42.dp), desc = "Opciones del encargo") { menu = true }; OrderMenu(x, menu) { menu = false } }
         }
     }
 }

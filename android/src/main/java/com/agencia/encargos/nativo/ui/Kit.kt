@@ -362,9 +362,9 @@ private fun lerpInk(c: Color) = if (W.day) Color(c.red * .8f, c.green * .8f, c.b
     val src = remember { MutableInteractionSource() }; val shape = RoundedCornerShape(12.dp); val once = rememberOnce(onClick)
     val fg = MaterialTheme.colorScheme.onSurface
     Row(modifier.height(40.dp).pressBounce(src, .95f).clip(shape).background(W.tile).border(1.dp, W.line2, shape)
-        .clickable(src, null) { tapFeedback(); once() }.padding(horizontal = 8.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+        .clickable(src, null) { tapFeedback(); once() }.padding(horizontal = 4.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, desc ?: text, Modifier.size(15.dp), tint = tint ?: fg)
-        if (text != null) { Spacer(Modifier.width(6.dp)); Text(text, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = fg, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+        if (text != null) { Spacer(Modifier.width(5.dp)); Text(text, fontSize = 13.sp, softWrap = false, fontWeight = FontWeight.Bold, color = fg, maxLines = 1, overflow = TextOverflow.Ellipsis) }
     }
 }
 

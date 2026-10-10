@@ -16,7 +16,7 @@ public static partial class K
     {
         var ic = new FontIcon { Glyph = glyph, FontSize = 13, Foreground = tint ?? Text };
         object content = text != null ? Hs(7, ic, T(text, 13, true, Text, false)) : ic;
-        var b = new Button { Content = content, MinHeight = 38, Padding = new Thickness(10, 6, 10, 6), CornerRadius = new CornerRadius(12), Background = Tile, BorderBrush = Line2, BorderThickness = new Thickness(1),
+        var b = new Button { Content = content, MinHeight = 38, Padding = new Thickness(6, 6, 6, 6), CornerRadius = new CornerRadius(12), Background = Tile, BorderBrush = Line2, BorderThickness = new Thickness(1),
             HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center };
         if (BtnStyle != null) b.Style = BtnStyle;
         b.HorizontalContentAlignment = HorizontalAlignment.Center;

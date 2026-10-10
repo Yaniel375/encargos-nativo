@@ -75,7 +75,7 @@ public static class OrderActions
         double t = Js.Num(x["total"]), pd = Js.Num(x["paid"]);
         var name = T(x.Str("name"), 16, true, null, false, 1); name.FontWeight = Microsoft.UI.Text.FontWeights.ExtraBold;
         var actions = new Grid { ColumnSpacing = 8 };
-        foreach (var w in new[] { 1.0, 1.0, 1.25 }) actions.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(w, GridUnitType.Star) });
+        foreach (var w in new[] { 1.0, 1.0, 1.45 }) actions.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(w, GridUnitType.Star) });
         actions.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         UIElement[] btns = { CardBtn("Ficha", "\uE8A5", () => S.Go(new OrderPage(id))), CardBtn("Editar", "\uE70F", () => S.Go(new EditOrderPage(id))), CardBtn("WhatsApp", "\uE8BD", () => S.WhatsApp(x.Str("phone"), "", x.Str("name")), Green), Menu(x) };
         for (var i = 0; i < btns.Length; i++) { Grid.SetColumn((FrameworkElement)btns[i], i); actions.Children.Add(btns[i]); }

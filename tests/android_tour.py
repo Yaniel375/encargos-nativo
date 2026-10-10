@@ -53,8 +53,13 @@ def tap(text, cls=None, exact=False, wait=1.5, last=False):
     x, y = center(nd); adb("shell", "input", "tap", str(x), str(y)); time.sleep(wait); say(f"  ✓ toqué '{text}'"); return True
 
 def type_in(label, value):
-    # la etiqueta está encima del campo: se toca el primer campo de texto que hay debajo
+    # la etiqueta está encima del campo: se toca el primer campo de texto que hay debajo.
+    # si la etiqueta queda tapada por la barra fija "Guardar encargo", se desplaza la pantalla primero
     hide_kb()
+    for _ in range(4):
+        lab = find(label)
+        if lab is not None and center(lab)[1] < 1350: break
+        adb("shell", "input", "swipe", "540", "1300", "540", "800", "400"); time.sleep(1)
     lab = find(label)
     es = edits()
     target = None
