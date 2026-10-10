@@ -188,6 +188,9 @@ public sealed class MainWindow : Window
     /* ---------------- estructura: barra lateral + barra superior + contenido ---------------- */
     void BuildMain()
     {
+        // al reconstruir (cambio de tema) hay que soltar los elementos que se reutilizan de su contenedor anterior
+        if (_side.Parent is ScrollViewer oldSv) oldSv.Content = null;
+        if (_scroll.Parent is Panel oldP) oldP.Children.Remove(_scroll);
         _main.Children.Clear(); _main.ColumnDefinitions.Clear(); _side.Children.Clear(); _items.Clear();
         _title = H("Inicio", 18); _syncText = Muted("", 11.5);
         _main.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(240) });
