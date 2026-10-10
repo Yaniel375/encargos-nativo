@@ -93,7 +93,12 @@ def crashed():
 adb("logcat", "-c")
 adb("shell", "am", "start", "-W", "-n", f"{PKG}/.MainActivity"); time.sleep(8)
 shot("crear_acceso")
-type_nth(0, "prueba"); type_nth(1, "clave123"); type_nth(2, "clave123"); hide_kb()
+def type_at(label, value):
+    hide_kb()
+    if tap(label, wait=0.7):
+        adb("shell", "input", "text", value.replace(" ", "%s")); time.sleep(0.4)
+type_at("Usuario", "prueba"); type_at("Contraseña (mínimo 6)", "clave123"); type_at("Repite la contraseña", "clave123"); hide_kb()
+shot("acceso_lleno")
 tap("Crear acceso", wait=5)
 shot("inicio")
 tap("Nuevo", exact=True, wait=2, last=True); shot("nuevo_encargo")
