@@ -45,6 +45,8 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Payments
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Schedule
@@ -231,55 +233,61 @@ private fun Header(ui: Ui, app: EncargosApp, lock: () -> Unit, modifier: Modifie
                 }
                 Icon(Icons.Filled.KeyboardArrowDown, "Más", Modifier.size(18.dp), tint = W.mut)
             }
-            DropdownMenu(menu, { menu = false }, shape = RoundedCornerShape(18.dp), containerColor = W.menu, modifier = Modifier.width(290.dp)) {
+            DropdownMenu(menu, { menu = false }, shape = RoundedCornerShape(18.dp), containerColor = W.menu, modifier = Modifier.width(300.dp).border(1.dp, W.line2, RoundedCornerShape(18.dp))) {
                 ProfileMenu(ui, app, lock) { menu = false }
             }
         }
     }
 }
 
-/** Menú del perfil como en la referencia: cabecera con el usuario, accesos en cuadrícula, modo día/noche y bloquear. */
+/** Menú del perfil (imagen de referencia): usuario y rol → Pagos · Estadísticas · Ajustes → separador → Modo día/noche → Bloquear app.
+ *  Lo que antes estaba aquí sigue accesible: Pendientes (Pagos e Inicio), Completados (Encargos y Clientes),
+ *  Respaldo, Seguridad y Sincronización (Ajustes → Datos y seguridad). */
 @Composable
 private fun ProfileMenu(ui: Ui, app: EncargosApp, lock: () -> Unit, close: () -> Unit) {
     val core = app.core
-    Column(Modifier.padding(horizontal = 10.dp, vertical = 4.dp)) {
+    // cada acción cierra primero el menú: un toque = una sola navegación
+    fun act(f: () -> Unit) { close(); tapFeedback(); f() }
+    Column(Modifier.padding(horizontal = 10.dp, vertical = 2.dp)) {
+        // cabecera: avatar, nombre y rol; la flecha abre los ajustes (su destino actual)
         val src0 = remember { MutableInteractionSource() }
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(src0, null) { close(); tapFeedback(); ui.go(Screen.Settings) }.padding(6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Avatar(core.greetName.ifEmpty { "E" }, C.blue, 36); Spacer(Modifier.width(10.dp))
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable(src0, null) { act { ui.go(Screen.Settings) } }.padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Avatar(core.greetName.ifEmpty { "E" }, C.blue, 42); Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(core.greetName.ifEmpty { "Mi cuenta" }, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, maxLines = 1)
-                Text(app.security.userName().ifEmpty { "—" }, fontSize = 12.sp, color = W.mut, maxLines = 1)
+                Text(core.greetName.ifEmpty { "Mi cuenta" }, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = W.tx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(app.security.userName().ifEmpty { "admin" }, fontSize = 13.sp, color = W.mut, maxLines = 1)
             }
-            Text("›", fontSize = 20.sp, color = W.mut)
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Ver perfil y ajustes", Modifier.size(22.dp), tint = W.mut)
         }
-        Spacer(Modifier.height(6.dp))
-        val items = listOf(Triple(Screen.Payments, "Pagos", Icons.Outlined.Payments), Triple(Screen.Stats, "Estadísticas", Icons.Outlined.BarChart), Triple(Screen.Settings, "Ajustes", Icons.Outlined.Settings),
-            Triple(Screen.Pending, "Pendientes", Icons.Outlined.Schedule), Triple(Screen.Completed, "Completados", Icons.Outlined.TaskAlt), Triple(Screen.Backup, "Respaldo", Icons.Outlined.Save),
-            Triple(Screen.Security, "Seguridad", Icons.Outlined.Shield), Triple(Screen.Sync, "Sincronizar", Icons.Outlined.CloudSync))
-        items.chunked(3).forEach { row ->
-            Row(Modifier.fillMaxWidth()) {
-                row.forEach { (s, l, ic) ->
-                    val src = remember { MutableInteractionSource() }
-                    Column(Modifier.weight(1f).pressBounce(src, .93f).clip(RoundedCornerShape(12.dp)).clickable(src, null) { close(); tapFeedback(); ui.go(s) }.padding(vertical = 9.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(ic, s.title, Modifier.size(20.dp), tint = W.tx); Spacer(Modifier.height(5.dp))
-                        Text(l, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = W.tx, maxLines = 1)
-                    }
+        Spacer(Modifier.height(8.dp))
+        // fila principal: tres accesos del mismo tamaño
+        Row(Modifier.fillMaxWidth()) {
+            listOf(Triple(Screen.Payments, "Pagos", Icons.Outlined.CreditCard), Triple(Screen.Stats, "Estadísticas", Icons.Outlined.BarChart), Triple(Screen.Settings, "Ajustes", Icons.Outlined.Settings)).forEach { (s, l, ic) ->
+                val src = remember { MutableInteractionSource() }
+                Column(Modifier.weight(1f).pressBounce(src, .93f).clip(RoundedCornerShape(14.dp)).clickable(src, null) { act { if (ui.current != s) ui.go(s) } }.padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(ic, s.title, Modifier.size(22.dp), tint = W.tx); Spacer(Modifier.height(6.dp))
+                    Text(l, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = W.tx, maxLines = 1)
                 }
-                repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
             }
         }
-        Box(Modifier.padding(vertical = 6.dp).fillMaxWidth().height(1.dp).background(W.line))
+        Box(Modifier.padding(vertical = 8.dp).fillMaxWidth().height(1.dp).background(W.line))
+        // modo día / noche (un solo control; texto e icono según el modo activo)
         val day = W.day
         val srcT = remember { MutableInteractionSource() }
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(srcT, null) { close(); tapFeedback(); core.ls.set("encargos_aurora_mode", if (day) "night" else "day"); ui.act.recreate() }.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconTile(if (day) Icons.Outlined.DarkMode else Icons.Outlined.LightMode, W.tx, 30); Spacer(Modifier.width(10.dp))
-            Text(if (day) "Modo noche" else "Modo día", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = W.tx)
+        Row(Modifier.fillMaxWidth().pressBounce(srcT, .97f).clip(RoundedCornerShape(14.dp)).clickable(srcT, null) { act { core.ls.set("encargos_aurora_mode", if (day) "night" else "day"); ui.act.recreate() } }.padding(horizontal = 6.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconTile(if (day) Icons.Outlined.DarkMode else Icons.Outlined.LightMode, W.tx, 38); Spacer(Modifier.width(14.dp))
+            Text(if (day) "Modo noche" else "Modo día", fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = W.tx)
         }
+        Spacer(Modifier.height(4.dp))
+        // bloquear: usa el bloqueo existente
         val srcL = remember { MutableInteractionSource() }
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(srcL, null) { close(); lock() }.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconTile(Icons.Outlined.Lock, C.rose, 30); Spacer(Modifier.width(10.dp))
-            Text("Bloquear ahora", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = C.rose)
+        Row(Modifier.fillMaxWidth().pressBounce(srcL, .97f).clip(RoundedCornerShape(14.dp)).clickable(srcL, null) { act { lock() } }.padding(horizontal = 6.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            val ls = RoundedCornerShape(12.dp)
+            Box(Modifier.size(38.dp).clip(ls).background(C.rose.copy(alpha = .12f)).border(1.dp, C.rose.copy(alpha = .35f), ls), contentAlignment = Alignment.Center) { Icon(Icons.Outlined.Lock, null, Modifier.size(18.dp), tint = C.rose) }
+            Spacer(Modifier.width(14.dp))
+            Text("Bloquear app", fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = C.rose)
         }
+        Spacer(Modifier.height(4.dp))
     }
 }
 

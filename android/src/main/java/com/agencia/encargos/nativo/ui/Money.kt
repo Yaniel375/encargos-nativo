@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -84,6 +85,7 @@ fun PaymentsScreen() {
                 }
             }
         }
+        item { Column(Modifier.fillMaxWidth().glass()) { NavRow(Icons.Outlined.Schedule, "Pendientes y fondos a favor", "Quién te debe y quién tiene saldo a favor", tint = C.rose) { ui.go(Screen.Pending) } } }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Kpi(if (s.goalMode == "monthly") "Meta del mes" else "Meta (encargos)", if (s.target > 0) money(s.target) else "Sin meta", modifier = Modifier.weight(1f))
