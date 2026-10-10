@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.agencia.encargos.core.JArr
@@ -60,25 +61,45 @@ fun NotesScreen() {
     val owe = all.sumOf { Js.num(it["amount"]) }; val oweN = all.count { Js.num(it["amount"]) > 0 }
     if (editing != null || creating) { NoteEditor(editing) { editing = null; creating = false }; return }
     Page(right = "${all.size} nota${if (all.size == 1) "" else "s"}") {
-        if (owe > 0) item { SectionCard { Text("Te deben en notas", color = MaterialTheme.colorScheme.onSurfaceVariant); Text(money(owe), fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = C.rose); Text("$oweN nota${if (oweN == 1) "" else "s"} con monto", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
+        if (owe > 0) item { SectionCard { Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) { Text("Te deben en notas", fontWeight = FontWeight.Bold, fontSize = 13.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text("$oweN nota${if (oweN == 1) "" else "s"} con monto", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            Text(money(owe), fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = C.rose) } } }
         item { Primary("Nueva nota", Modifier.fillMaxWidth(), Icons.Filled.Add) { creating = true } }
         if (all.isNotEmpty()) item { SearchBox(q, { q = it }, "Buscar en tus notas") }
         if (all.isEmpty()) item { Empty("Aún no tienes notas", "Guarda recordatorios, pedidos por hacer, direcciones o lo que necesites.") }
         else if (list.isEmpty()) item { Empty("Ninguna nota coincide con la búsqueda.") }
-        list.forEach { n -> item {
-            val c = NOTE_COLORS[n.str("color")] ?: C.blue
-            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(c.copy(alpha = .14f)).border(1.dp, c.copy(alpha = .3f), RoundedCornerShape(16.dp)).clickable { editing = n }.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) { Box(Modifier.size(9.dp).clip(CircleShape).background(c)); Text("  " + n.str("title").ifEmpty { "Sin título" }, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f)); if (Js.truthy(n["pinned"])) Text("📌") }
-                if (Js.num(n["amount"]) > 0) Text("Me deben ${money(n["amount"])}", color = C.rose, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                if (n.str("body").isNotEmpty()) Text(n.str("body"), maxLines = 6)
-                noteLinks(n.str("body")).forEach { u -> Text("🔗 " + u, color = C.blue, fontSize = 13.sp, modifier = Modifier.clickable { Files.open(ui.act, fullUrl(u)) }) }
-                val ph = (n["photos"] as? JArr)?.filterIsInstance<String>() ?: emptyList()
-                if (ph.isNotEmpty()) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) { ph.forEach { Photo(Images.decode(it, 300), Modifier.size(70.dp)) } }
-                Text(dayLabel(n["updated"]), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        val pinned = list.filter { Js.truthy(it["pinned"]) }; val rest = list.filter { !Js.truthy(it["pinned"]) }
+        listOf("Fijadas" to pinned, "Otras notas" to rest).forEach { (h, ns) ->
+            if (ns.isNotEmpty()) {
+                if (pinned.isNotEmpty()) item { DotHeader(h, if (h == "Fijadas") C.blue else C.mut) }
+                ns.chunked(2).forEach { pair -> item {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
+                        pair.forEach { n -> NoteCard(n, Modifier.weight(1f)) { editing = n } }
+                        if (pair.size == 1) Spacer(Modifier.weight(1f))
+                    }
+                } }
             }
-        } }
+        }
     }
     @Suppress("UNUSED_VARIABLE") val u = v
+}
+
+/** Nota en tarjeta de vidrio con punto de color (cuadrícula de dos columnas, como en la referencia). */
+@Composable
+fun NoteCard(n: JObj, modifier: Modifier, open: () -> Unit) {
+    val ui = LocalUi.current
+    val c = NOTE_COLORS[n.str("color")] ?: C.blue
+    Column(modifier.glass(RoundedCornerShape(18.dp)).clickable { open() }.padding(13.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) { Box(Modifier.size(9.dp).clip(CircleShape).background(c)); Text("  " + n.str("title").ifEmpty { "Sin título" }, fontWeight = FontWeight.ExtraBold, maxLines = 2, modifier = Modifier.weight(1f)); if (Js.truthy(n["pinned"])) Text("📌", fontSize = 12.sp) }
+        if (Js.num(n["amount"]) > 0) Chip("Me deben ${money(n["amount"])}", C.rose)
+        if (n.str("body").isNotEmpty()) Text(n.str("body"), maxLines = 6, fontSize = 13.5.sp)
+        noteLinks(n.str("body")).forEach { u -> val sh = RoundedCornerShape(10.dp)
+            Text("🔗 " + u.removePrefix("https://").removePrefix("http://").take(40), color = C.blue, fontSize = 12.5.sp, fontWeight = FontWeight.Bold, maxLines = 1,
+                modifier = Modifier.fillMaxWidth().clip(sh).background(W.tile).border(1.dp, W.line, sh).clickable { Files.open(ui.act, fullUrl(u)) }.padding(horizontal = 10.dp, vertical = 8.dp)) }
+        val ph = (n["photos"] as? JArr)?.filterIsInstance<String>() ?: emptyList()
+        if (ph.isNotEmpty()) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) { ph.forEach { Photo(Images.decode(it, 300), Modifier.size(60.dp)) } }
+        Text(dayLabel(n["updated"]), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
 }
 
 @Composable

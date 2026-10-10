@@ -33,39 +33,46 @@ public sealed class BackupPage : Screen
     {
         var bk = Services.Backup;
         var last = double.TryParse(Core.Ls.Get("encargos_last_backup", "0"), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var l) ? l : 0;
-        p.Children.Add(Card("Último respaldo", null, T(last > 0 ? Js.Fmt(last) : "Todavía no has hecho un respaldo.", 15, true),
-            Muted("Guarda una copia de tus encargos, pagos, notas y gastos. Puedes guardarla en una memoria USB, en tu nube o enviarla por WhatsApp.", 13)));
-        p.Children.Add(Cols(
-            Card("Exportar", null,
-                Btn("Guardar respaldo (.json)", () => S.RequireAuth("Confirma tu identidad para exportar", async () =>
-                {
-                    var s = bk.ExportJson(); if (await Media.SaveFile(Backup.FileName(), ".json", "Respaldo de Encargos", Crypto.Utf8(s))) S.Toast("✅ Respaldo guardado.");
-                }), true, null, ""),
-                Btn("Guardar respaldo cifrado (con contraseña)", () => S.RequireAuth("Confirma tu identidad para exportar", async () =>
-                {
-                    var pw = await AdminUtil.AskPassword("🔒 Respaldo cifrado", "Elige una contraseña para este archivo. Si la olvidas, no se puede recuperar.", true, "Cifrar y guardar");
-                    if (pw == null) return;
-                    var s = await S.Busy("Cifrando…", () => bk.ExportEncrypted(pw));
-                    if (await Media.SaveFile(Backup.FileName("respaldo_encargos_cifrado_"), ".json", "Respaldo cifrado de Encargos", Crypto.Utf8(s))) S.Toast("✅ Respaldo cifrado guardado.");
-                }), false, null, ""),
-                Btn("Exportar a Excel (.csv)", () => S.RequireAuth("Confirma tu identidad para exportar", async () =>
-                {
-                    if (await Media.SaveFile(Backup.FileName("encargos_", ".csv"), ".csv", "CSV para Excel", Crypto.Utf8(bk.Csv()))) S.Toast("✅ Archivo CSV guardado.");
-                }), false, null, "")),
-            Card("Importar", null,
-                Btn("Abrir archivo de respaldo", Import, false, null, ""),
-                Muted("Acepta respaldos .json normales y cifrados de Encargos (web, Android o PC). Reemplaza los encargos de este equipo.", 13))));
         var mode = bk.AutoMode;
-        p.Children.Add(Card("Respaldo automático", null,
-            Choice(new[] { ("daily", "Diario"), ("weekly", "Semanal"), ("off", "Desactivado") }, mode, k => bk.AutoMode = k),
+        var counts = new[] { ("Encargos", Core.Orders().Count), ("Clientes", Core.Clients().Count), ("Pagos", Core.Orders().Sum(o => Core.Payments(o).Count)), ("Notas", Core.Notes().Count) };
+        var head = H("Tus datos están guardados", 17);
+        p.Children.Add(Card(Lead(IconTile("\uE83D", 48).Also(t => ((FontIcon)t.Child).Foreground = Green), V(2, head, Muted("Se guardan solos en este equipo", 13))),
+            Cols(counts.Select(c => (UIElement)Kpi(c.Item1, c.Item2.ToString())).ToArray())));
+        void ExportJson() => S.RequireAuth("Confirma tu identidad para exportar", async () =>
+        {
+            var s = bk.ExportJson(); if (await Media.SaveFile(Backup.FileName(), ".json", "Respaldo de Encargos", Crypto.Utf8(s))) S.Toast("✅ Respaldo guardado.");
+        });
+        var autoCard = IconCard("\uE895", "Respaldo automático", null,
+            Choice(new[] { ("off", "Desactivado"), ("daily", "Cada día"), ("weekly", "Cada semana") }, mode, k => { bk.AutoMode = k; Redraw(); }),
             Muted(mode == "off" ? "No se guardarán copias automáticas." : "Al abrir la app se guarda una copia en Documentos\\Encargos " + (mode == "weekly" ? "una vez por semana." : "una vez al día.") +
-                (bk.LastAuto > 0 ? " Última: " + Js.Fmt(bk.LastAuto) : ""), 13),
+                (bk.LastAuto > 0 ? " Última: " + Js.Fmt(bk.LastAuto) : " Todavía no se ha hecho ningún respaldo automático."), 13),
             Cols(Btn("Hacer copia automática ahora", () =>
             {
                 var payload = bk.AutoDue(true); if (payload == null) return;
                 try { File.WriteAllText(Path.Combine(Services.DocsDir(), "respaldo_auto_" + Js.NowIso()[..10] + ".json"), payload); bk.AutoDone(); S.Toast("✅ Copia guardada en Documentos\\Encargos."); }
                 catch (Exception e) { Services.Report(e); S.Toast("No se pudo guardar la copia."); }
-            }), Btn("Abrir carpeta de copias", async () => await Windows.System.Launcher.LaunchFolderPathAsync(Services.DocsDir())))));
+            }), Btn("Abrir carpeta de copias", async () => await Windows.System.Launcher.LaunchFolderPathAsync(Services.DocsDir()))));
+        var lastRow = new Border { Child = NavRow("\uE787", "Último respaldo", last > 0 ? Js.Fmt(last) : "Aún no has hecho ningún respaldo · Te recomendamos hacer uno.", null, tint: Amber), CornerRadius = new CornerRadius(18), Background = Glass, BorderBrush = LineBr, BorderThickness = new Thickness(1) };
+        var actions = V(12,
+            ActionCard("\uE896", "Respaldar datos", "Guarda un archivo con todos tus encargos, clientes, pagos, notas y gastos.", ExportJson, true),
+            ActionCard("\uE72E", "Respaldo cifrado", "Protegido con una contraseña que tú eliges. Sin ella no se puede abrir.", () => S.RequireAuth("Confirma tu identidad para exportar", async () =>
+            {
+                var pw = await AdminUtil.AskPassword("🔒 Respaldo cifrado", "Elige una contraseña para este archivo. Si la olvidas, no se puede recuperar.", true, "Cifrar y guardar");
+                if (pw == null) return;
+                var s = await S.Busy("Cifrando…", () => bk.ExportEncrypted(pw));
+                if (await Media.SaveFile(Backup.FileName("respaldo_encargos_cifrado_"), ".json", "Respaldo cifrado de Encargos", Crypto.Utf8(s))) S.Toast("✅ Respaldo cifrado guardado.");
+            })),
+            ActionCard("\uE898", "Importar respaldo", "Recupera tus datos desde un archivo .json normal o cifrado (web, Android o PC). Reemplaza los datos actuales.", Import),
+            ActionCard("\uE9F9", "Exportar a Excel (.csv)", "Una hoja con todos los encargos para abrir en Excel.", () => S.RequireAuth("Confirma tu identidad para exportar", async () =>
+            {
+                if (await Media.SaveFile(Backup.FileName("encargos_", ".csv"), ".csv", "CSV para Excel", Crypto.Utf8(bk.Csv()))) S.Toast("✅ Archivo CSV guardado.");
+            })));
+        var tips = Card("Consejos", null,
+            Lead(new FontIcon { Glyph = "\uE895", FontSize = 14, Foreground = Mut }, T("Haz un respaldo cada semana o después de muchos cambios.", 13)),
+            Lead(new FontIcon { Glyph = "\uE715", FontSize = 14, Foreground = Mut }, T("Envía el archivo a tu correo, a una memoria USB o a la nube, por si pierdes el equipo.", 13)),
+            Lead(new FontIcon { Glyph = "\uE898", FontSize = 14, Foreground = Mut }, T("Para recuperar todo en otro equipo o teléfono, usa Importar respaldo.", 13)),
+            Lead(new FontIcon { Glyph = "\uE72E", FontSize = 14, Foreground = Mut }, T("El respaldo cifrado solo se abre con su contraseña. Si la olvidas, no se puede recuperar.", 13)));
+        p.Children.Add(S.ContentWidth < 760 ? V(12, autoCard, lastRow, actions, tips) : Cols(V(12, autoCard, lastRow, tips), actions));
     }
 
     async void Import()
@@ -105,43 +112,56 @@ public sealed class SecurityPage : Screen
 {
     public override string Title => "Seguridad";
     public override string Nav => "security";
+    public override string? Sub => "Protege la información de tu negocio.";
     bool? _hello;
 
     public override void Build(StackPanel p)
     {
         var sec = Services.Security; var lk = sec.GetLockCfg();
         if (_hello == null) { _ = CheckHello(); }
-        p.Children.Add(Cols(
-            Card("Acceso", null, Line("Usuario", sec.UserName().IfEmpty("—")), Btn("Cambiar usuario y contraseña", () => S.RequireAuth("Confirma tu identidad", Credentials, true))),
-            Card("PIN y Windows Hello", null, sec.PinOn()
-                ? V(8, Line("PIN", $"Activo · {sec.PinLen()} dígitos", Green),
-                    Cols(Btn("Cambiar PIN", () => S.RequireAuth("Confirma tu identidad", PinDialog, true)),
-                        Btn("Desactivar", () => S.RequireAuth("Confirma tu identidad", () => { sec.DisablePin(); S.Toast("PIN desactivado."); Redraw(); }, true), false, Rose)),
-                    _hello == true ? (UIElement)Toggle("Desbloquear con Windows Hello", "Huella, rostro o PIN de Windows", sec.BioOn(), async on =>
-                    {
-                        if (on) { if (await Native.Hello(S.Hwnd, "Activar Windows Hello en Encargos")) { sec.SetBio(true); S.Toast("✅ Windows Hello activado."); } }
-                        else sec.SetBio(false);
-                        Redraw();
-                    }) : Muted(_hello == false ? "Windows Hello no está configurado en este equipo." : "Comprobando Windows Hello…"))
-                : V(8, Muted("Con un PIN entras más rápido sin escribir tu contraseña.", 13), Btn("Crear PIN", () => S.RequireAuth("Confirma tu identidad", PinDialog, true), true)))));
+        var score = new[] { sec.PinOn(), lk.On, sec.SensitiveOn() }.Count(x => x);
+        var (lvl, lvlC) = score == 3 ? ("Protección completa", Green) : score == 0 ? ("Sin protección", Rose) : ("Protección parcial", Amber);
+        var lvlT = H(lvl, 19);
+        var status = Card(Lead(Dot(lvlC, 12), lvlT),
+            StatRow("PIN", sec.PinOn() ? $"Activo · {sec.PinLen()} dígitos" : "Desactivado", sec.PinOn() ? Green : null),
+            StatRow("Windows Hello", _hello == false ? "No disponible" : _hello == null ? "Comprobando…" : sec.BioOn() ? "Activo" : "Desactivado"),
+            StatRow("Bloqueo automático", lk.On ? Security.LockLabel(lk.Minutes) : "Nunca"),
+            StatRow("Acciones sensibles", sec.SensitiveOn() ? "✓ Protegidas" : "Sin proteger", sec.SensitiveOn() ? Green : Amber),
+            StatRow("Última actividad", sec.LogEntries().FirstOrDefault() is JObj le ? AdminUtil.TimeLabel(le["t"]) : "—"));
+        var access = Group("Acceso",
+            NavRow("\uE8D7", "Bloqueo con PIN", sec.PinOn() ? $"Activo · {sec.PinLen()} dígitos" : "Crea un PIN de 4 a 6 números", null, null, Switch(sec.PinOn(), on =>
+                S.RequireAuth("Confirma tu identidad", () => { if (on) PinDialog(); else { sec.DisablePin(); S.Toast("PIN desactivado."); } Redraw(); }, true))),
+            sec.PinOn() ? NavRow("\uE8D7", "Cambiar PIN", "Elige un PIN nuevo", () => S.RequireAuth("Confirma tu identidad", PinDialog, true)) : null,
+            sec.PinOn() && _hello == true ? NavRow("\uE928", "Desbloquear con Windows Hello", "Huella, rostro o PIN de Windows", null, null, Switch(sec.BioOn(), async on =>
+            {
+                if (on) { if (await Native.Hello(S.Hwnd, "Activar Windows Hello en Encargos")) { sec.SetBio(true); S.Toast("✅ Windows Hello activado."); } }
+                else sec.SetBio(false);
+                Redraw();
+            })) : null,
+            NavRow("\uE8AD", "Pedir desbloqueo al abrir", "Siempre que abres la app", null, null, Switch(lk.OnOpen, v => sec.SetLockOnOpen(v))),
+            NavRow("\uE823", "Bloqueo automático", lk.On ? "Después de " + Security.LockLabel(lk.Minutes).ToLowerInvariant() + " fuera de la app" : "La app no se bloqueará sola", LockSheet, lk.On ? Security.LockLabel(lk.Minutes) : "Nunca"),
+            NavRow("\uE77B", "Usuario y contraseña", $"Usuario: {sec.UserName().IfEmpty("—")} · acceso de respaldo si olvidas el PIN", () => S.RequireAuth("Confirma tu identidad", Credentials, true)));
+        var data = Group("Protección de datos",
+            NavRow("\uE7BA", "Proteger acciones sensibles", "Eliminar, importar, exportar y cambios críticos", null, null, Switch(sec.SensitiveOn(), v =>
+            {
+                if (v) { sec.SetSensitive(true); Redraw(); } else S.RequireAuth("Confirma tu identidad", () => { sec.SetSensitive(false); Redraw(); }, true);
+            })),
+            NavRow("\uED1A", "Ocultar en capturas de pantalla", "Excluye la ventana de capturas, grabaciones y pantallas compartidas", null, null, Switch(sec.PrivacyOn(), v => { sec.SetPrivacy(v); S.ApplyPrivacy(); })));
+        var log = sec.LogEntries().Take(15).ToList();
+        var activity = Card("Actividad de seguridad", null, log.Count == 0 ? new UIElement[] { Muted("Sin actividad registrada.", 14) } :
+            log.Select(e => (UIElement)Lead(T(Js.Truthy(e["ok"]) ? "✅" : "⚠️"), V(0, T(e.Str("text"), 13), Muted(AdminUtil.TimeLabel(e["t"]), 11)))).ToArray());
+        var danger = Group("Zona de peligro", NavRow("\uE74D", "Eliminar todos los datos", "Requiere confirmar tu identidad y escribir ELIMINAR", () => S.RequireAuth("Confirma tu identidad", Wipe, true), null, null, Rose, Rose));
+        var foot = Muted("El PIN se guarda con sal y hash iterado; Windows Hello no comparte tu huella con la app. Ningún respaldo incluye tu PIN ni tu contraseña.", 12);
+        p.Children.Add(S.ContentWidth < 760 ? V(14, status, access, data, activity, danger, foot) : Cols(V(14, status, access, data), V(14, activity, danger, foot)));
+    }
+    async void LockSheet()
+    {
+        var sec = Services.Security; var lk = sec.GetLockCfg();
         var opts = new[] { ("0", "Al salir"), ("1", "1 min"), ("5", "5 min"), ("15", "15 min"), ("30", "30 min"), ("never", "Nunca") };
         var sel = !lk.On ? "never" : Js.NumberToString(lk.Minutes);
-        p.Children.Add(Card("Bloqueo automático", null, Choice(opts, sel, k => { sec.SetLock(k == "never" ? (double?)null : double.Parse(k, System.Globalization.CultureInfo.InvariantCulture)); Redraw(); }),
-            Muted(lk.On ? "Se pedirá tu PIN o contraseña tras " + Security.LockLabel(lk.Minutes).ToLowerInvariant() + " fuera de la app." : "La app no se bloqueará sola.", 13),
-            Toggle("Pedir acceso al abrir la app", "", lk.OnOpen, v => { sec.SetLockOnOpen(v); })));
-        p.Children.Add(Card("Privacidad", null,
-            Toggle("Ocultar en capturas de pantalla", "Excluye la ventana de capturas, grabaciones y pantallas compartidas", sec.PrivacyOn(), v => { sec.SetPrivacy(v); S.ApplyPrivacy(); }),
-            Toggle("Proteger acciones sensibles", "Pide tu identidad para eliminar, importar o exportar", sec.SensitiveOn(), v =>
-            {
-                if (v) sec.SetSensitive(true); else S.RequireAuth("Confirma tu identidad", () => sec.SetSensitive(false), true);
-                Redraw();
-            })));
-        var log = sec.LogEntries().Take(15).ToList();
-        p.Children.Add(Cols(
-            Card("Actividad de seguridad", null, log.Count == 0 ? new UIElement[] { Muted("Sin actividad registrada.", 14) } :
-                log.Select(e => (UIElement)Lead(T(Js.Truthy(e["ok"]) ? "✅" : "⚠️"), V(0, T(e.Str("text"), 13), Muted(AdminUtil.TimeLabel(e["t"]), 11)))).ToArray()),
-            Card("Zona de peligro", null, Muted("Borra los datos de este equipo. Haz un respaldo antes. Los respaldos de Telegram no se borran.", 13),
-                Btn("Borrar datos de este equipo", () => S.RequireAuth("Confirma tu identidad", Wipe, true), false, Rose))));
+        await S.Dialog("Bloqueo automático", V(10, Muted("Se pedirá tu PIN o contraseña cuando pase este tiempo fuera de la app.", 13),
+            Choice(opts, sel, k => sec.SetLock(k == "never" ? (double?)null : double.Parse(k, System.Globalization.CultureInfo.InvariantCulture)))), "Listo", null, null);
+        Redraw();
     }
     async Task CheckHello() { _hello = await Native.HelloAvailable(); Redraw(); }
 
@@ -185,82 +205,132 @@ public sealed class SecurityPage : Screen
 
 public static class Ext { public static T Also<T>(this T x, Action<T> f) { f(x); return x; } }
 
-/* ---------------- Ajustes ---------------- */
+/* ---------------- Ajustes (grupos de filas que abren hojas, como la referencia) ---------------- */
 public sealed class SettingsPage : Screen
 {
     public override string Title => "Ajustes";
     public override string Nav => "settings";
     public override bool Live => false;
-    string? _biz, _greet, _cc, _tArr, _tRem, _tTh, _warn, _late; string _newName = "", _newPrice = "";
-    readonly Dictionary<string, string> _rates = new(), _buy = new(); bool _applyActive;
 
     public override void Build(StackPanel p)
     {
-        _biz ??= Core.BusinessName; _greet ??= Core.GreetName; _cc ??= Core.PhoneCC;
-        _tArr ??= Core.Tpl("arrival"); _tRem ??= Core.Tpl("reminder"); _tTh ??= Core.Tpl("thanks");
-        _warn ??= Core.TransitWarn.ToString(); _late ??= Core.TransitLate.ToString();
-        var keys = Core.ShippingRates.Keys.ToList(); var buyR = Core.BuyRates();
-        foreach (var k in keys) { if (!_rates.ContainsKey(k)) _rates[k] = Js.NumberToString(Js.Num(Core.ShippingRates[k])); if (!_buy.ContainsKey(k)) _buy[k] = Js.NumberToString(Js.Num(buyR[k])); }
-
-        p.Children.Add(Cols(
-            Card("Tu negocio", null, Box("Nombre del negocio (aparece en recibos)", _biz, v => _biz = v), Box("Tu nombre (para el saludo)", _greet, v => _greet = v),
-                Box("Código de país para WhatsApp (sin +)", _cc, v => _cc = v, false, null, 4),
-                Btn("Guardar", () => { Core.BusinessName = _biz!.Trim(); Core.GreetName = _greet!.Trim(); Core.PhoneCC = _cc!.IfEmpty("53"); S.Toast("✅ Datos guardados."); }, true)),
-            Card("Alertas de tránsito", null, Cols(Box("Avisar a los (días)", _warn, v => _warn = v), Box("Retrasado a los (días)", _late, v => _late = v)),
-                Btn("Guardar alertas", () =>
+        var keys = Core.ShippingRates.Keys.ToList();
+        string RateLine(Func<string, object?> get) => string.Join(" · ", keys.Select(k => Core.ShippingName(k) + " " + Money(get(k))));
+        var buyR = Core.BuyRates();
+        var nm = H(Core.GreetName.IfEmpty("Tu nombre"), 19);
+        p.Children.Add(Card(Lead(Avatar(Core.GreetName.IfEmpty("E"), Blue, 64), V(2, nm, Muted("Usuario: " + Services.Security.UserName().IfEmpty("—"), 13))),
+            Btn("Editar nombre del saludo", Greet, false, null, null, false)));
+        var cfg = Core.Notifs.Cfg(); var on = new[] { "inapp", "pay", "order", "client", "system", "important" }.Count(k => Js.Truthy(cfg[k]));
+        var day = Core.Ls.Get("encargos_aurora_mode", "") == "day";
+        var sec = Services.Security;
+        var left = V(14,
+            Group("Negocio y tarifas",
+                NavRow("\uE719", "Nombre del negocio", Core.BusinessName.IfEmpty("Sin nombre"), Biz),
+                NavRow("\uE806", "Precio por libra (lo que cobras)", RateLine(k => Core.ShippingRates[k]), Rates),
+                NavRow("\uE8EC", "Costo por libra (lo que te cobran)", RateLine(k => buyR[k]), Buy)),
+            Group("WhatsApp",
+                NavRow("\uE8BD", "Mensajes de WhatsApp", "Llegada, recordatorio de pago y agradecimiento", Templates),
+                NavRow("\uE717", "Código de país", "Se agrega a los números cortos", CountryCode, "+" + Core.PhoneCC)),
+            Group("Notificaciones y alertas",
+                NavRow("\uEA8F", "Notificaciones", $"Avisos y categorías · {on} de 6 activas", Notifs),
+                NavRow("\uE806", "Alertas de tránsito", $"Avisar a los {Core.TransitWarn} días · retrasado a los {Core.TransitLate}", Transit),
+                NavRow("\uE767", "Sonido", Sound.On() ? "Sonido al entrar" : "Sin sonido", null, null, Switch(Sound.On(), v => { Sound.Set(v); if (v) Sound.Login(); }))));
+        var right = V(14,
+            Group("Apariencia",
+                NavRow("\uE8D4", "Nombre del saludo", $"\"¡Hola, {Core.GreetName.IfEmpty("…")}!\"", Greet),
+                NavRow("\uE708", "Modo noche", !day ? "Encendido · fondo oscuro" : "Apagado · colores claros", null, null, Switch(!day, v =>
                 {
-                    Core.SaveTransitAlerts(int.TryParse(_warn, out var w) ? w : Core.TransitWarn, int.TryParse(_late, out var l) ? l : Core.TransitLate);
-                    _warn = Core.TransitWarn.ToString(); _late = Core.TransitLate.ToString(); S.Toast("✅ Alertas guardadas."); Redraw();
-                }))));
+                    Core.Ls.Set("encargos_aurora_mode", v ? "night" : "day");
+                    Services.Post(() => S.ApplyTheme(!v));
+                }))),
+            Group("Datos y seguridad",
+                NavRow("\uE72E", "Seguridad", (sec.PinOn() ? "PIN activo" : "Sin PIN") + " · bloqueo y privacidad", () => S.Go(new SecurityPage())),
+                NavRow("\uE74E", "Respaldo e importación", "Respaldos, respaldo cifrado, importar y Excel", () => S.Go(new BackupPage())),
+                NavRow("\uE895", "Sincronización (Telegram)", Services.Sync.GetStatus().Text, () => S.Go(new SyncPage()))),
+            Muted("Encargos para Windows · tus datos se guardan en este equipo y, si lo activas, cifrados en tu propio bot de Telegram.", 12));
+        p.Children.Add(S.ContentWidth < 760 ? V(14, left, right) : Cols(left, right));
+    }
 
-        var rateRows = new List<UIElement>();
+    async void Biz()
+    {
+        var v = Core.BusinessName;
+        if (await S.Dialog("Nombre del negocio", V(10, InfoBox("Aparece en los recibos y en los mensajes de WhatsApp."), Box("Nombre del negocio (aparece en recibos)", v, x => v = x)), "Guardar"))
+        { Core.BusinessName = v.Trim(); S.Toast("✅ Datos guardados."); Redraw(); }
+    }
+    async void Greet()
+    {
+        var v = Core.GreetName;
+        if (await S.Dialog("Nombre del saludo", Box("Tu nombre (para el saludo)", v, x => v = x), "Guardar")) { Core.GreetName = v.Trim(); S.Toast("✅ Datos guardados."); Redraw(); }
+    }
+    async void CountryCode()
+    {
+        var v = Core.PhoneCC;
+        if (await S.Dialog("Código de país", V(10, InfoBox("Se agrega a los números de 8 cifras al abrir WhatsApp."), Box("Código de país para WhatsApp (sin +)", v, x => v = x, false, null, 4)), "Guardar"))
+        { Core.PhoneCC = new string(v.Where(char.IsDigit).ToArray()).IfEmpty("53"); S.Toast("✅ Datos guardados."); Redraw(); }
+    }
+    async void Rates()
+    {
+        var keys = Core.ShippingRates.Keys.ToList();
+        var rates = keys.ToDictionary(k => k, k => Js.NumberToString(Js.Num(Core.ShippingRates[k])));
+        string newName = "", newPrice = "";
+        var rows = new List<UIElement> { InfoBox("Configura todos tus tipos de envío. Cada tipo puede tener su propio precio por libra. Al crear un encargo, el precio se selecciona automáticamente según el envío.") };
         foreach (var k in keys)
         {
             var key = k;
-            rateRows.Add(Row(Box(Core.ShippingLabel(k) + " ($/lb)", _rates[k], v => _rates[key] = v),
-                k is "avion" or "barco" ? null : Btn("Quitar", () => S.Ask("Eliminar tarifa", $"¿Eliminar la tarifa \"{Core.ShippingLabel(key)}\"? Los encargos que ya la usan no cambian.", "Eliminar", true, () => { Core.RemoveShippingRate(key); _rates.Remove(key); Redraw(); }), false, Rose, null, false)));
+            rows.Add(Row(Box(Core.ShippingLabel(k) + " · USD/lb", rates[k], v => rates[key] = v),
+                k is "avion" or "barco" ? null : Btn("Quitar", () => S.Ask("Eliminar tarifa", $"¿Eliminar la tarifa \"{Core.ShippingLabel(key)}\"? Los encargos que ya la usan no cambian.", "Eliminar", true, () => { Core.RemoveShippingRate(key); Redraw(); }), false, Rose, null, false)));
         }
-        rateRows.Add(Btn("Guardar tarifas", () =>
+        rows.Add(T("Agregar otro tipo de envío", 14, true));
+        rows.Add(Cols(Box("Nombre del envío (ej. Express)", "", v => newName = v), Box("Precio · USD/lb", "", v => newPrice = v)));
+        var ok = await S.Dialog("Precios de envío por libra", V(10, rows.ToArray()), "Guardar precios", () =>
         {
             var m = new Dictionary<string, double>(); var bad = false;
-            foreach (var k in keys) { var n = Num(_rates.GetValueOrDefault(k, "")); if (double.IsNaN(n) || n < 0 || _rates.GetValueOrDefault(k, "").Trim().Length == 0) bad = true; else m[k] = n; }
-            if (bad) S.Toast("Revisa las tarifas: deben ser números de 0 en adelante."); else { Core.SetShippingRates(m); S.Toast("✅ Tarifas guardadas. Se aplican a los encargos nuevos."); }
-        }, true));
-        rateRows.Add(T("Agregar tarifa", 14, true));
-        rateRows.Add(Cols(Box("Nombre (ej. Express)", _newName, v => _newName = v), Box("Precio por libra ($)", _newPrice, v => _newPrice = v)));
-        rateRows.Add(Btn("+ Agregar tarifa", () =>
-        {
-            var pr = Num(_newPrice);
-            if (_newName.Trim().Length == 0 || double.IsNaN(pr) || pr < 0 || _newPrice.Trim().Length == 0) { S.Toast("Escribe un nombre y un precio válido."); return; }
-            var k = Core.AddShippingRate(_newName, pr);
-            if (k == null) { S.Toast("No se pudo agregar la tarifa."); return; }
-            _rates[k] = Js.NumberToString(pr); _newName = ""; _newPrice = ""; S.Toast("✅ Tarifa agregada."); Redraw();
-        }));
-        var buyRows = new List<UIElement> { Muted("Se usa para calcular tu ganancia por encargo.", 13) };
-        foreach (var k in keys) { var key = k; buyRows.Add(Box(Core.ShippingLabel(k) + " ($/lb)", _buy.GetValueOrDefault(k, "0"), v => _buy[key] = v)); }
-        buyRows.Add(Toggle("Aplicar también a encargos activos", "Actualiza el costo en los encargos de clientes que aún no terminan", _applyActive, v => _applyActive = v));
-        buyRows.Add(Btn("Guardar costos", () =>
-        {
-            var m = new Dictionary<string, double>(); foreach (var k in keys) { var n = Num(_buy.GetValueOrDefault(k, "")); if (!double.IsNaN(n) && n >= 0) m[k] = n; }
-            Core.SaveBuyRates(m, _applyActive); S.Toast("✅ Costos guardados.");
-        }, true));
-        p.Children.Add(Cols(Card("Tarifas de envío (precio por libra)", null, rateRows.ToArray()), Card("Lo que te cuesta a ti la libra", null, buyRows.ToArray())));
-
-        p.Children.Add(Card("Mensajes de WhatsApp", null, Muted("Puedes usar {nombre}, {total}, {pagado}, {saldo}, {libras} y {negocio}.", 13),
-            Box("Aviso de llegada", _tArr, v => _tArr = v, true), Box("Recordatorio de pago", _tRem, v => _tRem = v, true), Box("Agradecimiento", _tTh, v => _tTh = v, true),
-            Cols(Btn("Guardar mensajes", () => { Core.SaveTemplates(_tArr!, _tRem!, _tTh!); S.Toast("✅ Mensajes guardados."); }, true),
-                Btn("Restaurar", () => S.Ask("Restaurar mensajes", "¿Volver a los mensajes originales?", "Restaurar", false, () => { Core.ResetTemplates(); _tArr = Core.Tpl("arrival"); _tRem = Core.Tpl("reminder"); _tTh = Core.Tpl("thanks"); Redraw(); })))));
-
-        var cfg = Core.Notifs.Cfg();
-        p.Children.Add(Cols(
-            Card("Notificaciones", null, new[] { ("inapp", "Avisos dentro de la app"), ("pay", "Pagos"), ("order", "Encargos"), ("client", "Clientes"), ("system", "Sistema y seguridad"), ("important", "Avisos importantes") }
-                .Select(o => (UIElement)Toggle(o.Item2, "", Js.Truthy(cfg[o.Item1]), _ => Core.Notifs.ToggleCfg(o.Item1))).ToArray()),
-            Card("Sonido", null, Toggle("Sonido de inicio de sesión", "Un sonido corto y discreto al entrar correctamente", Sound.On(), on => { Sound.Set(on); if (on) Sound.Login(); })),
-            Card("Apariencia", null, Toggle("Modo día", "Colores claros; el cambio es inmediato y se recuerda", Core.Ls.Get("encargos_aurora_mode", "") == "day", on =>
+            foreach (var k in keys) { var n = Num(rates.GetValueOrDefault(k, "")); if (double.IsNaN(n) || n < 0 || rates.GetValueOrDefault(k, "").Trim().Length == 0) bad = true; else m[k] = n; }
+            if (bad) { S.Toast("Revisa las tarifas: deben ser números de 0 en adelante."); return false; }
+            if (newName.Trim().Length > 0 || newPrice.Trim().Length > 0)
             {
-                Core.Ls.Set("encargos_aurora_mode", on ? "day" : "night");
-                Services.Post(() => S.ApplyTheme(on));
-            }), Muted("Encargos para Windows · tus datos se guardan en este equipo y, si lo activas, cifrados en tu propio bot de Telegram.", 12))));
+                var pr = Num(newPrice);
+                if (newName.Trim().Length == 0 || double.IsNaN(pr) || pr < 0 || newPrice.Trim().Length == 0) { S.Toast("Escribe un nombre y un precio válido."); return false; }
+                if (Core.AddShippingRate(newName, pr) == null) { S.Toast("No se pudo agregar la tarifa."); return false; }
+            }
+            Core.SetShippingRates(m); return true;
+        });
+        if (ok) { S.Toast("✅ Tarifas guardadas. Se aplican a los encargos nuevos."); Redraw(); }
+    }
+    async void Buy()
+    {
+        var keys = Core.ShippingRates.Keys.ToList(); var buyR = Core.BuyRates();
+        var buy = keys.ToDictionary(k => k, k => Js.NumberToString(Js.Num(buyR[k]))); var applyActive = false;
+        var rows = new List<UIElement> { InfoBox("Se usa para calcular tu ganancia por encargo.") };
+        foreach (var k in keys) { var key = k; rows.Add(Box(Core.ShippingLabel(k) + " · USD/lb", buy[k], v => buy[key] = v)); }
+        rows.Add(Toggle("Aplicar también a encargos activos", "Actualiza el costo en los encargos de clientes que aún no terminan", false, v => applyActive = v));
+        if (await S.Dialog("Lo que te cuesta a ti la libra", V(10, rows.ToArray()), "Guardar costos"))
+        {
+            var m = new Dictionary<string, double>(); foreach (var k in keys) { var n = Num(buy.GetValueOrDefault(k, "")); if (!double.IsNaN(n) && n >= 0) m[k] = n; }
+            Core.SaveBuyRates(m, applyActive); S.Toast("✅ Costos guardados."); Redraw();
+        }
+    }
+    async void Templates()
+    {
+        string a = Core.Tpl("arrival"), r = Core.Tpl("reminder"), t = Core.Tpl("thanks");
+        var restore = false;
+        var ok = await S.Dialog("Mensajes de WhatsApp", V(10, InfoBox("Puedes usar {nombre}, {total}, {pagado}, {saldo}, {libras} y {negocio}."),
+            Box("Aviso de llegada", a, v => a = v, true), Box("Recordatorio de pago", r, v => r = v, true), Box("Agradecimiento", t, v => t = v, true)), "Guardar mensajes", null, "Cancelar", "Restaurar", () => restore = true);
+        if (ok) { Core.SaveTemplates(a, r, t); S.Toast("✅ Mensajes guardados."); }
+        else if (restore) S.Ask("Restaurar mensajes", "¿Volver a los mensajes originales?", "Restaurar", false, () => { Core.ResetTemplates(); S.Toast("✅ Mensajes restaurados."); });
+    }
+    async void Transit()
+    {
+        string w = Core.TransitWarn.ToString(), l = Core.TransitLate.ToString();
+        if (await S.Dialog("Alertas de tránsito", V(10, InfoBox("El centro de atención te avisa cuando un encargo lleva muchos días en tránsito."), Cols(Box("Avisar a los (días)", w, v => w = v), Box("Retrasado a los (días)", l, v => l = v))), "Guardar alertas"))
+        { Core.SaveTransitAlerts(int.TryParse(w, out var a) ? a : Core.TransitWarn, int.TryParse(l, out var b) ? b : Core.TransitLate); S.Toast("✅ Alertas guardadas."); Redraw(); }
+    }
+    async void Notifs()
+    {
+        var cfg = Core.Notifs.Cfg();
+        await S.Dialog("Notificaciones", V(6, new[] { ("inapp", "Avisos dentro de la app"), ("pay", "Pagos"), ("order", "Encargos"), ("client", "Clientes"), ("system", "Sistema y seguridad"), ("important", "Avisos importantes") }
+            .Select(o => (UIElement)Toggle(o.Item2, "", Js.Truthy(cfg[o.Item1]), _ => Core.Notifs.ToggleCfg(o.Item1))).ToArray()), "Cerrar", null, null);
+        Redraw();
     }
 }
 

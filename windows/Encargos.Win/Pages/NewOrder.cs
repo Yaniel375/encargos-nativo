@@ -10,7 +10,8 @@ public sealed class NewOrderPage : Screen
     readonly string? _forName, _forPhone;
     string _name = "", _phone = "", _type = "avion", _rate = "", _pounds = "", _cost = "", _fund = "", _method = "Efectivo", _status = "Pedido", _photo = "";
     bool _loaded;
-    StackPanel _sum = new(), _sugg = new(), _photoBox = new();
+    StackPanel _sum = new(), _sugg = new(), _photoBox = new(), _preview = new();
+    TextBlock _totalT = new();
     TextBox _nameBox = null!, _phoneBox = null!, _rateBox = null!, _lbBox = null!;
 
     public NewOrderPage(string? forName = null, string? forPhone = null) { _forName = forName; _forPhone = forPhone; }
@@ -37,23 +38,35 @@ public sealed class NewOrderPage : Screen
     {
         LoadDraft();
         _sum = new StackPanel { Spacing = 6 }; _sugg = new StackPanel { Spacing = 2 }; _photoBox = new StackPanel { Spacing = 8 };
-        _nameBox = Box("Nombre del cliente", _name, v => { _name = v; Suggest(); SaveDraft(); });
+        _nameBox = Box("Nombre del cliente *", _name, v => { _name = v; Suggest(); SaveDraft(); });
         _phoneBox = Box("Teléfono (WhatsApp)", _phone, v => { _phone = v; SaveDraft(); });
-        p.Children.Add(Cols(Card("Cliente", null, _nameBox, _sugg, _phoneBox),
-            Card("Pago inicial y estado", null, Box("Pago inicial (opcional, $)", _fund, v => { _fund = v; SaveDraft(); }),
-                Combo(new[] { ("Efectivo", "Efectivo"), ("USD", "USD") }, _method, k => { _method = k; SaveDraft(); }, "Método"),
-                Combo(EncargosApp.STATES.Select(s => (s, s)), _status, k => { _status = k; SaveDraft(); }, "Estado"))));
         _rateBox = Box("Tarifa por libra ($)", _rate, v => { _rate = v; SaveDraft(); });
         _lbBox = Box("Libras", _pounds, v => { _pounds = v; SaveDraft(); });
-        p.Children.Add(Card("Pedido y envío", null,
+        TextBox fundBox = null!;
+        fundBox = Box("Pago inicial ($)", _fund, v => { _fund = v; SaveDraft(); });
+        double Total() => Num(_cost) + Num(_rate) * Num(_pounds);
+        _preview = new StackPanel { Spacing = 10 };
+        p.Children.Add(Card(T("VISTA PREVIA DEL ENCARGO", 10.5, true, Mut, false).Also(t => t.CharacterSpacing = 80), _preview));
+        var step1 = StepCard(1, "\uE77B", "Cliente", "Escribe un nombre nuevo o elige uno guardado", _name.Trim().Length > 0, _nameBox, _sugg, _phoneBox);
+        var step2 = StepCard(2, "\uE7B8", "Pedido y envío", "Costo de la compra, tipo de envío y libras", Num(_cost) > 0,
             Box("Costo del pedido ($)", _cost, v => { _cost = v; SaveDraft(); }),
-            Muted("Tipo de envío", 13),
+            Muted("Tipo de envío", 12.5),
             Choice(Core.ShippingRates.Keys.Select(k => (k, Core.ShippingLabel(k))), _type, k => { _type = k; _rate = Js.ToFixed(Core.RateOf(k), 2); SaveDraft(); Redraw(); }),
             Cols(_rateBox, _lbBox),
-            Cols(new[] { 0.5, 1, 2, 5 }.Select(q => (UIElement)Btn("+" + Js.NumberToString(q), () => _lbBox.Text = Js.ToFixed(Num(_lbBox.Text) + q, 2))).ToArray())));
-        p.Children.Add(Cols(Card("Foto de la compra", null, _photoBox), Card("Resumen", null, _sum)));
-        p.Children.Add(Cols(Btn("Guardar encargo", Save, true, null, ""),
-            Btn("Limpiar formulario", () => { _name = _phone = _cost = _pounds = _fund = _photo = ""; _status = "Pedido"; _type = "avion"; _rate = Js.ToFixed(Core.RateOf("avion"), 2); Core.Ls.Del("encargos_v4_draft"); Redraw(); })));
+            Cols(new[] { 0.5, 1, 2, 5 }.Select(q => (UIElement)Btn("+" + Js.NumberToString(q), () => _lbBox.Text = Js.ToFixed(Num(_lbBox.Text) + q, 2))).ToArray()));
+        var step3 = StepCard(3, "\uE8C7", "Pago y estado", "Lo que pagó hoy y en qué etapa va", true,
+            Cols(fundBox, V(6, Muted("Método de pago", 12.5), Choice(new[] { ("Efectivo", "Efectivo"), ("USD", "USD") }, _method, k => { _method = k; SaveDraft(); Redraw(); }))),
+            Choice(new[] { ("all", "Pagó todo"), ("half", "Pagó la mitad"), ("none", "Sin pago") }, "", k => fundBox.Text = k switch { "all" => Js.ToFixed(Total(), 2), "half" => Js.ToFixed(Total() / 2, 2), _ => "" }),
+            Muted("Estado", 12.5),
+            Choice(EncargosApp.STATES.Select(s => (s, s)), _status, k => { _status = k; SaveDraft(); Redraw(); }));
+        var step4 = StepCard(4, "\uE722", "Captura de la compra", "Opcional · foto o captura de pantalla", _photo.Length > 0, _photoBox);
+        _totalT = Big("$0.00", null, 30);
+        var total = TotalCard("$0.00", _sum); ((StackPanel)total.Child).Children[1] = _totalT;
+        var wide = S.ContentWidth >= 760;
+        if (wide) { p.Children.Add(Cols(step1, step3)); p.Children.Add(step2); p.Children.Add(Cols(step4, total)); }
+        else { p.Children.Add(step1); p.Children.Add(step2); p.Children.Add(step3); p.Children.Add(step4); p.Children.Add(total); }
+        p.Children.Add(Cols(Btn("Guardar encargo", Save, true, null, "\uE73E"),
+            Btn("Limpiar", () => { _name = _phone = _cost = _pounds = _fund = _photo = ""; _status = "Pedido"; _type = "avion"; _rate = Js.ToFixed(Core.RateOf("avion"), 2); Core.Ls.Del("encargos_v4_draft"); Redraw(); })));
         DrawPhoto(); Suggest(); Calc();
     }
     void DrawPhoto()
@@ -76,11 +89,18 @@ public sealed class NewOrderPage : Screen
         var ship = lc * pp; var total = c + ship; var bal = total - f;
         var buy = Js.Num(Core.BuyRates()[_type]); var gain = pp * (lc - buy);
         _sum.Children.Clear();
-        _sum.Children.Add(Line($"Envío ({Js.ToFixed(pp, 2)} lb × {Money(lc)})", Money(ship)));
-        _sum.Children.Add(Line("Total", Money(total), null, true));
+        _totalT.Text = Money(total);
+        _sum.Children.Add(Line($"Envío por libras ({Js.ToFixed(pp, 2)} lb × {Money(lc)})", Money(ship)));
         _sum.Children.Add(Line("Pagado", Money(f), Green));
-        _sum.Children.Add(Line(bal < 0 ? "A favor" : "Saldo", bal > 0 ? "- " + Money(bal) : bal < 0 ? "+ " + Money(-bal) + " a favor" : "Pagado completo", bal > 0 ? Rose : Green, true));
+        _sum.Children.Add(Line("Saldo / fondo", bal > 0.005 ? "- " + Money(bal) : bal < -0.005 ? "+ " + Money(-bal) + " a favor" : "Pagado completo", bal > 0.005 ? Rose : Green, true));
         if (pp > 0) _sum.Children.Add(Line($"Ganancia ({Js.ToFixed(pp, 2)} lb × ({Money(lc)} − {Money(buy)}))", Signed(gain), gain >= 0 ? Green : Rose));
+        // vista previa del encargo (se actualiza mientras escribes)
+        _preview.Children.Clear();
+        var nm = T(_name.Trim().IfEmpty("Nuevo cliente"), 17, true, null, false, 1); nm.FontWeight = Microsoft.UI.Text.FontWeights.ExtraBold;
+        _preview.Children.Add(Lead(Avatar(_name.Trim().IfEmpty("?"), Blue, 44), V(1, nm, Muted($"{_phone.Trim().IfEmpty("Sin teléfono")} · {Js.ToFixed(pp, 1)} lb", 12)), Chip(_status, Status(_status))));
+        _preview.Children.Add(Cols(Kpi("Total", Money(total)), Kpi("Pagado", Money(f), Green), Kpi("Saldo", bal < 0 ? "+ " + Money(-bal) : Money(bal), bal > 0 ? Rose : Green)));
+        _preview.Children.Add(Progress(total > 0 ? Math.Clamp(f / total, 0, 1) : 0));
+        _preview.Children.Add(Row(Muted($"Pedido {Money(c)} + envío {Money(ship)}", 12.5), T(c <= 0 ? "Escribe el costo" : "Total " + Money(total), 12.5, true)));
     }
     void Save()
     {

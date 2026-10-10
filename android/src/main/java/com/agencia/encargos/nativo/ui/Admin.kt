@@ -9,6 +9,37 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Key
+import androidx.compose.material.icons.outlined.Pin
+import androidx.compose.material.icons.outlined.Fingerprint
+import androidx.compose.material.icons.outlined.Login
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.GppMaybe
+import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.VerifiedUser
+import androidx.compose.material.icons.outlined.Autorenew
+import androidx.compose.material.icons.outlined.Event
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.TableChart
+import androidx.compose.material.icons.outlined.Mail
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.outlined.Storefront
+import androidx.compose.material.icons.outlined.LocalShipping
+import androidx.compose.material.icons.outlined.Sell
+import androidx.compose.material.icons.outlined.Chat
+import androidx.compose.material.icons.outlined.Phone
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.VolumeUp
+import androidx.compose.material.icons.outlined.WavingHand
+import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material.icons.outlined.Save
+import androidx.compose.material.icons.outlined.CloudSync
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Lock
@@ -131,45 +162,45 @@ fun BackupScreen() {
     }
 
     val last = (app.core.ls.get("encargos_last_backup", "0") ?: "0").toDoubleOrNull() ?: 0.0
+    val core = app.core
+    fun exportJson() = ui.requireAuth("Confirma tu identidad para exportar") { val s = bk.exportJson(); startSave(bk.fileName(), s.toByteArray(Charsets.UTF_8), "✅ Respaldo guardado.") }
     Page {
         item {
-            SectionCard("Último respaldo") {
-                Text(if (last > 0) Js.fmt(last) else "Todavía no has hecho un respaldo.", fontWeight = FontWeight.Bold)
-                Hint("Guarda una copia de tus encargos, pagos, notas y gastos. Puedes guardarla en Drive, enviarla por WhatsApp o dejarla en el teléfono.")
-            }
-        }
-        item {
-            SectionCard("Exportar") {
-                Primary("Guardar respaldo (.json)", Modifier.fillMaxWidth(), Icons.Filled.Download) {
-                    ui.requireAuth("Confirma tu identidad para exportar") {
-                        val s = bk.exportJson(); startSave(bk.fileName(), s.toByteArray(Charsets.UTF_8), "✅ Respaldo guardado.")
-                    }
+            SectionCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconTile(Icons.Outlined.VerifiedUser, C.green, 48); androidx.compose.foundation.layout.Spacer(Modifier.width(14.dp))
+                    Column { Text("Tus datos están guardados", fontSize = 17.sp, fontWeight = FontWeight.ExtraBold); Hint("Se guardan solos en este teléfono") }
                 }
-                Secondary("Guardar respaldo cifrado (con contraseña)", Modifier.fillMaxWidth(), Icons.Filled.Lock) { ui.requireAuth("Confirma tu identidad para exportar") { askEnc = true } }
-                Secondary("Exportar a Excel (.csv)", Modifier.fillMaxWidth()) {
-                    ui.requireAuth("Confirma tu identidad para exportar") {
-                        startSave(bk.fileName("encargos_", ".csv"), bk.csv().toByteArray(Charsets.UTF_8), "✅ Archivo CSV guardado.")
-                    }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("Encargos" to core.orders().size, "Clientes" to core.clients().size, "Pagos" to core.orders().sumOf { core.payments(it).size }, "Notas" to core.notes().size).forEach { (l, n) ->
+                        Kpi(l, "$n", modifier = Modifier.weight(1f)) }
                 }
-                Hint("El respaldo cifrado solo se puede abrir con la contraseña que elijas. Si la olvidas, no se puede recuperar.")
             }
         }
         item {
-            SectionCard("Importar") {
-                Secondary("Abrir archivo de respaldo", Modifier.fillMaxWidth(), Icons.Filled.Upload) { open.launch(arrayOf("application/json", "application/octet-stream", "text/plain", "*/*")) }
-                Hint("Acepta respaldos .json normales y cifrados de Encargos (web, Android o PC).")
-            }
-        }
-        item {
-            SectionCard("Respaldo automático") {
-                Choice(listOf("daily" to "Diario", "weekly" to "Semanal", "off" to "Desactivado"), bk.autoMode) { bk.autoMode = it }
+            SectionCard("Respaldo automático", icon = Icons.Outlined.Autorenew) {
+                Choice(listOf("off" to "Desactivado", "daily" to "Cada día", "weekly" to "Cada semana"), bk.autoMode) { bk.autoMode = it }
                 Hint(if (bk.autoMode == "off") "No se guardarán copias automáticas." else "Al abrir la app se guarda una copia en Descargas/Encargos " + (if (bk.autoMode == "weekly") "una vez por semana." else "una vez al día.") +
-                        if (bk.lastAuto > 0) " Última: " + Js.fmt(bk.lastAuto) else "")
+                        if (bk.lastAuto > 0) " Última: " + Js.fmt(bk.lastAuto) else " Todavía no se ha hecho ningún respaldo automático.")
                 Secondary("Hacer copia automática ahora", Modifier.fillMaxWidth()) {
                     val payload = bk.autoDue(true) ?: return@Secondary
                     ui.io { val ok = Files.saveToDownloads(ui.act, "respaldo_auto_" + Js.nowIso().take(10) + ".json", payload.toByteArray(), "application/json")
                         withContext(Dispatchers.Main) { if (ok) { bk.autoDone(); ui.toast("✅ Copia guardada en Descargas/Encargos.") } else ui.toast("No se pudo guardar la copia.") } }
                 }
+            }
+        }
+        item { Column(Modifier.fillMaxWidth().glass()) { NavRow(Icons.Outlined.Event, "Último respaldo", if (last > 0) Js.fmt(last) else "Aún no has hecho ningún respaldo · Te recomendamos hacer uno.", tint = C.amber, onClick = null) } }
+        item { ActionCard(Icons.Filled.Download, "Respaldar datos", "Guarda un archivo con todos tus encargos, clientes, pagos, notas y gastos.", primary = true) { exportJson() } }
+        item { ActionCard(Icons.Outlined.Lock, "Respaldo cifrado", "Protegido con una contraseña que tú eliges. Sin ella no se puede abrir.") { ui.requireAuth("Confirma tu identidad para exportar") { askEnc = true } } }
+        item { ActionCard(Icons.Filled.Upload, "Importar respaldo", "Recupera tus datos desde un archivo .json normal o cifrado (web, Android o PC). Reemplaza los datos actuales.") { open.launch(arrayOf("application/json", "application/octet-stream", "text/plain", "*/*")) } }
+        item { ActionCard(Icons.Outlined.TableChart, "Exportar a Excel (.csv)", "Una hoja con todos los encargos para abrir en Excel.") {
+            ui.requireAuth("Confirma tu identidad para exportar") { startSave(bk.fileName("encargos_", ".csv"), bk.csv().toByteArray(Charsets.UTF_8), "✅ Archivo CSV guardado.") } } }
+        item {
+            SectionCard("Consejos") {
+                IconLabel(Icons.Outlined.Autorenew, "Haz un respaldo cada semana o después de muchos cambios.")
+                IconLabel(Icons.Outlined.Mail, "Envía el archivo a tu correo o a la nube, por si pierdes el teléfono.")
+                IconLabel(Icons.Filled.Upload, "Para recuperar todo en otro teléfono, usa Importar respaldo.")
+                IconLabel(Icons.Outlined.Lock, "El respaldo cifrado solo se abre con su contraseña. Si la olvidas, no se puede recuperar.")
             }
         }
     }
@@ -199,48 +230,40 @@ fun SecurityScreen() {
     var pinDlg by remember { mutableStateOf(false) }; var credDlg by remember { mutableStateOf(false) }; var wipeDlg by remember { mutableStateOf(false) }
     val lock = sec.lockCfg()
     val act = ui.act as? MainActivity
-    Page {
+    var lockSheet by remember { mutableStateOf(false) }
+    val bioAvail = Bio.available(ui.act)
+    val score = listOf(sec.pinOn(), lock.on, sec.sensitiveOn()).count { it }
+    val (lvl, lvlColor) = when (score) { 3 -> "Protección completa" to C.green; 0 -> "Sin protección" to C.rose; else -> "Protección parcial" to C.amber }
+    Page(sub = "Protege la información de tu negocio.") {
         item {
-            SectionCard("Acceso") {
-                Line("Usuario", sec.userName().ifEmpty { "—" })
-                Secondary("Cambiar usuario y contraseña", Modifier.fillMaxWidth()) { ui.requireAuth("Confirma tu identidad", true) { credDlg = true } }
-            }
-        }
-        item {
-            SectionCard("PIN y huella") {
-                if (sec.pinOn()) {
-                    Line("PIN", "Activo · ${sec.pinLen()} dígitos", C.green)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Secondary("Cambiar PIN", Modifier.weight(1f)) { ui.requireAuth("Confirma tu identidad", true) { pinDlg = true } }
-                        Secondary("Desactivar", Modifier.weight(1f), color = C.rose) { ui.requireAuth("Confirma tu identidad", true) { sec.disablePin(); refresh(); ui.toast("PIN desactivado.") } }
-                    }
-                    if (Bio.available(ui.act)) ToggleRow("Desbloquear con huella", "Usa la huella o el rostro de este teléfono", sec.bioOn()) { on ->
-                        if (on) Bio.prompt(ui.act) { ok -> if (ok) { sec.setBio(true); refresh(); ui.toast("✅ Huella activada.") } }
-                        else { sec.setBio(false); refresh() }
-                    } else Hint("Este teléfono no tiene huella configurada.")
-                } else {
-                    Hint("Con un PIN entras más rápido sin escribir tu contraseña.")
-                    Primary("Crear PIN", Modifier.fillMaxWidth()) { ui.requireAuth("Confirma tu identidad", true) { pinDlg = true } }
+            SectionCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    androidx.compose.foundation.layout.Box(Modifier.size(12.dp).clip(androidx.compose.foundation.shape.CircleShape).background(lvlColor)); androidx.compose.foundation.layout.Spacer(Modifier.width(10.dp))
+                    Text(lvl, fontSize = 19.sp, fontWeight = FontWeight.ExtraBold)
                 }
+                StatRow("PIN", if (sec.pinOn()) "Activo · ${sec.pinLen()} dígitos" else "Desactivado", if (sec.pinOn()) C.green else MaterialTheme.colorScheme.onSurface)
+                StatRow("Huella / biometría", if (!bioAvail) "No disponible" else if (sec.bioOn()) "Activa" else "Desactivada")
+                StatRow("Bloqueo automático", if (lock.on) sec.lockLabel(lock.minutes) else "Nunca")
+                StatRow("Acciones sensibles", if (sec.sensitiveOn()) "✓ Protegidas" else "Sin proteger", if (sec.sensitiveOn()) C.green else C.amber)
+                StatRow("Última actividad", sec.logEntries().firstOrNull()?.let { timeLabel(it["t"]) } ?: "—")
             }
         }
-        item {
-            SectionCard("Bloqueo automático") {
-                val opts = listOf("0" to "Al salir", "1" to "1 min", "5" to "5 min", "15" to "15 min", "30" to "30 min", "never" to "Nunca")
-                val sel = if (!lock.on) "never" else Js.numberToString(lock.minutes)
-                Choice(opts, sel) { k -> sec.setLock(if (k == "never") null else k.toDouble()); refresh() }
-                Hint(if (lock.on) "Se pedirá tu PIN o contraseña tras " + sec.lockLabel(lock.minutes).lowercase() + " fuera de la app." else "La app no se bloqueará sola.")
-                ToggleRow("Pedir acceso al abrir la app", "", lock.onOpen) { sec.setLockOnOpen(it); refresh() }
-            }
-        }
-        item {
-            SectionCard("Privacidad") {
-                ToggleRow("Ocultar en apps recientes", "Oculta el contenido en la vista de recientes y bloquea capturas de pantalla", sec.privacyOn()) { sec.setPrivacy(it); act?.applyPrivacy(); refresh() }
-                ToggleRow("Proteger acciones sensibles", "Pide tu identidad para eliminar, importar o exportar", sec.sensitiveOn()) { on ->
-                    if (on) { sec.setSensitive(true); refresh() } else ui.requireAuth("Confirma tu identidad", true) { sec.setSensitive(false); refresh() }
-                }
-            }
-        }
+        item { RowGroup("Acceso") {
+            NavRow(Icons.Outlined.Key, "Bloqueo con PIN", if (sec.pinOn()) "Activo · ${sec.pinLen()} dígitos" else "Crea un PIN de 4 a 6 números", right = {
+                Switch(sec.pinOn(), { on -> ui.requireAuth("Confirma tu identidad", true) { if (on) pinDlg = true else { sec.disablePin(); refresh(); ui.toast("PIN desactivado.") } } }) }, onClick = null)
+            if (sec.pinOn()) { RowSep(); NavRow(Icons.Outlined.Pin, "Cambiar PIN", "Elige un PIN nuevo") { ui.requireAuth("Confirma tu identidad", true) { pinDlg = true } } }
+            if (sec.pinOn() && bioAvail) { RowSep(); NavRow(Icons.Outlined.Fingerprint, "Desbloquear con huella", "Usa la huella o el rostro de este teléfono", right = {
+                Switch(sec.bioOn(), { on -> if (on) Bio.prompt(ui.act) { ok -> if (ok) { sec.setBio(true); refresh(); ui.toast("✅ Huella activada.") } } else { sec.setBio(false); refresh() } }) }, onClick = null) }
+            RowSep()
+            NavRow(Icons.Outlined.Login, "Pedir desbloqueo al abrir", "Siempre que abres la app", right = { Switch(lock.onOpen, { sec.setLockOnOpen(it); refresh() }) }, onClick = null); RowSep()
+            NavRow(Icons.Outlined.Schedule, "Bloqueo automático", if (lock.on) "Después de " + sec.lockLabel(lock.minutes).lowercase() + " fuera de la app" else "La app no se bloqueará sola", if (lock.on) sec.lockLabel(lock.minutes) else "Nunca") { lockSheet = true }; RowSep()
+            NavRow(Icons.Outlined.Person, "Usuario y contraseña", "Usuario: ${sec.userName().ifEmpty { "—" }} · acceso de respaldo si olvidas el PIN") { ui.requireAuth("Confirma tu identidad", true) { credDlg = true } }
+        } }
+        item { RowGroup("Protección de datos") {
+            NavRow(Icons.Outlined.GppMaybe, "Proteger acciones sensibles", "Eliminar, importar, exportar y cambios críticos", right = { Switch(sec.sensitiveOn(), { on ->
+                if (on) { sec.setSensitive(true); refresh() } else ui.requireAuth("Confirma tu identidad", true) { sec.setSensitive(false); refresh() } }) }, onClick = null); RowSep()
+            NavRow(Icons.Outlined.VisibilityOff, "Ocultar en apps recientes", "Oculta el contenido en recientes y bloquea capturas de pantalla", right = { Switch(sec.privacyOn(), { sec.setPrivacy(it); act?.applyPrivacy(); refresh() }) }, onClick = null)
+        } }
         item {
             SectionCard("Actividad de seguridad") {
                 val log = sec.logEntries().take(15)
@@ -248,12 +271,16 @@ fun SecurityScreen() {
                 log.forEach { e -> Row { Text(if (Js.truthy(e["ok"])) "✅ " else "⚠️ "); Column(Modifier.weight(1f)) { Text(e.str("text"), fontSize = 13.sp); Hint(timeLabel(e["t"])) } } }
             }
         }
-        item {
-            SectionCard("Zona de peligro") {
-                Hint("Borra los datos de este dispositivo. Haz un respaldo antes.")
-                Secondary("Borrar datos de este dispositivo", Modifier.fillMaxWidth(), color = C.rose) { ui.requireAuth("Confirma tu identidad", true) { wipeDlg = true } }
-            }
-        }
+        item { RowGroup("Zona de peligro") {
+            NavRow(Icons.Outlined.Delete, "Eliminar todos los datos", "Requiere confirmar tu identidad y escribir ELIMINAR", tint = C.rose, titleColor = C.rose) { ui.requireAuth("Confirma tu identidad", true) { wipeDlg = true } }
+        } }
+        item { Hint("El PIN se guarda con sal y hash iterado; las huellas nunca salen del sistema Android. Ningún respaldo incluye tu PIN ni tu contraseña.") }
+    }
+    if (lockSheet) Sheet("Bloqueo automático", { lockSheet = false }) {
+        val opts = listOf("0" to "Al salir", "1" to "1 min", "5" to "5 min", "15" to "15 min", "30" to "30 min", "never" to "Nunca")
+        val l2 = sec.lockCfg(); val sel = if (!l2.on) "never" else Js.numberToString(l2.minutes)
+        Choice(opts, sel) { k -> sec.setLock(if (k == "never") null else k.toDouble()); refresh() }
+        Hint(if (l2.on) "Se pedirá tu PIN o contraseña tras " + sec.lockLabel(l2.minutes).lowercase() + " fuera de la app." else "La app no se bloqueará sola.")
     }
     if (pinDlg) PinDialog({ pinDlg = false }) { pin -> sec.setPin(pin).onSuccess { ui.toast("✅ PIN guardado."); refresh() }.onFailure { ui.toast(it.message ?: "") } }
     if (credDlg) CredentialsDialog(sec.userName(), { credDlg = false }) { u, p -> sec.setCredentials(u, p).onSuccess { ui.toast("✅ Usuario y contraseña actualizados."); refresh() }.onFailure { ui.toast(it.message ?: "") } }
@@ -319,97 +346,127 @@ fun SettingsScreen() {
     var warn by remember { mutableStateOf(core.transitWarn.toString()) }; var late by remember { mutableStateOf(core.transitLate.toString()) }
     val day = core.ls.get("encargos_aurora_mode", "") == "day"
     val keys = core.shippingRates.keys.toList()
+    var sheet by remember { mutableStateOf<String?>(null) }
+    val fb = com.agencia.encargos.nativo.util.Feedback
+    fun rateLine(m: Map<String, Any?>) = keys.joinToString(" · ") { k -> core.shippingName(k) + " " + money(m[k]) }
     Page {
         item {
-            SectionCard("Tu negocio") {
-                Field(biz, { biz = it }, "Nombre del negocio (aparece en recibos)")
-                Field(greet, { greet = it }, "Tu nombre (para el saludo)")
-                Field(cc, { s -> cc = s.filter { it.isDigit() }.take(4) }, "Código de país para WhatsApp", number = true, prefix = "+")
-                Primary("Guardar", Modifier.fillMaxWidth()) { core.businessName = biz.trim(); core.greetName = greet.trim(); core.phoneCC = cc.ifEmpty { "53" }; ui.toast("✅ Datos guardados.") }
+            SectionCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Avatar(core.greetName.ifEmpty { "E" }, C.blue, 64); androidx.compose.foundation.layout.Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) { Text(core.greetName.ifEmpty { "Tu nombre" }, fontSize = 19.sp, fontWeight = FontWeight.ExtraBold); Hint("Usuario: " + ui.app.security.userName().ifEmpty { "—" }) }
+                }
+                Secondary("Editar nombre del saludo", Modifier.fillMaxWidth()) { sheet = "greet" }
             }
         }
-        item {
-            SectionCard("Tarifas de envío (precio por libra)") {
-                keys.forEach { k ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Field(rates[k] ?: "", { rates[k] = it }, core.shippingLabel(k), Modifier.weight(1f), number = true, prefix = "$")
-                        if (k != "avion" && k != "barco") TextButton(onClick = { ui.ask("Eliminar tarifa", "¿Eliminar la tarifa \"${core.shippingLabel(k)}\"? Los encargos que ya la usan no cambian.", "Eliminar", true) { core.removeShippingRate(k); rates.remove(k) } }) { Text("Quitar", color = C.rose) }
-                    }
-                }
-                Primary("Guardar tarifas", Modifier.fillMaxWidth()) {
-                    val m = HashMap<String, Double>(); var bad = false
-                    keys.forEach { k -> val n = (rates[k] ?: "").replace(',', '.').toDoubleOrNull(); if (n == null || n < 0) bad = true else m[k] = n }
-                    if (bad) ui.toast("Revisa las tarifas: deben ser números de 0 en adelante.") else { core.setShippingRates(m); ui.toast("✅ Tarifas guardadas. Se aplican a los encargos nuevos.") }
-                }
-                Text("Agregar tarifa", fontWeight = FontWeight.Bold)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Field(newName, { newName = it }, "Nombre (ej. Express)", Modifier.weight(1.4f))
-                    Field(newPrice, { newPrice = it }, "Precio/lb", Modifier.weight(1f), number = true, prefix = "$")
-                }
-                Secondary("+ Agregar tarifa", Modifier.fillMaxWidth()) {
-                    val p = newPrice.replace(',', '.').toDoubleOrNull()
-                    if (newName.trim().isEmpty() || p == null || p < 0) ui.toast("Escribe un nombre y un precio válido.")
-                    else { val k = core.addShippingRate(newName, p); if (k != null) { rates[k] = Js.numberToString(p); buy[k] = buy[k] ?: "0"; newName = ""; newPrice = ""; ui.toast("✅ Tarifa agregada.") } else ui.toast("No se pudo agregar la tarifa.") }
-                }
-            }
-        }
-        item {
-            SectionCard("Lo que te cuesta a ti la libra") {
-                Hint("Se usa para calcular tu ganancia por encargo.")
-                keys.forEach { k -> Field(buy[k] ?: "", { buy[k] = it }, core.shippingLabel(k), number = true, prefix = "$") }
-                ToggleRow("Aplicar también a encargos activos", "Actualiza el costo en los encargos de clientes que aún no terminan", applyActive) { applyActive = it }
-                Primary("Guardar costos", Modifier.fillMaxWidth()) {
-                    val m = LinkedHashMap<String, Double>(); keys.forEach { k -> (buy[k] ?: "").replace(',', '.').toDoubleOrNull()?.let { if (it >= 0) m[k] = it } }
-                    core.saveBuyRates(m, applyActive); ui.toast("✅ Costos guardados.")
-                }
-            }
-        }
-        item {
-            SectionCard("Mensajes de WhatsApp") {
-                Hint("Puedes usar {nombre}, {total}, {pagado}, {saldo}, {libras} y {negocio}.")
-                Field(tArr, { tArr = it }, "Aviso de llegada", singleLine = false, minLines = 3)
-                Field(tRem, { tRem = it }, "Recordatorio de pago", singleLine = false, minLines = 3)
-                Field(tTh, { tTh = it }, "Agradecimiento", singleLine = false, minLines = 3)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Primary("Guardar mensajes", Modifier.weight(1f)) { core.saveTemplates(tArr, tRem, tTh); ui.toast("✅ Mensajes guardados.") }
-                    Secondary("Restaurar", Modifier.weight(1f)) { ui.ask("Restaurar mensajes", "¿Volver a los mensajes originales?", "Restaurar") { core.resetTemplates(); tArr = core.tpl("arrival"); tRem = core.tpl("reminder"); tTh = core.tpl("thanks") } }
-                }
-            }
-        }
-        item {
-            SectionCard("Alertas de tránsito") {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Field(warn, { s -> warn = s.filter { it.isDigit() } }, "Avisar a los (días)", Modifier.weight(1f), number = true)
-                    Field(late, { s -> late = s.filter { it.isDigit() } }, "Retrasado a los (días)", Modifier.weight(1f), number = true)
-                }
-                Secondary("Guardar alertas", Modifier.fillMaxWidth()) {
-                    core.saveTransitAlerts(warn.toIntOrNull() ?: core.transitWarn, late.toIntOrNull() ?: core.transitLate)
-                    warn = core.transitWarn.toString(); late = core.transitLate.toString(); ui.toast("✅ Alertas guardadas.")
-                }
-            }
-        }
-        item {
-            SectionCard("Notificaciones") {
-                val cfg = core.notifs.cfg()
-                listOf("inapp" to "Avisos dentro de la app", "pay" to "Pagos", "order" to "Encargos", "client" to "Clientes", "system" to "Sistema y seguridad", "important" to "Avisos importantes").forEach { (k, l) ->
-                    ToggleRow(l, "", Js.truthy(cfg[k])) { core.notifs.toggleCfg(k) }
-                }
-            }
-        }
-        item {
-            SectionCard("Sonido y vibración") {
-                var snd by remember { mutableStateOf(com.agencia.encargos.nativo.util.Feedback.soundOn()) }
-                var hap by remember { mutableStateOf(com.agencia.encargos.nativo.util.Feedback.hapticsOn()) }
-                ToggleRow("Sonido de inicio de sesión", "Un sonido corto y discreto al entrar correctamente", snd) { snd = it; com.agencia.encargos.nativo.util.Feedback.set("loginSoundEnabled", it); if (it) com.agencia.encargos.nativo.util.Feedback.loginSound() }
-                ToggleRow("Vibración háptica", "Un toque muy breve al interactuar con la app", hap) { hap = it; com.agencia.encargos.nativo.util.Feedback.set("hapticFeedbackEnabled", it); if (it) com.agencia.encargos.nativo.util.Feedback.tap() }
-            }
-        }
-        item {
-            SectionCard("Apariencia") {
-                ToggleRow("Modo día", "Colores claros", day) { on -> core.ls.set("encargos_aurora_mode", if (on) "day" else "night"); ui.act.recreate() }
-            }
-        }
+        item { RowGroup("Negocio y tarifas") {
+            NavRow(Icons.Outlined.Storefront, "Nombre del negocio", core.businessName.ifEmpty { "Sin nombre" }) { sheet = "biz" }; RowSep()
+            NavRow(Icons.Outlined.LocalShipping, "Precio por libra (lo que cobras)", rateLine(core.shippingRates)) { sheet = "rates" }; RowSep()
+            NavRow(Icons.Outlined.Sell, "Costo por libra (lo que te cobran)", rateLine(core.buyRates())) { sheet = "buy" }
+        } }
+        item { RowGroup("WhatsApp") {
+            NavRow(Icons.Outlined.Chat, "Mensajes de WhatsApp", "Llegada, recordatorio de pago y agradecimiento") { sheet = "tpl" }; RowSep()
+            NavRow(Icons.Outlined.Phone, "Código de país", "Se agrega a los números cortos", "+" + core.phoneCC) { sheet = "cc" }
+        } }
+        item { RowGroup("Notificaciones y alertas") {
+            val cfg = core.notifs.cfg(); val on = listOf("inapp", "pay", "order", "client", "system", "important").count { Js.truthy(cfg[it]) }
+            NavRow(Icons.Outlined.Notifications, "Notificaciones", "Avisos y categorías · $on de 6 activas") { sheet = "notif" }; RowSep()
+            NavRow(Icons.Outlined.LocalShipping, "Alertas de tránsito", "Avisar a los ${core.transitWarn} días · retrasado a los ${core.transitLate}") { sheet = "transit" }; RowSep()
+            NavRow(Icons.Outlined.VolumeUp, "Sonido y vibración", (if (fb.soundOn()) "Sonido al entrar" else "Sin sonido") + " · " + (if (fb.hapticsOn()) "vibración activada" else "sin vibración")) { sheet = "fb" }
+        } }
+        item { RowGroup("Apariencia") {
+            NavRow(Icons.Outlined.WavingHand, "Nombre del saludo", "\"¡Hola, ${core.greetName.ifEmpty { "…" }}!\"") { sheet = "greet" }; RowSep()
+            NavRow(Icons.Outlined.DarkMode, "Modo noche", if (!day) "Encendido · fondo oscuro" else "Apagado · colores claros", right = {
+                Switch(!day, { on -> core.ls.set("encargos_aurora_mode", if (on) "night" else "day"); ui.act.recreate() }) }, onClick = null)
+        } }
+        item { RowGroup("Datos y seguridad") {
+            val sec = ui.app.security
+            NavRow(Icons.Outlined.Shield, "Seguridad", (if (sec.pinOn()) "PIN activo" else "Sin PIN") + " · bloqueo y privacidad") { ui.go(Screen.Security) }; RowSep()
+            NavRow(Icons.Outlined.Save, "Respaldo e importación", "Respaldos, respaldo cifrado, importar y Excel") { ui.go(Screen.Backup) }; RowSep()
+            NavRow(Icons.Outlined.CloudSync, "Sincronización (Telegram)", ui.app.sync.status().text) { ui.go(Screen.Sync) }
+        } }
         item { Hint("Encargos nativo para Android · tus datos se guardan en este teléfono y, si lo activas, en tu propio bot de Telegram cifrados.") }
+    }
+    when (sheet) {
+        "biz" -> Sheet("Nombre del negocio", { sheet = null }) {
+            InfoBox("Aparece en los recibos y en los mensajes de WhatsApp.")
+            Field(biz, { biz = it }, "Nombre del negocio (aparece en recibos)")
+            Primary("Guardar", Modifier.fillMaxWidth()) { core.businessName = biz.trim(); ui.toast("✅ Datos guardados."); sheet = null }
+        }
+        "greet" -> Sheet("Nombre del saludo", { sheet = null }) {
+            Field(greet, { greet = it }, "Tu nombre (para el saludo)")
+            Primary("Guardar", Modifier.fillMaxWidth()) { core.greetName = greet.trim(); ui.toast("✅ Datos guardados."); sheet = null }
+        }
+        "cc" -> Sheet("Código de país", { sheet = null }) {
+            InfoBox("Se agrega a los números de 8 cifras al abrir WhatsApp.")
+            Field(cc, { s -> cc = s.filter { it.isDigit() }.take(4) }, "Código de país para WhatsApp", number = true, prefix = "+")
+            Primary("Guardar", Modifier.fillMaxWidth()) { core.phoneCC = cc.ifEmpty { "53" }; ui.toast("✅ Datos guardados."); sheet = null }
+        }
+        "rates" -> Sheet("Precios de envío por libra", { sheet = null }) {
+            InfoBox("Configura todos tus tipos de envío. Cada tipo puede tener su propio precio por libra. Al crear un encargo, el precio se selecciona automáticamente según el envío.")
+            keys.forEach { k ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Field(rates[k] ?: "", { rates[k] = it }, core.shippingLabel(k), Modifier.weight(1f), number = true, prefix = "$", suffix = "USD/lb")
+                    if (k != "avion" && k != "barco") TextButton(onClick = { ui.ask("Eliminar tarifa", "¿Eliminar la tarifa \"${core.shippingLabel(k)}\"? Los encargos que ya la usan no cambian.", "Eliminar", true) { core.removeShippingRate(k); rates.remove(k) } }) { Text("Quitar", color = C.rose) }
+                }
+            }
+            Text("Agregar otro tipo de envío", fontWeight = FontWeight.ExtraBold)
+            Field(newName, { newName = it }, "Nombre del envío (ej. Express)")
+            Field(newPrice, { newPrice = it }, "Precio · USD/lb", number = true, prefix = "$")
+            Secondary("Agregar tipo", Modifier.fillMaxWidth()) {
+                val p = newPrice.replace(',', '.').toDoubleOrNull()
+                if (newName.trim().isEmpty() || p == null || p < 0) ui.toast("Escribe un nombre y un precio válido.")
+                else { val k = core.addShippingRate(newName, p); if (k != null) { rates[k] = Js.numberToString(p); buy[k] = buy[k] ?: "0"; newName = ""; newPrice = ""; ui.toast("✅ Tarifa agregada.") } else ui.toast("No se pudo agregar la tarifa.") }
+            }
+            Primary("Guardar precios", Modifier.fillMaxWidth()) {
+                val m = HashMap<String, Double>(); var bad = false
+                core.shippingRates.keys.forEach { k -> val n = (rates[k] ?: "").replace(',', '.').toDoubleOrNull(); if (n == null || n < 0) bad = true else m[k] = n }
+                if (bad) ui.toast("Revisa las tarifas: deben ser números de 0 en adelante.") else { core.setShippingRates(m); ui.toast("✅ Tarifas guardadas. Se aplican a los encargos nuevos."); sheet = null }
+            }
+        }
+        "buy" -> Sheet("Lo que te cuesta a ti la libra", { sheet = null }) {
+            InfoBox("Se usa para calcular tu ganancia por encargo.")
+            keys.forEach { k -> Field(buy[k] ?: "", { buy[k] = it }, core.shippingLabel(k), number = true, prefix = "$", suffix = "USD/lb") }
+            ToggleRow("Aplicar también a encargos activos", "Actualiza el costo en los encargos de clientes que aún no terminan", applyActive) { applyActive = it }
+            Primary("Guardar costos", Modifier.fillMaxWidth()) {
+                val m = LinkedHashMap<String, Double>(); keys.forEach { k -> (buy[k] ?: "").replace(',', '.').toDoubleOrNull()?.let { if (it >= 0) m[k] = it } }
+                core.saveBuyRates(m, applyActive); ui.toast("✅ Costos guardados."); sheet = null
+            }
+        }
+        "tpl" -> Sheet("Mensajes de WhatsApp", { sheet = null }) {
+            InfoBox("Puedes usar {nombre}, {total}, {pagado}, {saldo}, {libras} y {negocio}.")
+            Field(tArr, { tArr = it }, "Aviso de llegada", singleLine = false, minLines = 3)
+            Field(tRem, { tRem = it }, "Recordatorio de pago", singleLine = false, minLines = 3)
+            Field(tTh, { tTh = it }, "Agradecimiento", singleLine = false, minLines = 3)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Secondary("Restaurar", Modifier.weight(1f)) { ui.ask("Restaurar mensajes", "¿Volver a los mensajes originales?", "Restaurar") { core.resetTemplates(); tArr = core.tpl("arrival"); tRem = core.tpl("reminder"); tTh = core.tpl("thanks") } }
+                Primary("Guardar mensajes", Modifier.weight(1.4f)) { core.saveTemplates(tArr, tRem, tTh); ui.toast("✅ Mensajes guardados."); sheet = null }
+            }
+        }
+        "transit" -> Sheet("Alertas de tránsito", { sheet = null }) {
+            InfoBox("El centro de atención te avisa cuando un encargo lleva muchos días en tránsito.")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Field(warn, { s -> warn = s.filter { it.isDigit() } }, "Avisar a los (días)", Modifier.weight(1f), number = true)
+                Field(late, { s -> late = s.filter { it.isDigit() } }, "Retrasado a los (días)", Modifier.weight(1f), number = true)
+            }
+            Primary("Guardar alertas", Modifier.fillMaxWidth()) {
+                core.saveTransitAlerts(warn.toIntOrNull() ?: core.transitWarn, late.toIntOrNull() ?: core.transitLate)
+                warn = core.transitWarn.toString(); late = core.transitLate.toString(); ui.toast("✅ Alertas guardadas."); sheet = null
+            }
+        }
+        "notif" -> Sheet("Notificaciones", { sheet = null }) {
+            var tick by remember { mutableStateOf(0) }
+            val cfg = core.notifs.cfg(); @Suppress("UNUSED_VARIABLE") val t = tick
+            listOf("inapp" to "Avisos dentro de la app", "pay" to "Pagos", "order" to "Encargos", "client" to "Clientes", "system" to "Sistema y seguridad", "important" to "Avisos importantes").forEach { (k, l) ->
+                ToggleRow(l, "", Js.truthy(cfg[k])) { core.notifs.toggleCfg(k); tick++ }
+            }
+        }
+        "fb" -> Sheet("Sonido y vibración", { sheet = null }) {
+            var snd by remember { mutableStateOf(fb.soundOn()) }
+            var hap by remember { mutableStateOf(fb.hapticsOn()) }
+            ToggleRow("Sonido de inicio de sesión", "Un sonido corto y discreto al entrar correctamente", snd) { snd = it; fb.set("loginSoundEnabled", it); if (it) fb.loginSound() }
+            ToggleRow("Vibración háptica", "Un toque muy breve al interactuar con la app", hap) { hap = it; fb.set("hapticFeedbackEnabled", it); if (it) fb.tap() }
+        }
     }
     @Suppress("UNUSED_VARIABLE") val u = v
 }

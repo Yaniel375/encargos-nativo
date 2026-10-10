@@ -16,6 +16,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -26,6 +30,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -46,6 +51,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -151,15 +157,16 @@ fun lb(v: Double) = Js.toFixed(v, 2) + " lb"
 @Composable fun KpiRow(vararg items: @Composable RowScope.() -> Unit) { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { items.forEach { it() } } }
 
 /** Etiqueta con punto (• Pedido, • Entregado). */
-@Composable fun Chip(text: String, color: Color, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
+@Composable fun Chip(text: String, color: Color, modifier: Modifier = Modifier, trail: String? = null, onClick: (() -> Unit)? = null) {
     val shape = RoundedCornerShape(50)
     Row(modifier.clip(shape).background(color.copy(alpha = .14f)).border(1.dp, color.copy(alpha = .38f), shape)
         .let { if (onClick != null) it.clickable { tapFeedback(); onClick() } else it }.padding(horizontal = 10.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(6.dp).clip(CircleShape).background(color)); Spacer(Modifier.width(6.dp)); Text(text, color = lerpInk(color), fontSize = 11.5.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+        if (trail != null) { Spacer(Modifier.width(5.dp)); Text(trail, color = lerpInk(color), fontSize = 11.5.sp, fontWeight = FontWeight.Bold) }
     }
 }
 private fun lerpInk(c: Color) = if (W.day) Color(c.red * .8f, c.green * .8f, c.blue * .8f, 1f) else Color(c.red + (1 - c.red) * .45f, c.green + (1 - c.green) * .45f, c.blue + (1 - c.blue) * .45f, 1f)
-@Composable fun StatusChip(s: String?, onClick: (() -> Unit)? = null) = Chip(s?.ifEmpty { null } ?: "Pedido", C.status(s), onClick = onClick)
+@Composable fun StatusChip(s: String?, arrow: Boolean = false, onClick: (() -> Unit)? = null) = Chip(s?.ifEmpty { null } ?: "Pedido", C.status(s), trail = if (arrow) "→" else null, onClick = onClick)
 
 /** Filtros en pastilla (Todos · Pedido · En tránsito…). */
 @Composable fun Choice(options: List<Pair<String, String>>, selected: String, onSelect: (String) -> Unit) {
@@ -347,3 +354,162 @@ private fun lerpInk(c: Color) = if (W.day) Color(c.red * .8f, c.green * .8f, c.b
     Image(bm.asImageBitmap(), null, modifier.clip(RoundedCornerShape(12.dp)).let { if (onClick != null) it.clickable { onClick() } else it }, contentScale = ContentScale.Crop)
 }
 
+
+/* ======================= Piezas de la referencia (Encargos-9) ======================= */
+
+/** Botón compacto de las tarjetas (Ficha · Editar · WhatsApp · ⋯): vidrio, radio 12, alto 40. */
+@Composable fun CardBtn(text: String?, icon: ImageVector, modifier: Modifier = Modifier, tint: Color? = null, desc: String? = null, onClick: () -> Unit) {
+    val src = remember { MutableInteractionSource() }; val shape = RoundedCornerShape(12.dp); val once = rememberOnce(onClick)
+    val fg = MaterialTheme.colorScheme.onSurface
+    Row(modifier.height(40.dp).pressBounce(src, .95f).clip(shape).background(W.tile).border(1.dp, W.line2, shape)
+        .clickable(src, null) { tapFeedback(); once() }.padding(horizontal = 4.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, desc ?: text, Modifier.size(15.dp), tint = tint ?: fg)
+        if (text != null) { Spacer(Modifier.width(5.dp)); Text(text, fontSize = 13.sp, softWrap = false, fontWeight = FontWeight.Bold, color = fg, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+    }
+}
+
+/** Tarjeta de fila con icono, título, subtítulo, valor a la derecha y flecha (como en Ajustes y "Encargos completados"). */
+@Composable fun NavRow(icon: ImageVector, title: String, sub: String? = null, value: String? = null, tint: Color = W.icon, right: (@Composable () -> Unit)? = null, titleColor: Color? = null, onClick: (() -> Unit)?) {
+    val src = remember { MutableInteractionSource() }
+    Row(Modifier.fillMaxWidth().let { if (onClick != null) it.clickable(src, null) { tapFeedback(); onClick() } else it }.padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        IconTile(icon, tint, 34); Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, fontWeight = FontWeight.ExtraBold, fontSize = 14.5.sp, maxLines = 2, color = titleColor ?: MaterialTheme.colorScheme.onSurface)
+            if (!sub.isNullOrEmpty()) Text(sub, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        }
+        if (value != null) { Spacer(Modifier.width(8.dp)); Text(value, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        if (right != null) { Spacer(Modifier.width(8.dp)); right() }
+        else if (onClick != null) { Spacer(Modifier.width(6.dp)); Text("›", fontSize = 20.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+    }
+}
+
+/** Grupo de filas con título pequeño encima (Negocio y tarifas, WhatsApp…). */
+@Composable fun RowGroup(title: String?, content: @Composable ColumnScope.() -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (title != null) Text(title, fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 4.dp))
+        Column(Modifier.fillMaxWidth().glass(day = isDay())) { content() }
+    }
+}
+@Composable fun RowSep() = Box(Modifier.fillMaxWidth().padding(horizontal = 14.dp).height(1.dp).background(W.line))
+
+/** Recuadro de dato compacto para la fila de totales de arriba. */
+@Composable fun TopTiles(vararg t: Triple<String, String, Color?>) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        t.forEach { (l, v, c) -> Kpi(l, v, c ?: MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f)) }
+    }
+}
+
+/** Hoja emergente de la referencia: tarjeta de vidrio arriba, título y botón "Cerrar"; se desplaza y respeta el teclado. */
+@Composable fun Sheet(title: String, dismiss: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+    androidx.compose.ui.window.Dialog(onDismissRequest = dismiss, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
+        val none = remember { MutableInteractionSource() }; val none2 = remember { MutableInteractionSource() }
+        val shape = RoundedCornerShape(22.dp)
+        Box(Modifier.fillMaxWidth().fillMaxHeight().clickable(none, null) { dismiss() }.imePadding().padding(12.dp), contentAlignment = Alignment.TopCenter) {
+            Column(Modifier.fillMaxWidth().widthIn(max = 560.dp).enterUp(0).clip(shape).background(W.menu).border(1.dp, W.line2, shape).clickable(none2, null) {}
+                .verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(title, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.weight(1f))
+                    Secondary("Cerrar", Modifier.height(38.dp)) { dismiss() }
+                }
+                content()
+            }
+        }
+    }
+}
+
+/** Recuadro informativo azul de las hojas. */
+@Composable fun InfoBox(text: String) {
+    val shape = RoundedCornerShape(14.dp)
+    Text(text, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.fillMaxWidth().clip(shape).background(W.blue.copy(alpha = .10f)).border(1.dp, W.blue.copy(alpha = .45f), shape).padding(12.dp))
+}
+
+/** Tarjeta de acción grande (Respaldar datos, Respaldo cifrado, Importar…): la principal va en degradado azul. */
+@Composable fun ActionCard(icon: ImageVector, title: String, sub: String, primary: Boolean = false, onClick: () -> Unit) {
+    val src = remember { MutableInteractionSource() }; val shape = RoundedCornerShape(18.dp); val once = rememberOnce(onClick)
+    Row(Modifier.fillMaxWidth().pressBounce(src).let { if (primary) it.glow(W.blue, 14.dp, 8.dp, .45f).clip(shape).background(W.primary) else it.glass(shape) }
+        .clickable(src, null) { tapFeedback(); once() }.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+        val ts = RoundedCornerShape(12.dp)
+        Box(Modifier.size(40.dp).clip(ts).background(if (primary) Color.White.copy(alpha = .18f) else W.tile).border(1.dp, if (primary) Color.White.copy(alpha = .25f) else W.line, ts), contentAlignment = Alignment.Center) {
+            Icon(icon, null, Modifier.size(20.dp), tint = if (primary) Color.White else W.icon) }
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, fontWeight = FontWeight.ExtraBold, fontSize = 15.5.sp, color = if (primary) Color.White else MaterialTheme.colorScheme.onSurface)
+            Text(sub, fontSize = 12.5.sp, color = if (primary) Color.White.copy(alpha = .85f) else MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+/** Fila "dato — valor" con separador fino (tarjeta de estado de Seguridad). */
+@Composable fun StatRow(label: String, value: String, color: Color = MaterialTheme.colorScheme.onSurface) {
+    Box(Modifier.fillMaxWidth().height(1.dp).background(W.line))
+    Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, fontSize = 13.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+        Text(value, fontSize = 13.5.sp, fontWeight = FontWeight.ExtraBold, color = color)
+    }
+}
+
+/** Tarjeta de paso numerado (Nuevo encargo): icono, título, ayuda y número o ✓ cuando el paso está completo. */
+@Composable fun StepCard(n: Int, icon: ImageVector, title: String, sub: String, done: Boolean, content: @Composable ColumnScope.() -> Unit) {
+    Column(Modifier.fillMaxWidth().glass(day = isDay()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconTile(icon, W.icon, 36); Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) { Text(title, fontSize = 15.5.sp, fontWeight = FontWeight.ExtraBold); Text(sub, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            val bg by animateColorAsState(if (done) W.green else W.tile, tween(260), label = "step")
+            Box(Modifier.size(22.dp).clip(CircleShape).background(bg).border(1.dp, if (done) W.green else W.line2, CircleShape), contentAlignment = Alignment.Center) {
+                if (done) Icon(Icons.Filled.Check, "Completo", Modifier.size(14.dp), tint = Color.White)
+                else Text("$n", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        content()
+    }
+}
+
+/** Etapas del pedido en círculos unidos por una línea (Pedido → En tránsito → Recibido → Entregado). */
+@Composable fun StatusStepper(flow: List<String>, current: String) {
+    val idx = flow.indexOf(current)
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+        flow.forEachIndexed { i, s ->
+            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.weight(1f).height(2.dp).background(if (i == 0) Color.Transparent else if (i <= idx) C.status(s).copy(alpha = .6f) else W.line))
+                    val c = C.status(s); val on = i <= idx
+                    Box(Modifier.size(26.dp).clip(CircleShape).background(if (i < idx) c else if (i == idx) c.copy(alpha = .22f) else W.tile).border(if (i == idx) 2.dp else 1.dp, if (on) c else W.line2, CircleShape), contentAlignment = Alignment.Center) {
+                        if (i < idx) Icon(Icons.Filled.Check, null, Modifier.size(14.dp), tint = Color.White)
+                        else Text("${i + 1}", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = if (on) c else MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Box(Modifier.weight(1f).height(2.dp).background(if (i == flow.size - 1) Color.Transparent else if (i < idx) C.status(flow[i + 1]).copy(alpha = .6f) else W.line))
+                }
+                Spacer(Modifier.height(5.dp))
+                Text(s, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, color = if (i <= idx) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+}
+
+/** Tarjeta del total con degradado violeta-azul (final de Nuevo encargo). */
+@Composable fun TotalCard(total: String, content: @Composable ColumnScope.() -> Unit) {
+    val shape = RoundedCornerShape(20.dp)
+    Column(Modifier.fillMaxWidth().glow(W.blue, 18.dp, 10.dp, .35f).clip(shape)
+        .background(Brush.linearGradient(listOf(W.blue.copy(alpha = if (W.day) .10f else .22f), W.vio.copy(alpha = if (W.day) .10f else .22f)))).border(1.dp, W.blue.copy(alpha = .45f), shape).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Total del encargo", fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(total, fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.5).sp)
+        Box(Modifier.fillMaxWidth().height(1.dp).background(W.line))
+        content()
+    }
+}
+
+/** Borde discontinuo (zona para agregar captura). */
+fun Modifier.dashedBorder(color: Color, radius: androidx.compose.ui.unit.Dp): Modifier = this.drawBehind {
+    val r = radius.toPx()
+    drawRoundRect(color, cornerRadius = CornerRadius(r, r), style = Stroke(width = 1.5f * density, pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(8f * density, 6f * density))))
+}
+
+/** Encabezado de sección con punto de color y total a la derecha (• Saldo pendiente · $265.00). */
+@Composable fun DotHeader(title: String, color: Color, right: String? = null) {
+    Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(8.dp).clip(CircleShape).background(color)); Spacer(Modifier.width(8.dp))
+        Text(title, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, modifier = Modifier.weight(1f))
+        if (right != null) Text(right, fontSize = 12.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}

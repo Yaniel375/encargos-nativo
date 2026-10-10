@@ -20,6 +20,7 @@ public sealed class NotesPage : Screen
 {
     public override string Title => "Notas";
     public override string Nav => "notes";
+    public override string? Right { get { var n = Core.NotesSorted().Count; return $"{n} nota{(n == 1 ? "" : "s")}"; } }
     string _q = ""; StackPanel _list = new();
 
     public override void Build(StackPanel p)
@@ -27,10 +28,29 @@ public sealed class NotesPage : Screen
         _list = new StackPanel { Spacing = 12 };
         var all = Core.NotesSorted();
         var owe = all.Sum(n => Js.Num(n["amount"])); var oweN = all.Count(n => Js.Num(n["amount"]) > 0);
-        if (owe > 0) p.Children.Add(Card(Muted("Te deben en notas", 13), Big(Money(owe), Rose, 22), Muted($"{oweN} nota{(oweN == 1 ? "" : "s")} con monto")));
+        if (owe > 0) p.Children.Add(Card(Row(V(1, T("Te deben en notas", 13.5, true, Mut), Muted($"{oweN} nota{(oweN == 1 ? "" : "s")} con monto")), Big(Money(owe), Rose, 22))));
         p.Children.Add(Btn("Nueva nota", () => S.Go(new NoteEditorPage(null)), true, null, ""));
         if (all.Count > 0) p.Children.Add(Search(_q, "Buscar en tus notas", q => { _q = q; Fill(); }));
         p.Children.Add(_list); Fill();
+    }
+    /// <summary>Nota en tarjeta de vidrio con punto de color (como la referencia).</summary>
+    Border NoteCard(JObj n)
+    {
+        var col = NoteUtil.ColorOf(n.Str("color"));
+        var tt = T(n.Str("title").IfEmpty("Sin título"), 15, true, null, true, 2); tt.FontWeight = Microsoft.UI.Text.FontWeights.ExtraBold;
+        var items = new List<UIElement> { Lead(Dot(col), tt, Js.Truthy(n["pinned"]) ? T("📌", 12) : null) };
+        if (Js.Num(n["amount"]) > 0) items.Add(Chips(Chip("Me deben " + Money(n["amount"]), Rose)));
+        if (n.Str("body").Length > 0) items.Add(T(n.Str("body"), 13.5, false, null, true, 6));
+        foreach (var u in NoteUtil.Links(n.Str("body")))
+        {
+            var uu = u; var lb = Click(T("🔗 " + Regex.Replace(u, "^https?://", ""), 12.5, true, Blue, false, 1), () => S.OpenUrl(NoteUtil.Full(uu))); lb.Padding = new Thickness(10, 8, 10, 8);
+            items.Add(new Border { Child = lb, CornerRadius = new CornerRadius(10), Background = Tile, BorderBrush = LineBr, BorderThickness = new Thickness(1) });
+        }
+        var ph = (n["photos"] as JArr)?.OfType<string>().ToList() ?? new();
+        if (ph.Count > 0) items.Add(Hs(6, ph.Take(4).Select(s => (UIElement)Media.Photo(s, 60, 60)).ToArray()));
+        items.Add(Muted(DayLabel(n["updated"]), 11));
+        var id = n.Str("id");
+        return ClickCard(() => S.Go(new NoteEditorPage(id)), items.ToArray());
     }
     void Fill()
     {
@@ -39,25 +59,15 @@ public sealed class NotesPage : Screen
         var list = all.Where(n => nq.Length == 0 || Js.NormSearch(n.Str("title") + " " + n.Str("body")).Contains(nq)).ToList();
         if (all.Count == 0) { _list.Children.Add(Empty("Aún no tienes notas", "Guarda recordatorios, pedidos por hacer, direcciones o lo que necesites.")); return; }
         if (list.Count == 0) { _list.Children.Add(Empty("Ninguna nota coincide con la búsqueda.")); return; }
-        var grid = new Grid { ColumnSpacing = 12, RowSpacing = 12 };
-        for (var c = 0; c < 3; c++) grid.ColumnDefinitions.Add(new ColumnDefinition());
-        for (var i = 0; i < list.Count; i++)
+        var cols = S.ContentWidth < 760 ? 2 : 3;
+        var pinned = list.Where(n => Js.Truthy(n["pinned"])).ToList(); var rest = list.Where(n => !Js.Truthy(n["pinned"])).ToList();
+        foreach (var (h, ns) in new[] { ("Fijadas", pinned), ("Otras notas", rest) })
         {
-            var n = list[i]; if (i % 3 == 0) grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            var col = NoteUtil.ColorOf(n.Str("color"));
-            var items = new List<UIElement> { Lead(Dot(col), T(n.Str("title").IfEmpty("Sin título"), 15, true), Js.Truthy(n["pinned"]) ? T("📌") : null) };
-            if (Js.Num(n["amount"]) > 0) items.Add(T("Me deben " + Money(n["amount"]), 13, true, Rose));
-            if (n.Str("body").Length > 0) items.Add(T(n.Str("body"), 14, false, null, true, 6));
-            foreach (var u in NoteUtil.Links(n.Str("body"))) { var uu = u; items.Add(Link("🔗 " + u, () => S.OpenUrl(NoteUtil.Full(uu)), Blue)); }
-            var ph = (n["photos"] as JArr)?.OfType<string>().ToList() ?? new();
-            if (ph.Count > 0) items.Add(Hs(6, ph.Take(4).Select(s => (UIElement)Media.Photo(s, 64, 64)).ToArray()));
-            items.Add(Muted(DayLabel(n["updated"]), 11));
-            var id = n.Str("id");
-            var card = ClickCard(() => S.Go(new NoteEditorPage(id)), items.ToArray());
-            card.Background = Alpha(col, 0.12); card.BorderBrush = Alpha(col, 0.35);
-            Grid.SetRow(card, i / 3); Grid.SetColumn(card, i % 3); grid.Children.Add(card);
+            if (ns.Count == 0) continue;
+            if (pinned.Count > 0) _list.Children.Add(DotHeader(h, h == "Fijadas" ? Blue : Mut));
+            _list.Children.Add(Grid2(ns.Select(n => (UIElement)NoteCard(n)).ToList(), cols));
         }
-        _list.Children.Add(grid);
+
     }
 }
 

@@ -52,10 +52,15 @@ def tap(text, cls=None, exact=False, wait=1.5, last=False):
     if nd is None: say(f"  ✗ no encontré '{text}'"); return False
     x, y = center(nd); adb("shell", "input", "tap", str(x), str(y)); time.sleep(wait); say(f"  ✓ toqué '{text}'"); return True
 
-def type_in(label, value):
-    # la etiqueta está encima del campo: se toca el primer campo de texto que hay debajo
+def type_in(label, value, exact=True):
+    # la etiqueta está encima del campo: se toca el primer campo de texto que hay debajo.
+    # si la etiqueta queda tapada por la barra fija "Guardar encargo", se desplaza la pantalla primero
     hide_kb()
-    lab = find(label)
+    for _ in range(4):
+        lab = find(label, exact=exact)
+        if lab is not None and center(lab)[1] < 1350: break
+        adb("shell", "input", "swipe", "540", "1300", "540", "800", "400"); time.sleep(1)
+    lab = find(label, exact=exact)
     es = edits()
     target = None
     if lab is not None:
@@ -108,7 +113,7 @@ shot("acceso_lleno")
 tap("Crear acceso", wait=5)
 shot("inicio")
 tap("Nuevo", exact=True, wait=2, last=True); shot("nuevo_encargo")
-type_in("Nombre del cliente", "Cliente Prueba"); type_in("Teléfono", "55512345"); hide_kb()
+type_in("Nombre del cliente *", "Cliente Prueba"); type_in("Teléfono (WhatsApp)", "55512345"); hide_kb()
 type_in("Costo del pedido", "40"); type_in("Libras", "3"); hide_kb()
 shot("nuevo_encargo_lleno")
 for _ in range(4):
@@ -126,6 +131,15 @@ tap("Inicio", exact=True, wait=2, last=True); shot("inicio_con_datos")
 for dest in ["Registro de pagos", "Estadísticas", "Respaldo", "Seguridad", "Sincronización", "Ajustes"]:
     if tap("Más", wait=1.2) and tap(dest, wait=2.5): shot(dest.lower().replace(" ", "_"))
     adb("shell", "input", "keyevent", "4"); time.sleep(1.2)
+if tap("Más", wait=1.5): shot("menu_perfil"); adb("shell", "input", "keyevent", "4"); time.sleep(1)
+if tap("Más", wait=1.2) and tap("Ajustes", wait=2.5):
+    if tap("Precio por libra", wait=2): shot("ajustes_hoja_tarifas"); tap("Cerrar", exact=True, wait=1.2)
+    adb("shell", "input", "swipe", "540", "1500", "540", "500", "500"); time.sleep(1.2); shot("ajustes_abajo")
+    adb("shell", "input", "keyevent", "4"); time.sleep(1.2)
+if tap("Más", wait=1.2) and tap("Pendientes", wait=2.5): shot("pendientes"); adb("shell", "input", "keyevent", "4"); time.sleep(1.2)
+tap("Encargos", exact=True, wait=2, last=True)
+if tap("Opciones del encargo", wait=1.2): shot("menu_encargo"); adb("shell", "input", "keyevent", "4"); time.sleep(1)
+tap("Inicio", exact=True, wait=2, last=True)
 tap("Centro de atención", wait=2); shot("atencion"); adb("shell", "input", "keyevent", "4"); time.sleep(1)
 tap("Notificaciones", wait=2); shot("notificaciones")
 # ---------- segunda vuelta: MODO DÍA ----------

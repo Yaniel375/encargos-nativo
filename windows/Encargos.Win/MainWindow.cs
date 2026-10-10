@@ -237,11 +237,30 @@ public sealed class MainWindow : Window
         var who = V(0, T("Administrador", 12.5, true, null, false), Muted(Services.Security.UserName().IfEmpty("—"), 10.5));
         var chip = new Button { Content = Hs(8, av, who, new FontIcon { Glyph = "", FontSize = 11, Foreground = Mut }), Padding = new Thickness(4, 4, 10, 4), CornerRadius = new CornerRadius(14), Background = BtnBg, BorderBrush = BtnLine, BorderThickness = new Thickness(1) };
         if (BtnStyle != null) chip.Style = BtnStyle;
-        var menu = new MenuFlyout();
-        foreach (var (k, l) in new[] { ("payments", "Registro de pagos"), ("pending", "Pendientes"), ("stats", "Estadísticas"), ("completed", "Encargos completados"), ("backup", "Respaldo"), ("security", "Seguridad"), ("sync", "Sincronización"), ("settings", "Ajustes") })
-        { var mi = new MenuFlyoutItem { Text = l, FontFamily = Font }; var key = k; mi.Click += (_, _) => Go(PageFor(key)); menu.Items.Add(mi); }
-        menu.Items.Add(new MenuFlyoutSeparator());
-        var lockItem = new MenuFlyoutItem { Text = "Bloquear ahora", Foreground = Rose, FontFamily = Font }; lockItem.Click += (_, _) => { Services.Security.Log(true, "Bloqueo manual"); ShowLock(); }; menu.Items.Add(lockItem);
+        // menú del perfil como en la referencia: cabecera con el usuario, accesos en cuadrícula, modo día/noche y bloquear
+        var menu = new Flyout();
+        menu.FlyoutPresenterStyle = new Style(typeof(FlyoutPresenter)) { Setters = { new Setter(Control.PaddingProperty, new Thickness(10)), new Setter(Control.CornerRadiusProperty, new CornerRadius(18)), new Setter(Control.BackgroundProperty, CardBg), new Setter(Control.BorderBrushProperty, Line2) } };
+        var mp = new StackPanel { Spacing = 6, Width = 300 };
+        var whoName = T(Services.Core.GreetName.IfEmpty("Mi cuenta"), 15, true, null, false, 1); whoName.FontWeight = FontWeights.ExtraBold;
+        mp.Children.Add(Click(Lead(Avatar(Services.Core.GreetName.IfEmpty("E"), Blue, 36), V(0, whoName, Muted(Services.Security.UserName().IfEmpty("—"), 12)), new FontIcon { Glyph = "\uE76C", FontSize = 12, Foreground = Mut }), () => { menu.Hide(); Go(new SettingsPage()); }));
+        var tiles = new List<UIElement>();
+        foreach (var (k, l, gl, full) in new[] { ("payments", "Pagos", "\uE8C7", "Registro de pagos"), ("stats", "Estadísticas", "\uE9D2", "Estadísticas"), ("settings", "Ajustes", "\uE713", "Ajustes"),
+            ("pending", "Pendientes", "\uE823", "Pendientes"), ("completed", "Completados", "\uE73E", "Encargos completados"), ("backup", "Respaldo", "\uE74E", "Respaldo"),
+            ("security", "Seguridad", "\uE72E", "Seguridad"), ("sync", "Sincronizar", "\uE895", "Sincronización") })
+        {
+            var key = k; var lab = T(l, 12, true, null, false); lab.HorizontalAlignment = HorizontalAlignment.Center;
+            var ic = new FontIcon { Glyph = gl, FontSize = 18, Foreground = Text, HorizontalAlignment = HorizontalAlignment.Center };
+            var tb = Click(V(5, ic, lab), () => { menu.Hide(); Go(PageFor(key)); }); tb.Padding = new Thickness(4, 9, 4, 9);
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(tb, full);
+            tiles.Add(tb);
+        }
+        mp.Children.Add(Grid2(tiles, 3));
+        mp.Children.Add(new Border { Height = 1, Background = LineBr, Margin = new Thickness(0, 2, 0, 2) });
+        var themeIc = IconTile(Day ? "\uE708" : "\uE706", 30);
+        mp.Children.Add(Click(Lead(themeIc, T(Day ? "Modo noche" : "Modo día", 14, true)), () => { menu.Hide(); var d = !K.Day; Services.Core.Ls.Set("encargos_aurora_mode", d ? "day" : "night"); Services.Post(() => ApplyTheme(d)); }));
+        var lockIc = IconTile("\uE72E", 30); ((FontIcon)lockIc.Child).Foreground = Rose;
+        mp.Children.Add(Click(Lead(lockIc, T("Bloquear ahora", 14, true, Rose)), () => { menu.Hide(); Services.Security.Log(true, "Bloqueo manual"); ShowLock(); }));
+        menu.Content = mp;
         chip.Flyout = menu; Grid.SetColumn(chip, 3); bar.Children.Add(Fx.Bounce(chip, .96));
         var header = new Border { Child = bar, Margin = new Thickness(16, 14, 16, 6), Padding = new Thickness(16, 9, 10, 9), CornerRadius = new CornerRadius(20), Background = Br(Day ? 0xE6FFFFFFu : 0xC7090D18u), BorderBrush = LineBr, BorderThickness = new Thickness(1) };
 
@@ -296,7 +315,9 @@ public sealed class MainWindow : Window
             {
                 var big = H(p.Title, 24); big.CharacterSpacing = -10;
                 var left = V(2, big, p.Sub != null ? Muted(p.Sub, 13) : null);
-                panel.Children.Add(p.Right != null ? Row(left, T(p.Right, 12.5, true, Mut, false)) : left);
+                // las fichas se presentan como en la referencia: título y botón "Cerrar" a la derecha
+                var close = p is OrderPage or EditOrderPage or ClientPage ? Btn("Cerrar", () => Back(), false, null, null, false) : null;
+                panel.Children.Add(p.Right != null || close != null ? Row(left, p.Right != null ? T(p.Right, 12.5, true, Mut, false) : null, close) : left);
             }
             p.Build(panel);
         }

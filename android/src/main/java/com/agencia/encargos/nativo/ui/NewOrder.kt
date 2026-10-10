@@ -10,6 +10,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Inventory2
+import androidx.compose.material.icons.outlined.CreditCard
+import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.MaterialTheme
@@ -23,6 +27,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Box
@@ -90,16 +96,16 @@ fun NewOrderScreen(forName: String?, forPhone: String?) {
             }
         }
         item {
-            SectionCard("Cliente") {
-                Field(name, { name = it }, "Nombre del cliente")
+            StepCard(1, Icons.Outlined.Person, "Cliente", "Escribe un nombre nuevo o elige uno guardado", name.isNotBlank()) {
+                Field(name, { name = it }, "Nombre del cliente *")
                 suggestions.forEach { s -> Text("↳ ${s.name} · ${s.phone}", color = C.blue, modifier = Modifier.fillMaxWidth().clickable { name = s.name; if (phone.isBlank()) phone = s.phone }.padding(vertical = 4.dp)) }
                 Field(phone, { phone = it }, "Teléfono (WhatsApp)", number = false)
             }
         }
         item {
-            SectionCard("Pedido y envío") {
+            StepCard(2, Icons.Outlined.Inventory2, "Pedido y envío", "Costo de la compra, tipo de envío y libras", c > 0) {
                 Field(cost, { cost = it }, "Costo del pedido", number = true, prefix = "$")
-                Text("Tipo de envío", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Tipo de envío", fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Choice(core.shippingRates.keys.map { it to core.shippingLabel(it) }, type) { type = it; rate = Js.toFixed(core.rateOf(it), 2) }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Field(rate, { rate = it }, "Tarifa por libra", Modifier.weight(1f), number = true, prefix = "$")
@@ -109,25 +115,35 @@ fun NewOrderScreen(forName: String?, forPhone: String?) {
             }
         }
         item {
-            SectionCard("Pago inicial y estado") {
-                Field(fund, { fund = it }, "Pago inicial (opcional)", number = true, prefix = "$")
-                Choice(listOf("Efectivo" to "Efectivo", "USD" to "USD"), method) { method = it }
-                Text("Estado", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            StepCard(3, Icons.Outlined.CreditCard, "Pago y estado", "Lo que pagó hoy y en qué etapa va", true) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Bottom) {
+                    Field(fund, { fund = it }, "Pago inicial", Modifier.weight(1f), number = true, prefix = "$")
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("Método de pago", fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Choice(listOf("Efectivo" to "Efectivo", "USD" to "USD"), method) { method = it }
+                    }
+                }
+                Choice(listOf("all" to "Pagó todo", "half" to "Pagó la mitad", "none" to "Sin pago"), "") { k ->
+                    fund = when (k) { "all" -> Js.toFixed(total, 2); "half" -> Js.toFixed(total / 2, 2); else -> "" } }
+                Text("Estado", fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Choice(Encargos.STATES.map { it to it }, status) { status = it }
             }
         }
         item {
-            SectionCard("Foto de la compra") {
+            StepCard(4, Icons.Outlined.PhotoCamera, "Captura de la compra", "Opcional · foto o captura de pantalla", photo.isNotEmpty()) {
                 if (photo.isNotEmpty()) Photo(Images.decode(photo), Modifier.fillMaxWidth().height(180.dp)) { ui.ask("Quitar foto", "¿Quitar la foto de este encargo?", "Quitar", true) { photo = "" } }
-                Secondary(if (photo.isEmpty()) "Agregar foto" else "Cambiar foto", Modifier.fillMaxWidth(), Icons.Filled.AddAPhoto) { pick.launch("image/*") }
+                val dsh = RoundedCornerShape(16.dp)
+                Row(Modifier.fillMaxWidth().clip(dsh).background(W.tile).dashedBorder(W.line2, 16.dp).clickable { pick.launch("image/*") }.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                    IconTile(Icons.Filled.AddAPhoto, W.vio, 40); Spacer(Modifier.width(12.dp))
+                    Column { Text(if (photo.isEmpty()) "Agregar captura" else "Cambiar captura", fontWeight = FontWeight.ExtraBold); Text("Toca para elegir una imagen", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                }
             }
         }
         item {
-            SectionCard("Resumen") {
-                Line("Envío (${Js.toFixed(p, 2)} lb × ${money(lc)})", money(ship))
-                Line("Total", money(total), bold = true)
+            TotalCard(money(total)) {
+                Line("Envío por libras (${Js.toFixed(p, 2)} lb × ${money(lc)})", money(ship))
                 Line("Pagado", money(f), C.green)
-                Line(if (bal < 0) "A favor" else "Saldo", if (bal > 0) "- " + money(bal) else if (bal < 0) "+ " + money(-bal) + " a favor" else "Pagado completo", if (bal > 0) C.rose else C.green, bold = true)
+                Line("Saldo / fondo", if (bal > 0.005) "- " + money(bal) else if (bal < -0.005) "+ " + money(-bal) + " a favor" else "Pagado completo", if (bal > 0.005) C.rose else C.green, bold = true)
                 if (p > 0) Line("Ganancia (${Js.toFixed(p, 2)} lb × (${money(lc)} − ${money(buy)}))", (if (gain < 0) "-" else "") + money(kotlin.math.abs(gain)), if (gain >= 0) C.green else C.rose)
             }
         }
