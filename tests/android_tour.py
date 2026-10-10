@@ -53,8 +53,18 @@ def tap(text, cls=None, exact=False, wait=1.5, last=False):
     x, y = center(nd); adb("shell", "input", "tap", str(x), str(y)); time.sleep(wait); say(f"  ✓ toqué '{text}'"); return True
 
 def type_in(label, value):
-    if tap(label, "EditText", wait=0.6):
-        adb("shell", "input", "text", value.replace(" ", "%s")); time.sleep(0.4)
+    # la etiqueta está encima del campo: se toca el primer campo de texto que hay debajo
+    lab = find(label)
+    es = edits()
+    target = None
+    if lab is not None:
+        ly = center(lab)[1]
+        below = [e for e in es if center(e)[1] > ly]
+        if below: target = below[0]
+    if target is None: target = find(label, "EditText")
+    if target is None: say(f"  ✗ campo '{label}'"); return
+    x, y = center(target); adb("shell", "input", "tap", str(x), str(y)); time.sleep(0.6)
+    adb("shell", "input", "text", value.replace(" ", "%s")); time.sleep(0.4); say(f"  ✓ escribí en {label}")
 
 def edits():
     es = [nd for nd in nodes() if "EditText" in (nd.get("class") or "")]
