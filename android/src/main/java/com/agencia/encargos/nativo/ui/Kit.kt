@@ -86,6 +86,11 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.TextUnit
@@ -119,9 +124,17 @@ private fun manropeTypography(): Typography {
         labelLarge = f(t.labelLarge).copy(fontWeight = FontWeight.Bold), labelMedium = f(t.labelMedium), labelSmall = f(t.labelSmall))
 }
 
+/** Radios comunes: los diálogos y menús del sistema usan las mismas esquinas que las tarjetas. */
+private fun appShapes() = androidx.compose.material3.Shapes(extraSmall = RoundedCornerShape(10.dp), small = RoundedCornerShape(12.dp), medium = RoundedCornerShape(16.dp),
+    large = RoundedCornerShape(18.dp), extraLarge = RoundedCornerShape(22.dp))
+
 @Composable fun EncargosTheme(day: Boolean = false, content: @Composable () -> Unit) {
     W.p = if (day) DAY else NIGHT   // tema central: lo leen todos los componentes
-    MaterialTheme(colorScheme = if (day) lightScheme() else darkScheme(), typography = manropeTypography(), content = content)
+    // tamaño de la interfaz: una sola escala para dp y sp (todo crece o se reduce en la misma proporción)
+    val base = androidx.compose.ui.platform.LocalDensity.current; val s = UiScale.value
+    androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(base.density * s, base.fontScale * s)) {
+        MaterialTheme(colorScheme = if (day) lightScheme() else darkScheme(), typography = manropeTypography(), shapes = appShapes(), content = content)
+    }
 }
 
 fun money(v: Any?) = Js.money(v)
@@ -281,61 +294,131 @@ private fun lerpInk(c: Color) = if (W.day) Color(c.red * .8f, c.green * .8f, c.b
     Box(Modifier.size(size.dp).clip(shape).background(W.tile).border(1.dp, W.line, shape), contentAlignment = Alignment.Center) { Icon(icon, null, Modifier.size((size * .48).dp), tint = tint) }
 }
 
-/** Indicador "agua": el círculo se llena de azul hasta el % cobrado (sube al aparecer). */
+/** Llenado tipo agua: sube desde la base al aparecer y, si cambian los datos, pasa del nivel anterior al nuevo.
+ *  Devuelve (nivel actual, oleaje 0..1). El oleaje solo existe mientras el nivel se mueve y se calma al llegar. */
+@Composable fun waterLevel(target: Float, durationMs: Int = 1300, delayMs: Int = 250, key: Any? = null): Pair<Float, Float> {
+    val k = remember { Animatable(if (Motion.enabled) 0f else target) }
+    val from = remember { floatArrayOf(0f) }
+    LaunchedEffect(target, key) {
+        if (!Motion.enabled) { k.snapTo(target); return@LaunchedEffect }
+        if (key != null) k.snapTo(0f)
+        from[0] = k.value
+        delay(delayMs.toLong()); k.animateTo(target, tween(durationMs, easing = EaseOut))
+    }
+    val dist = kotlin.math.abs(target - from[0]).coerceAtLeast(1e-4f)
+    val wave = if (!Motion.enabled) 0f else (kotlin.math.abs(target - k.value) / dist).coerceIn(0f, 1f)
+    return k.value to wave
+}
+
+/** Superficie de agua: línea ondulada suave cuya amplitud depende del oleaje (0 = superficie plana). */
+private fun waterPath(w: Float, h: Float, top: Float, amp: Float, phase: Float, left: Float = 0f): androidx.compose.ui.graphics.Path =
+    androidx.compose.ui.graphics.Path().apply {
+        moveTo(left, h); lineTo(left, top)
+        val steps = 24
+        for (i in 0..steps) { val x = left + w * i / steps; lineTo(x, top + amp * kotlin.math.sin(phase + i / steps.toFloat() * 2f * Math.PI.toFloat() * 1.3f)) }
+        lineTo(left + w, h); close()
+    }
+
+/** Indicador "agua" de Pagos y Estadísticas: el círculo se llena hasta el % cobrado con una ola discreta que se calma
+ *  al llegar; el porcentaje sube al mismo ritmo y termina en el valor real. */
 @Composable fun Gauge(pct: Double, label: String = "cobrado", size: Int = 150) {
-    val fill = drawIn((pct / 100).coerceIn(0.0, 1.0).toFloat(), 1300, 250)
-    Box(Modifier.size(size.dp), contentAlignment = Alignment.Center) {
+    val target = (pct / 100).coerceIn(0.0, 1.0).toFloat()
+    val (fill, wave) = waterLevel(target)
+    val shown = if (target > 0f && Motion.enabled && fill != target) pct * (fill / target) else pct
+    Box(Modifier.size(size.dp).semantics(mergeDescendants = true) { contentDescription = "${Math.round(pct)}% $label" }, contentAlignment = Alignment.Center) {
         Canvas(Modifier.size(size.dp)) {
             val r = this.size.minDimension / 2
             drawCircle(if (W.day) Color(0xFFE2E8F0) else Color(15, 23, 42, 200), r)
-            val top = this.size.height * (1 - fill)
-            val path = androidx.compose.ui.graphics.Path().apply { addOval(androidx.compose.ui.geometry.Rect(Offset.Zero, this@Canvas.size)) }
-            clipPath(path) {
-                drawRect(Brush.verticalGradient(listOf(Color(0xFF60A5FA), Color(0xFF2563EB)), top, this.size.height), topLeft = Offset(0f, top), size = Size(this.size.width, this.size.height - top))
-                drawRect(Color.White.copy(alpha = .35f), topLeft = Offset(0f, top), size = Size(this.size.width, 2.5f))
+            val h = this.size.height; val w = this.size.width
+            val top = h * (1 - fill)
+            val amp = h * .035f * wave; val phase = fill * 14f
+            val circle = androidx.compose.ui.graphics.Path().apply { addOval(androidx.compose.ui.geometry.Rect(Offset.Zero, this@Canvas.size)) }
+            clipPath(circle) {
+                if (fill > 0f) {
+                    // capa trasera (más clara y desfasada) y capa delantera: dan profundidad sin mover la lectura
+                    drawPath(waterPath(w, h, top, amp * .8f, phase + 2.2f), Color(0xFF60A5FA).copy(alpha = .35f))
+                    drawPath(waterPath(w, h, top, amp, phase), Brush.verticalGradient(listOf(Color(0xFF60A5FA), Color(0xFF2563EB)), top, h))
+                    drawRect(Color.White.copy(alpha = .30f), topLeft = Offset(0f, top - 1f), size = Size(w, 2.5f))
+                }
             }
             drawCircle(W.blue.copy(alpha = .45f), r - 1.5f, style = Stroke(3f))
         }
-        Column(horizontalAlignment = Alignment.CenterHorizontally) { val onWater = !W.day || fill > .55f; Text("${Math.round(pct)}%", fontSize = (size / 6).sp, fontWeight = FontWeight.ExtraBold, color = if (onWater) Color.White else W.tx); Text(label, fontSize = 11.sp, color = if (onWater) Color.White.copy(alpha = .85f) else W.mut) }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) { val onWater = !W.day || fill > .55f
+            Text("${Math.round(shown)}%", fontSize = (size / 6).sp, fontWeight = FontWeight.ExtraBold, color = if (onWater) Color.White else W.tx)
+            Text(label, fontSize = 11.sp, color = if (onWater) Color.White.copy(alpha = .85f) else W.mut) }
     }
 }
 
-/** Anillo de cobro del inicio (se dibuja en 1,1 s). */
+/** Anillo de cobro del inicio: el arco se dibuja y el % sube a la vez (pasa del valor anterior al nuevo si cambian los datos). */
 @Composable fun RingGauge(pct: Double, label: String = "cobrado", size: Int = 100) {
-    val k = drawIn((pct / 100).coerceIn(0.0, 1.0).toFloat())
-    Box(Modifier.size(size.dp), contentAlignment = Alignment.Center) {
+    val target = (pct / 100).coerceIn(0.0, 1.0).toFloat()
+    val (k, _) = waterLevel(target, 1100)
+    val shown = if (target > 0f && Motion.enabled && k != target) pct * (k / target) else pct
+    Box(Modifier.size(size.dp).semantics(mergeDescendants = true) { contentDescription = "${Math.round(pct)}% $label" }, contentAlignment = Alignment.Center) {
         Canvas(Modifier.size(size.dp)) {
             val sw = this.size.minDimension * .085f; val inset = sw / 2 + 2f
             val sz = Size(this.size.width - inset * 2, this.size.height - inset * 2)
             drawArc(W.track, 0f, 360f, false, Offset(inset, inset), sz, style = Stroke(sw))
             if (k > 0f) drawArc(Brush.sweepGradient(listOf(W.cyan, W.blue, Color(0xFF60A5FA), W.cyan)), -90f, 360f * k, false, Offset(inset, inset), sz, style = Stroke(sw, cap = StrokeCap.Round))
         }
-        Column(horizontalAlignment = Alignment.CenterHorizontally) { Text("${Math.round(pct)}%", fontSize = (size / 4.6).sp, fontWeight = FontWeight.ExtraBold); Text(label, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) { Text("${Math.round(shown)}%", fontSize = (size / 4.6).sp, fontWeight = FontWeight.ExtraBold); Text(label, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }
 
-/** Gráfica de barras: crecen desde abajo (sGrow). */
+/** Barras que se llenan de agua desde la base, una tras otra; al tocar una barra se resalta y muestra su importe.
+ *  Si cambia el periodo, las barras se vacían y se vuelven a llenar con los datos nuevos (nunca se mezclan). */
 @Composable fun Bars(items: List<Pair<String, Double>>, color: Color = C.blue, height: Int = 150) {
     val mx = max(1.0, items.maxOfOrNull { it.second } ?: 1.0)
-    val k = drawIn(1f, 800, 200, key = items)
-    Row(Modifier.fillMaxWidth().height(height.dp), horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.Bottom) {
-        items.forEach { (l, v) ->
-            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                if (v > 0) Text("$" + Js.toFixed(v, 0), fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-                Box(Modifier.fillMaxWidth().height(max(2.0, (v / mx) * (height - 40) * k).dp).clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp, bottomStart = 2.dp, bottomEnd = 2.dp))
-                    .background(if (v > 0) Brush.verticalGradient(listOf(Color(0xFF60A5FA), color)) else SolidColor(W.track)))
-                Text(l, fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+    var sel by remember(items) { mutableStateOf(-1) }
+    Column(Modifier.fillMaxWidth()) {
+        // información del dato seleccionado (o pista para tocar)
+        val info = items.getOrNull(sel)
+        Box(Modifier.fillMaxWidth().height(22.dp), contentAlignment = Alignment.CenterStart) {
+            androidx.compose.animation.AnimatedContent(info, transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(120)) }, label = "barInfo") { it2 ->
+                if (it2 != null) Text("${it2.first} · ${money(it2.second)}", fontSize = 12.5.sp, fontWeight = FontWeight.ExtraBold, color = W.blueInk)
+                else Text("Toca una barra para ver su importe", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        Row(Modifier.fillMaxWidth().height(height.dp), horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.Bottom) {
+            items.forEachIndexed { i, (l, v) ->
+                androidx.compose.runtime.key(i) {
+                    val (k, wave) = waterLevel((v / mx).toFloat(), 900, 200 + i * 45, key = items)
+                    val dim = sel >= 0 && sel != i
+                    Column(Modifier.weight(1f).clickable(remember { MutableInteractionSource() }, null) { tapFeedback(); sel = if (sel == i) -1 else i }
+                        .semantics(mergeDescendants = true) { contentDescription = "$l: ${money(v)}" }, horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(if (v > 0) "$" + Js.toFixed(v, 0) else "", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1,
+                            modifier = Modifier.graphicsLayer { alpha = if (v <= 0) 0f else ((k / (v / mx).toFloat()).coerceIn(0f, 1f)) * (if (dim) .5f else 1f) })
+                        Canvas(Modifier.fillMaxWidth().weight(1f)) {
+                            val w = this.size.width; val h = this.size.height
+                            val shape = CornerRadius(6.dp.toPx(), 6.dp.toPx())
+                            if (v <= 0) { drawRoundRect(W.track, topLeft = Offset(0f, h - 2.dp.toPx()), size = Size(w, 2.dp.toPx()), cornerRadius = CornerRadius(2f, 2f)); return@Canvas }
+                            val top = h * (1 - k)
+                            val body = Brush.verticalGradient(listOf(Color(0xFF60A5FA), color), top, h)
+                            val alphaMul = if (dim) .45f else 1f
+                            val clip = androidx.compose.ui.graphics.Path().apply { addRoundRect(androidx.compose.ui.geometry.RoundRect(0f, 0f, w, h, shape, shape, CornerRadius(2f, 2f), CornerRadius(2f, 2f))) }
+                            clipPath(clip) {
+                                drawPath(waterPath(w, h, top, 3.dp.toPx() * wave, k * 12f + i), body, alpha = alphaMul)
+                                drawRect(Color.White.copy(alpha = .35f * alphaMul), topLeft = Offset(0f, top - 1f), size = Size(w, 2f))
+                            }
+                            if (sel == i) drawRoundRect(W.blueInk, topLeft = Offset(0f, top), size = Size(w, h - top), cornerRadius = shape, style = Stroke(1.5.dp.toPx()))
+                        }
+                        Text(l, fontSize = 10.sp, color = if (sel == i) W.blueInk else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = if (sel == i) FontWeight.ExtraBold else FontWeight.Normal, maxLines = 1)
+                    }
+                }
             }
         }
     }
 }
 
-/** Barra de progreso fina que crece al aparecer (0,9 s). */
+/** Barra de progreso fina: se llena al aparecer (0,9 s) y pasa suavemente al valor nuevo si cambian los datos. */
 @Composable fun ProgressBar(k: Double, color: Color = C.green) {
-    val v = drawIn(k.coerceIn(0.0, 1.0).toFloat(), 900, 300)
+    val (v, _) = waterLevel(k.coerceIn(0.0, 1.0).toFloat(), 900, 300)
     Canvas(Modifier.fillMaxWidth().height(6.dp)) {
         drawRoundRect(W.track, size = this.size, cornerRadius = CornerRadius(this.size.height, this.size.height))
-        if (v > 0f) drawRoundRect(color, size = Size(this.size.width * v, this.size.height), cornerRadius = CornerRadius(this.size.height, this.size.height))
+        if (v > 0f) {
+            val w = this.size.width * v
+            drawRoundRect(Brush.horizontalGradient(listOf(color.copy(alpha = .75f), color), 0f, w), size = Size(w, this.size.height), cornerRadius = CornerRadius(this.size.height, this.size.height))
+        }
     }
 }
 
@@ -511,5 +594,14 @@ fun Modifier.dashedBorder(color: Color, radius: androidx.compose.ui.unit.Dp): Mo
         Box(Modifier.size(8.dp).clip(CircleShape).background(color)); Spacer(Modifier.width(8.dp))
         Text(title, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, modifier = Modifier.weight(1f))
         if (right != null) Text(right, fontSize = 12.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** Botón cuadrado de icono con el mismo vidrio que "Volver" (flechas de periodo, acciones de cabecera). */
+@Composable fun GlassIconBtn(icon: ImageVector, desc: String, enabled: Boolean = true, onClick: () -> Unit) {
+    val src = remember { MutableInteractionSource() }; val sh = RoundedCornerShape(12.dp)
+    Box(Modifier.pressBounce(src, .9f).size(40.dp).graphicsLayer { alpha = if (enabled) 1f else .4f }.clip(sh).background(W.btnBg).border(1.dp, W.btnLine, sh)
+        .clickable(src, null, enabled = enabled) { tapFeedback(); onClick() }, contentAlignment = Alignment.Center) {
+        Icon(icon, desc, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurface)
     }
 }

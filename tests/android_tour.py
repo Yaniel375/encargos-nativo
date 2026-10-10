@@ -114,7 +114,7 @@ tap("Crear acceso", wait=5)
 shot("inicio")
 tap("Nuevo", exact=True, wait=2, last=True); shot("nuevo_encargo")
 type_in("Nombre del cliente *", "Cliente Prueba"); type_in("Teléfono (WhatsApp)", "55512345"); hide_kb()
-type_in("Costo del pedido", "40"); type_in("Libras", "3"); hide_kb()
+type_in("Costo del pedido", "40"); type_in("Libras", "3"); hide_kb(); type_in("Pago inicial", "10"); hide_kb()
 shot("nuevo_encargo_lleno")
 for _ in range(4):
     hide_kb()
@@ -124,7 +124,7 @@ for _ in range(4):
 shot("guardado")
 tap("Encargos", exact=True, wait=2, last=True); shot("encargos")
 say("  encargo visible: " + ("sí" if find("Cliente Prueba") is not None else "NO"))
-if tap("Cliente Prueba", wait=2): shot("ficha_encargo"); say("  total 61.00 visible: " + ("sí" if find("$61.00") is not None else "NO")); adb("shell", "input", "keyevent", "4"); time.sleep(1)
+if tap("Cliente Prueba", wait=2): shot("ficha_encargo"); say("  total 61.00 visible: " + ("sí" if find("$61.00") is not None else "NO")); say("  pagado 10.00 visible: " + ("sí" if find("$10.00") is not None else "NO")); adb("shell", "input", "keyevent", "4"); time.sleep(1)
 tap("Clientes", exact=True, wait=2, last=True); shot("clientes")
 tap("Notas", exact=True, wait=2, last=True); shot("notas")
 tap("Inicio", exact=True, wait=2, last=True); shot("inicio_con_datos")
@@ -172,6 +172,43 @@ for dest in ["Estadísticas", "Registro de pagos", "Ajustes"]:
     adb("shell", "input", "keyevent", "4"); time.sleep(1.2)
 tap("Notificaciones", wait=2); shot("dia_notificaciones"); adb("shell", "input", "keyevent", "4"); time.sleep(1)
 tap("Centro de atención", wait=2); shot("dia_atencion")
+# ---------- gráficas: captura a mitad del llenado y al final ----------
+say("— gráficas —")
+if tap("Más", wait=1.2) and tap("Registro de pagos", wait=0.55): shot("pagos_llenandose"); time.sleep(2.5); shot("pagos_lleno")
+adb("shell", "input", "keyevent", "4"); time.sleep(1.2)
+if tap("Más", wait=1.2) and tap("Estadísticas", wait=0.6): shot("estadisticas_llenandose"); time.sleep(2.5); shot("estadisticas_llenas")
+adb("shell", "input", "keyevent", "4"); time.sleep(1.2)
+# ---------- tamaño de la interfaz ----------
+say("— tamaño de la interfaz —")
+if tap("Más", wait=1.2) and tap("Ajustes", wait=2.5):
+    for _ in range(3):
+        if find("Tamaño de la interfaz", exact=True) is not None: break
+        adb("shell", "input", "swipe", "540", "1500", "540", "700", "400"); time.sleep(1)
+    if tap("Tamaño de la interfaz", exact=True, wait=2): shot("hoja_tamano"); tap("Cerrar", exact=True, wait=1.2)
+    adb("shell", "input", "keyevent", "4"); time.sleep(1.2)
+def relaunch(extra):
+    adb("shell", "am", "start", "-S", "-W", "-n", f"{PKG}/.MainActivity", *extra); time.sleep(8)
+    if find("Iniciar sesión") is not None:
+        type_at("Contraseña", "clave123", exact=True); hide_kb(); tap("Iniciar sesión", wait=5)
+for esc, tag in [("1.05", "105"), ("0.8", "80")]:
+    say(f"— escala {tag} % —")
+    relaunch(["--es", "tema", "noche", "--es", "escala", esc])
+    shot(f"escala{tag}_inicio")
+    tap("Encargos", exact=True, wait=2, last=True); shot(f"escala{tag}_encargos")
+    if tap("Cliente Prueba", wait=2): shot(f"escala{tag}_ficha"); adb("shell", "input", "keyevent", "4"); time.sleep(1)
+    tap("Nuevo", exact=True, wait=2, last=True); shot(f"escala{tag}_nuevo")
+    if tap("Más", wait=1.5): shot(f"escala{tag}_menu"); adb("shell", "input", "keyevent", "4"); time.sleep(1)
+    if tap("Más", wait=1.2) and tap("Ajustes", wait=2.5): shot(f"escala{tag}_ajustes"); adb("shell", "input", "keyevent", "4"); time.sleep(1.2)
+# ¿se recuerda el tamaño al cerrar y volver a abrir (sin forzarlo)?
+relaunch([])
+ok = False
+if tap("Más", wait=1.2) and tap("Ajustes", wait=2.5):
+    for _ in range(3):
+        if find("80 %") is not None: ok = True; break
+        adb("shell", "input", "swipe", "540", "1500", "540", "700", "400"); time.sleep(1)
+    shot("escala_recordada")
+say("  tamaño recordado tras reiniciar (80 %): " + ("sí" if ok else "NO"))
+relaunch(["--es", "escala", "1.0"])
 alive = adb("shell", "pidof", PKG).strip()
 say("RESULTADO: " + ("SE CERRÓ (crash)" if crashed() or not alive else f"la app sigue abierta (pid {alive})"))
 with open(os.path.join(OUT, "crash.txt"), "w", encoding="utf-8") as f: f.write(adb("logcat", "-d", "-b", "crash"))

@@ -55,9 +55,9 @@ fun StatsScreen() {
         item { Choice(listOf("WEEK" to "Semana", "MONTH" to "Mes", "YEAR" to "Año"), period) { period = it; ref = LocalDate.now().toString() } }
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { ref = st.shift(p, r0, -1).toString() }) { Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Anterior") }
+                GlassIconBtn(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Periodo anterior") { ref = st.shift(p, r0, -1).toString() }
                 Text(st.label(p, a, b) + if (isNow) " · actual" else "", Modifier.weight(1f), textAlign = TextAlign.Center, fontWeight = FontWeight.Bold)
-                IconButton(onClick = { ref = st.shift(p, r0, 1).toString() }, enabled = !isNow) { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Siguiente") }
+                GlassIconBtn(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Periodo siguiente", enabled = !isNow) { ref = st.shift(p, r0, 1).toString() }
             }
         }
         item {
