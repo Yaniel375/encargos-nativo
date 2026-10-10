@@ -107,6 +107,7 @@ public static class K
         var b = new Button { Content = content, HorizontalAlignment = stretch ? HorizontalAlignment.Stretch : HorizontalAlignment.Left, Padding = new Thickness(14, 8, 14, 8), CornerRadius = new CornerRadius(10) };
         if (accent) { if (Application.Current.Resources.TryGetValue("AccentButtonStyle", out var st)) b.Style = (Style)st; if (color != null) { b.Background = color; b.Foreground = Br(0xFFFFFFFFu); } }
         else if (color != null) b.Foreground = color;
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(b, text); // lectores de pantalla y pruebas automáticas
         b.Click += (_, _) => onClick(); return b;
     }
     public static HyperlinkButton Link(string text, Action onClick, Brush? color = null) { var h = new HyperlinkButton { Content = text, Padding = new Thickness(4, 2, 4, 2) }; if (color != null) h.Foreground = color; h.Click += (_, _) => onClick(); return h; }

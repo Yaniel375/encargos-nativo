@@ -75,7 +75,7 @@ fun LockScreen(onUnlocked: () -> Unit) {
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).imePadding(), contentAlignment = Alignment.Center) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Image(painterResource(R.mipmap.ic_launcher), null, Modifier.size(84.dp).clip(RoundedCornerShape(24.dp)))
-            Text("Encargos", fontSize = 26.sp, fontWeight = FontWeight.ExtraBold)
+            Text("Encargos", fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onBackground)
             Text(if (setup) "Crea tu acceso" else "Hola, $greet", color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (setup) {
                 Text("Elige un usuario y una contraseña para proteger tus datos. No hay contraseña por defecto.", textAlign = TextAlign.Center, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)

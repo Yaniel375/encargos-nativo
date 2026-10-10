@@ -3,7 +3,7 @@ name: Windows (instalador)
 on:
   push:
     branches: [main]
-    paths: ["windows/**", ".github/workflows/windows.yml"]
+    paths: ["windows/**", "tests/windows_tour.py", ".github/workflows/windows.yml"]
   workflow_dispatch:
 
 permissions:
@@ -58,40 +58,33 @@ jobs:
   prueba-en-vivo:
     needs: build
     runs-on: windows-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with: { name: Encargos-Windows, path: setup }
-      - name: Instalar, abrir la app y capturar la pantalla
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Instalar la app
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force shots | Out-Null
           $s = Get-ChildItem setup\*.exe | Select-Object -First 1
           Start-Process $s.FullName -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait
-          $exe = "$env:LOCALAPPDATA\Programs\Encargos Nativo\Encargos.exe"
-          if (!(Test-Path $exe)) { "::error::No se instaló Encargos.exe"; exit 1 }
+          if (!(Test-Path "$env:LOCALAPPDATA\Programs\Encargos Nativo\Encargos.exe")) { "::error::No se instaló Encargos.exe"; exit 1 }
           Get-Process Encargos -ErrorAction SilentlyContinue | Stop-Process -Force
           (New-Object -ComObject Shell.Application).MinimizeAll()
-          Start-Sleep 2
-          $p = Start-Process $exe -PassThru
-          Start-Sleep 25
-          Add-Type @"
-          using System; using System.Runtime.InteropServices;
-          public static class W { [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h); [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int c); }
-          "@
-          $p.Refresh(); if ($p.MainWindowHandle -ne 0) { [W]::ShowWindow($p.MainWindowHandle, 3) | Out-Null; [W]::SetForegroundWindow($p.MainWindowHandle) | Out-Null }
-          Start-Sleep 3
-          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
-          $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
-          $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
-          $g = [System.Drawing.Graphics]::FromImage($bmp); $g.CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
-          $bmp.Save("shots\windows_1_inicio.png", [System.Drawing.Imaging.ImageFormat]::Png)
-          $p.Refresh()
+      - name: Recorrer la app (datos de prueba)
+        shell: pwsh
+        run: |
+          pip install --quiet pywinauto pillow
+          python tests/windows_tour.py "$env:LOCALAPPDATA\Programs\Encargos Nativo\Encargos.exe" shots
+          if ($LASTEXITCODE -ne 0) { "FALLO" | Out-File shots\FALLO }
           $log = "$env:LOCALAPPDATA\EncargosNativo\errores.log"
           if (Test-Path $log) { Copy-Item $log shots\errores.log }
-          Get-WinEvent -FilterHashtable @{LogName='Application'; Level=2} -MaxEvents 15 -ErrorAction SilentlyContinue | Where-Object { $_.Message -match 'Encargos' } | Format-List TimeCreated, ProviderName, Message | Out-File shots\eventos.txt
-          if ($p.HasExited) { "::error title=La app se cerró::código $($p.ExitCode)"; "exited $($p.ExitCode)" | Out-File shots\estado.txt }
-          else { "::notice title=Windows::La app abrió y sigue en marcha"; "running" | Out-File shots\estado.txt; Stop-Process $p -Force }
+          $last = (Get-Content shots\recorrido_windows.txt | Select-Object -Last 1)
+          $miss = (Select-String -Path shots\recorrido_windows.txt -Pattern "✗").Count
+          if (Test-Path shots\FALLO) { "::error title=Windows::$last" } else { "::notice title=Windows::$last · pasos no encontrados: $miss" }
+          exit 0
       - name: Guardar capturas en la rama capturas-windows
         if: always()
         shell: bash
@@ -99,3 +92,6 @@ jobs:
         run: |
           cd shots && git init -q -b capturas-windows && git add -A && git -c user.name=ci -c user.email=ci@local commit -qm "Capturas Windows run ${{ github.run_number }}"
           git push -f "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}" capturas-windows
+      - name: Fallar si la app se cerró
+        shell: bash
+        run: test ! -f shots/FALLO

@@ -21,18 +21,16 @@ Cada vez que se sube código a `main`, GitHub compila solo:
 * **Windows (instalador)** → *Windows (instalador)* → artefacto `Encargos-Windows` (`Encargos_Windows_Setup_x.y.z.exe`).
 * **Núcleos y pruebas cruzadas** → comprueba que Kotlin y C# calculan y sincronizan igual.
 
-### Firma del APK (secretos de GitHub, nunca en el repositorio)
+### Firma del APK
 
-En *Settings → Secrets and variables → Actions* crea:
+La clave de firma propia de Encargos nativo está en `android/signing/nativo.keystore.enc`, **cifrada** con AES‑256.
+Para que GitHub la use, crea un único secreto en *Settings → Secrets and variables → Actions*:
 
 | Secreto | Valor |
 |---|---|
-| `ENCARGOS_KEYSTORE_B64` | el archivo `.keystore` en base64 (`base64 -w0 encargos.keystore`) |
-| `ENCARGOS_KEYSTORE_PASSWORD` | contraseña del almacén |
-| `ENCARGOS_KEY_ALIAS` | alias de la clave (por ejemplo `encargos`) |
-| `ENCARGOS_KEY_PASSWORD` | contraseña de la clave (si es distinta) |
+| `ENCARGOS_SIGN_KEY` | la contraseña de firma que te entregó Claude (guárdala también en un lugar seguro) |
 
-Sin estos secretos el APK se firma con una clave de prueba (sirve para probar, pero no para actualizar después).
+Sin ese secreto el APK se firma con una clave de prueba distinta en cada compilación (para actualizar habría que desinstalar antes).
 
 ## Seguridad
 

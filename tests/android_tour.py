@@ -54,8 +54,13 @@ def type_in(label, value):
     if tap(label, "EditText", wait=0.6):
         adb("shell", "input", "text", value.replace(" ", "%s")); time.sleep(0.4)
 
+def kb_open():
+    return "mInputShown=true" in adb("shell", "dumpsys", "input_method")
+
 def hide_kb():
-    adb("shell", "input", "keyevent", "111"); time.sleep(0.6)  # ESCAPE cierra el teclado sin salir
+    for _ in range(2):
+        if not kb_open(): return
+        adb("shell", "input", "keyevent", "4"); time.sleep(0.8)  # ATRÁS con teclado abierto solo cierra el teclado
 
 def crashed():
     out = adb("logcat", "-d", "-b", "crash")
@@ -71,11 +76,15 @@ tap("Nuevo", exact=True, wait=2); shot("nuevo_encargo")
 type_in("Nombre del cliente", "Cliente Prueba"); type_in("Teléfono", "55512345"); hide_kb()
 type_in("Costo del pedido", "40"); type_in("Libras", "3"); hide_kb()
 shot("nuevo_encargo_lleno")
-for _ in range(3):
-    if tap("Guardar encargo", wait=3): break
-    adb("shell", "input", "swipe", "540", "1600", "540", "600", "300"); time.sleep(1)
+for _ in range(4):
+    hide_kb()
+    if find("Guardar encargo") is not None:
+        shot("resumen_antes_de_guardar"); tap("Guardar encargo", wait=3); break
+    adb("shell", "input", "swipe", "540", "1500", "540", "500", "400"); time.sleep(1.2)
 shot("guardado")
 tap("Encargos", exact=True, wait=2); shot("encargos")
+say("  encargo visible: " + ("sí" if find("Cliente Prueba") is not None else "NO"))
+if tap("Cliente Prueba", wait=2): shot("ficha_encargo"); say("  total 61.00 visible: " + ("sí" if find("$61.00") is not None else "NO")); adb("shell", "input", "keyevent", "4"); time.sleep(1)
 tap("Clientes", exact=True, wait=2); shot("clientes")
 tap("Notas", exact=True, wait=2); shot("notas")
 tap("Inicio", exact=True, wait=2); shot("inicio_con_datos")
