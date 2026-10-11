@@ -197,7 +197,7 @@ public sealed class SecurityPage : Screen
     {
         var t = ""; var reset = false;
         var ok = await S.Dialog("⚠️ Borrar datos", V(10, T("Se eliminarán los encargos, pagos, notas y gastos de ESTE equipo. Esta acción no se puede deshacer."), Muted("Los respaldos de Telegram no se borran.", 13),
-            Toggle("Restablecer también el acceso", "Borra usuario, contraseña y PIN", false, v => reset = v), Box("Escribe ELIMINAR para confirmar", "", v => t = v)), "Borrar todo", () => t.Trim() == "ELIMINAR");
+            SettingsGroup(Toggle("Restablecer también el acceso", "Borra usuario, contraseña y PIN", false, v => reset = v, "\uE8D7")), Box("Escribe ELIMINAR para confirmar", "", v => t = v)), "Borrar todo", () => t.Trim() == "ELIMINAR");
         if (!ok) return;
         Services.Security.Wipe(reset); S.Root(new HomePage()); S.Toast("Datos eliminados de este equipo.");
     }
@@ -292,7 +292,7 @@ public sealed class SettingsPage : Screen
             rows.Add(Row(Box(Core.ShippingName(k) + " · USD/lb", rates[k], v => rates[key] = v),
                 k is "avion" or "barco" ? null : Btn("Quitar", () => S.Ask("Eliminar tarifa", $"¿Eliminar la tarifa \"{Core.ShippingName(key)}\"? Los encargos que ya la usan no cambian.", "Eliminar", true, () => { Core.RemoveShippingRate(key); Redraw(); }), false, Rose, null, false)));
         }
-        rows.Add(T("Agregar otro tipo de envío", 14, true));
+        rows.Add(T("Agregar otro tipo de envío", 12, true, Mut));
         rows.Add(Cols(Box("Nombre del envío (ej. Express)", "", v => newName = v), Box("Precio · USD/lb", "", v => newPrice = v)));
         var ok = await S.Dialog("Precios de envío por libra", V(10, rows.ToArray()), "Guardar precios", () =>
         {
@@ -315,7 +315,7 @@ public sealed class SettingsPage : Screen
         var buy = keys.ToDictionary(k => k, k => Js.NumberToString(Js.Num(buyR[k]))); var applyActive = false;
         var rows = new List<UIElement> { InfoBox("Se usa para calcular tu ganancia por encargo.") };
         foreach (var k in keys) { var key = k; rows.Add(Box(Core.ShippingName(k) + " · USD/lb", buy[k], v => buy[key] = v)); }
-        rows.Add(Toggle("Aplicar también a encargos activos", "Actualiza el costo en los encargos de clientes que aún no terminan", false, v => applyActive = v));
+        rows.Add(SettingsGroup(Toggle("Aplicar también a encargos activos", "Actualiza el costo en los encargos de clientes que aún no terminan", false, v => applyActive = v, "\uE895")));
         if (await S.Dialog("Lo que te cuesta a ti la libra", V(10, rows.ToArray()), "Guardar costos", sub: "Se usa para calcular tu ganancia"))
         {
             var m = new Dictionary<string, double>(); foreach (var k in keys) { var n = Num(buy.GetValueOrDefault(k, "")); if (!double.IsNaN(n) && n >= 0) m[k] = n; }
@@ -340,8 +340,7 @@ public sealed class SettingsPage : Screen
     async void Notifs()
     {
         var cfg = Core.Notifs.Cfg();
-        await S.Dialog("Notificaciones", V(6, new[] { ("inapp", "Avisos dentro de la app"), ("pay", "Pagos"), ("order", "Encargos"), ("client", "Clientes"), ("system", "Sistema y seguridad"), ("important", "Avisos importantes") }
-            .Select(o => (UIElement)Toggle(o.Item2, "", Js.Truthy(cfg[o.Item1]), _ => Core.Notifs.ToggleCfg(o.Item1))).ToArray()), "Cerrar", null, null, sub: "Qué avisos quieres recibir");
+        await S.Dialog("Notificaciones", NotifToggles(cfg, k => Core.Notifs.ToggleCfg(k)), "Cerrar", null, null, sub: "Qué avisos quieres recibir");
         FlashTitle = "Notificaciones"; Redraw();
     }
 }
@@ -382,7 +381,7 @@ public sealed class SyncPage : Screen
         p.Children.Add(IconCard("\uE71B", "Enlazar otro dispositivo", null, Muted("El código permite a otro teléfono o PC leer y escribir tus datos. Trátalo como una contraseña: no lo compartas con nadie.", 13),
             Btn("Mostrar código para enlazar", () => S.RequireAuth("Confirma tu identidad para ver el código", ShowCode, true), false, null, "")));
         p.Children.Add(IconCard("\uE713", "Opciones", null,
-            Toggle("Pausar sincronización", "Los cambios se guardan aquí y se envían al reanudar", paused, v => { sync.Pause(v); Redraw(); }),
+            SettingsGroup(Toggle("Pausar sincronización", "Los cambios se guardan aquí y se envían al reanudar", paused, v => { sync.Pause(v); Redraw(); }, "\uE769")),
             Cols(Btn("Restaurar desde Telegram", () => S.Ask("Restaurar desde Telegram", "Se reemplazarán los datos de este equipo por el último respaldo de Telegram. Primero se comprueba que el respaldo esté completo. ¿Continuar?", "Restaurar", true,
                     () => S.RequireAuth("Confirma tu identidad", async () =>
                     {

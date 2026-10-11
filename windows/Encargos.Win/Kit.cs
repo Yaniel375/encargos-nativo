@@ -209,12 +209,30 @@ public static partial class K
         }
         return new ScrollViewer { Content = s, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled, HorizontalScrollMode = ScrollMode.Enabled, VerticalScrollMode = ScrollMode.Disabled, Padding = new Thickness(0, 0, 0, 4) };
     }
-    public static Grid Toggle(string title, string sub, bool value, Action<bool> onChange)
+    /// <summary>Fila con interruptor (misma anatomía que las filas de Ajustes): icono opcional, título, ayuda e interruptor.
+    /// Toda la fila responde al clic.</summary>
+    public static FrameworkElement Toggle(string title, string sub, bool value, Action<bool> onChange, string? glyph = null)
     {
-        var sw = new ToggleSwitch { IsOn = value, OnContent = "", OffContent = "", MinWidth = 0 };
-        sw.Toggled += (_, _) => { if (sw.IsOn != value) { value = sw.IsOn; onChange(sw.IsOn); } };
-        return Row(V(2, T(title, 14, true), sub.Length > 0 ? Muted(sub) : null), sw);
+        var sw = Switch(value, onChange); sw.VerticalAlignment = VerticalAlignment.Center;
+        var tt = T(title, 14, true, null, false); tt.FontWeight = FontWeights.ExtraBold;
+        var g = glyph != null ? Lead(IconTile(glyph, 32), V(1, tt, sub.Length > 0 ? Muted(sub, 11.5) : null), sw) : Row(V(1, tt, sub.Length > 0 ? Muted(sub, 11.5) : null), sw);
+        g.ColumnSpacing = 11;
+        var b = Click(g, () => sw.IsOn = !sw.IsOn); b.Padding = new Thickness(12, 7, 12, 7); b.CornerRadius = new CornerRadius(0);
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(b, title); return b;
     }
+    /// <summary>Grupo de filas de ajustes dentro de una ventana: recuadro con borde fino y separadores, como en Ajustes.</summary>
+    public static Border SettingsGroup(params UIElement?[] rows)
+    {
+        var inner = new StackPanel(); var first = true;
+        foreach (var r in rows) { if (r == null) continue; if (!first) inner.Children.Add(new Border { Height = 1, Background = LineBr, Margin = new Thickness(12, 0, 12, 0) }); inner.Children.Add(r); first = false; }
+        return new Border { Child = inner, CornerRadius = new CornerRadius(16), Background = Tile, BorderBrush = LineBr, BorderThickness = new Thickness(1) };
+    }
+    /// <summary>Interruptores de notificaciones: el mismo grupo, iconos y textos en Ajustes y en el Centro de notificaciones.</summary>
+    public static Border NotifToggles(Encargos.Core.JObj cfg, Action<string> toggle) => SettingsGroup(new[] {
+            ("inapp", "Avisos dentro de la app", "Aparecen en la campana de arriba", "\uEA8F"), ("pay", "Pagos", "Cobros registrados y saldos", "\uE8C7"),
+            ("order", "Encargos", "Nuevos encargos y cambios de estado", "\uE7B8"), ("client", "Clientes", "Clientes nuevos y datos actualizados", "\uE716"),
+            ("system", "Sistema y seguridad", "Respaldos, importaciones y accesos", "\uE83D"), ("important", "Avisos importantes", "Lo urgente aparece destacado", "\uE7BA") }
+        .Select(o => (UIElement?)Toggle(o.Item2, o.Item3, Js.Truthy(cfg[o.Item1]), _ => toggle(o.Item1), o.Item4)).ToArray());
 
     /* ---------- datos ---------- */
     /// <summary>Recuadro de dato: neutro, o teñido del color del dato (Cobrado verde, Pendiente rojo).</summary>

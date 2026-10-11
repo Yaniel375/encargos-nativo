@@ -32,7 +32,7 @@ public sealed class AttentionPage : Screen
             all.Count > 0 ? Btn("Marcar todo revisado", () => { att.ReviewAll(); S.Toast("Todo marcado como revisado. Los problemas siguen activos hasta resolverse."); }, false, null, null, false) : null));
         if (att.RecentResolved.Count > 0) p.Children.Add(Card(att.RecentResolved.Select(r => (UIElement)T("✓ " + r.Text, 14, false, Green)).ToArray()));
         p.Children.Add(Choice(new[] { ("all", "Todos"), ("urgent", "Urgentes"), ("pay", "Pagos"), ("orders", "Pedidos"), ("clients", "Clientes"), ("other", "Otros") }, _filter, k => { _filter = k; Redraw(); }));
-        p.Children.Add(Toggle("Solo pendientes de revisar", "", _onlyPending, v => { _onlyPending = v; Redraw(); }));
+        p.Children.Add(SettingsGroup(Toggle("Solo pendientes de revisar", "Oculta lo que ya marcaste como revisado", _onlyPending, v => { _onlyPending = v; Redraw(); }, "\uE71C")));
 
         foreach (var (cat, title) in Attention.GROUPS)
         {
@@ -163,8 +163,7 @@ public sealed class NotifsPage : Screen
     static async void Settings()
     {
         var nf = Services.Core.Notifs; var c = nf.Cfg();
-        var rows = new[] { ("inapp", "Avisos dentro de la app"), ("important", "Notificaciones importantes"), ("pay", "Pagos"), ("order", "Pedidos"), ("client", "Clientes"), ("system", "Sistema (respaldos, importaciones y seguridad)") }
-            .Select(o => (UIElement)Toggle(o.Item2, "", Js.Truthy(c[o.Item1]), _ => nf.ToggleCfg(o.Item1))).ToArray();
-        await MainWindow.I.Dialog("Notificaciones", V(6, rows), "Listo", null, null);
+        // la misma ventana que Ajustes → Notificaciones
+        await MainWindow.I.Dialog("Notificaciones", NotifToggles(c, k => nf.ToggleCfg(k)), "Cerrar", null, null, sub: "Qué avisos quieres recibir");
     }
 }

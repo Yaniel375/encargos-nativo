@@ -110,7 +110,7 @@ public sealed class NoteEditorPage : Screen
             b.Click += (_, _) => { _color = key; Redraw(); }; colors.Children.Add(b);
         }
         p.Children.Add(colors);
-        p.Children.Add(Toggle("Fijar arriba", "Las notas fijadas aparecen primero", _pinned, v => _pinned = v));
+        p.Children.Add(SettingsGroup(Toggle("Fijar arriba", "Las notas fijadas aparecen primero", _pinned, v => _pinned = v, "\uE718")));
         if (n != null) p.Children.Add(Muted("Creada: " + Js.Fmt(n["created"]) + (Js.Num(n["updated"]) != Js.Num(n["created"]) ? " · Editada: " + Js.Fmt(n["updated"]) : ""), 11));
         p.Children.Add(Cols(Btn("Guardar nota", Save, true, null, ""),
             n != null ? Btn("Eliminar", () => S.Ask("🗑️ Eliminar nota", "¿Eliminar esta nota? No se puede deshacer.", "Eliminar", true, () => { Core.DeleteNote(_id!); S.Back(); }), false, Rose)

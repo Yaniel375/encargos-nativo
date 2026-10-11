@@ -174,7 +174,10 @@ public static partial class K
     /// <summary>Interruptor suelto para el lado derecho de una fila.</summary>
     public static ToggleSwitch Switch(bool value, Action<bool> onChange)
     {
+        // mismos colores en toda la app: azul encendido, borde neutro apagado
         var sw = new ToggleSwitch { IsOn = value, OnContent = "", OffContent = "", MinWidth = 0 };
+        foreach (var k in new[] { "ToggleSwitchFillOn", "ToggleSwitchFillOnPointerOver", "ToggleSwitchFillOnPressed" }) sw.Resources[k] = Blue;
+        foreach (var k in new[] { "ToggleSwitchStrokeOff", "ToggleSwitchStrokeOffPointerOver" }) sw.Resources[k] = Line2;
         sw.Toggled += (_, _) => { if (sw.IsOn != value) { value = sw.IsOn; onChange(sw.IsOn); } };
         return sw;
     }
