@@ -57,12 +57,16 @@ fun fullUrl(u: String) = if (Regex("^https?://", RegexOption.IGNORE_CASE).contai
 @Composable
 fun NotesScreen() {
     val ui = LocalUi.current; val core = ui.core; val v = LocalVersion.current
+    // pestañas: Notas · En venta (artículos que tienes a la venta)
+    var tab by rememberSaveable { mutableStateOf("notes") }
+    if (tab == "sale") { SaleScreen { tab = it }; return }
     var q by rememberSaveable { mutableStateOf("") }; var editing by remember { mutableStateOf<JObj?>(null) }; var creating by remember { mutableStateOf(false) }
-    val all = core.notesSorted(); val nq = Js.normSearch(q)
+    val all = core.notesSorted().filter { !core.isSale(it) }; val nq = Js.normSearch(q)
     val list = all.filter { nq.isEmpty() || Js.normSearch(it.str("title") + " " + it.str("body")).contains(nq) }
     val owe = all.sumOf { Js.num(it["amount"]) }; val oweN = all.count { Js.num(it["amount"]) > 0 }
     if (editing != null || creating) { NoteEditor(editing) { editing = null; creating = false }; return }
     Page(right = "${all.size} nota${if (all.size == 1) "" else "s"}") {
+        item { Choice(listOf("notes" to "Notas", "sale" to "En venta"), "notes") { tab = it } }
         if (owe > 0) item { SectionCard { Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) { Text("Te deben en notas", fontWeight = FontWeight.Bold, fontSize = 13.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text("$oweN nota${if (oweN == 1) "" else "s"} con monto", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             Text(money(owe), fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = C.rose) } } }

@@ -188,7 +188,7 @@ fun BackupScreen() {
                     Column { Text("Tus datos están guardados", fontSize = 17.sp, fontWeight = FontWeight.ExtraBold); Hint("Se guardan solos en este teléfono") }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("Encargos" to core.orders().size, "Clientes" to core.clients().size, "Pagos" to core.orders().sumOf { core.payments(it).size }, "Notas" to core.notes().size).forEach { (l, n) ->
+                    listOf("Encargos" to core.orders().size, "Clientes" to core.clients().size, "Pagos" to core.orders().sumOf { core.payments(it).size }, "Notas" to core.notes().count { !core.isSale(it) }).forEach { (l, n) ->
                         Kpi(l, "$n", modifier = Modifier.weight(1f)) }
                 }
             }

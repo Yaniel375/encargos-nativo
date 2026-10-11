@@ -144,6 +144,27 @@ object Funcional {
         check("Respaldo: importa todos los encargos", n3 == app.orders().size, "$n3 de ${app.orders().size}")
         check("Respaldo: saldos idénticos tras importar", app3.orders().sumOf { Js.num(it["balance"]) }.let { eq(it, app.orders().sumOf { o -> Js.num(o["balance"]) }) })
 
+        // ---------- Artículos en venta (se guardan como notas con kind = "sale") ----------
+        val sapp = Encargos(MemoryStorage(), "PRUEBA")
+        check("Venta: rechaza artículo sin nombre", sapp.saveSaleItem(null, " ", "", 10.0, 5.0, 1, emptyList()).isFailure)
+        val s1 = sapp.saveSaleItem(null, "Tenis Prueba", "Talla 40", 25.0, 15.0, 4, listOf("data:image/jpeg;base64,AAAA", "data:image/jpeg;base64,BBBB")).getOrThrow()
+        sapp.saveSaleItem(null, "Gorra Prueba", "", 8.0, 3.0, 2, emptyList()).getOrThrow()
+        var sm = sapp.saleSummary()
+        check("Venta: 2 artículos y 6 unidades", sm.items == 2 && sm.units == 6, "${sm.items} / ${sm.units}")
+        check("Venta: valor en venta 4×25 + 2×8 = 116", eq(sm.value, 116.0), sm.value)
+        check("Venta: invertido 4×15 + 2×3 = 66", eq(sm.invested, 66.0), sm.invested)
+        check("Venta: ganancia posible 116 − 66 = 50", eq(sm.potential, 50.0), sm.potential)
+        check("Venta: guarda varias fotos", (s1["photos"] as JArr).size == 2)
+        sapp.sellSaleItem(s1.str("id"), 2, 22.0).getOrThrow()
+        sm = sapp.saleSummary()
+        check("Venta: vender 2 deja 2 disponibles", n(sapp.saleItems().first { it.str("id") == s1.str("id") }, "stock") == 2.0)
+        check("Venta: cobrado 2×22 = 44 y ganancia real 2×(22−15) = 14", eq(sm.income, 44.0) && eq(sm.realized, 14.0) && sm.soldUnits == 2, "${sm.income} / ${sm.realized}")
+        check("Venta: no deja vender más de lo que queda", sapp.sellSaleItem(s1.str("id"), 3, 25.0).isFailure)
+        check("Venta: deshacer devuelve las unidades", sapp.undoLastSale(s1.str("id")) && sapp.saleSummary().units == 6 && eq(sapp.saleSummary().income, 0.0))
+        check("Venta: no cuenta como dinero que te deben en notas", sapp.notes().sumOf { Js.num(it["amount"]) } == 0.0)
+        val sjson = Backup(sapp).exportJson(); val sapp2 = Encargos(MemoryStorage(), "PRUEBA"); Backup(sapp2).applyImport((Backup(sapp2).parse(sjson) as Backup.Parsed.Plain).o)
+        check("Venta: los artículos viajan en el respaldo", sapp2.saleItems().size == 2 && eq(sapp2.saleSummary().value, 116.0))
+
         println("\n$total pruebas · ${total - fails} correctas · $fails fallidas")
         if (fails > 0) { println("HAY FALLOS"); kotlin.system.exitProcess(1) } else println("TODO CORRECTO")
     }

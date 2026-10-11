@@ -34,5 +34,9 @@ object TestPhotos {
         val v = make(600, 1200, "VERTICAL"); val h = make(1200, 600, "HORIZONTAL"); val s = make(800, 800, "CUADRADA")
         core.addOrderPhoto(x["id"], v); core.addOrderPhoto(x["id"], h)
         core.saveNote(null, "Nota con fotos", "Fotos de prueba del recorrido", 0.0, "blue", true, listOf(v, h, s))
+        // artículos en venta de prueba (solo en el emulador): uno con varias fotos, uno sin costo y uno agotado
+        core.saveSaleItem(null, "Tenis de prueba", "Talla 40 · nuevos", 25.0, 15.0, 4, listOf(s, v, h)).getOrNull()?.let { core.sellSaleItem(it.str("id"), 1, 24.0) }
+        core.saveSaleItem(null, "Gorra de prueba", "", 8.0, 0.0, 2, listOf(make(700, 700, "GORRA")))
+        core.saveSaleItem(null, "Bolso de prueba", "Agotado", 30.0, 18.0, 0, emptyList())
     }
 }
