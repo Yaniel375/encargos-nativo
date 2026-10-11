@@ -169,11 +169,11 @@ fun OrderMenu(x: JObj, open: Boolean, close: () -> Unit) {
     val ui = LocalUi.current; val core = ui.core
     var note by remember { mutableStateOf<String?>(null) }; var receipt by remember { mutableStateOf(false) }
     AppMenu(open, close) {
-        MenuItem(Icons.Outlined.CalendarMonth, "Cambiar fecha", Js.fmt(x["date"]).substringBefore(",")) { close(); pickDate(ui, x) }
-        MenuItem(Icons.Outlined.EditNote, "Nota interna", if (x.str("note").isEmpty()) "Solo para ti" else "Editar la nota") { close(); note = x.str("note") }
-        MenuItem(Icons.Outlined.Receipt, "Enviar recibo", "Imagen, PDF o imprimir") { close(); receipt = true }
-        if (Js.num(x["balance"]) > 0.005) MenuItem(Icons.Outlined.NotificationsActive, "Recordar pago", "Debe ${money(x["balance"])} · por WhatsApp") { close(); ui.whatsapp(x.str("phone"), core.reminderOrder(x), x.str("name")) }
-        MenuItem(Icons.Outlined.Favorite, "Enviar agradecimiento", "Por WhatsApp") { close(); ui.whatsapp(x.str("phone"), core.thanksOrder(x), x.str("name")) }
+        MenuItem(Icons.Outlined.CalendarMonth, "Cambiar fecha") { close(); pickDate(ui, x) }
+        MenuItem(Icons.Outlined.EditNote, "Nota interna") { close(); note = x.str("note") }
+        MenuItem(Icons.Outlined.Receipt, "Enviar recibo") { close(); receipt = true }
+        if (Js.num(x["balance"]) > 0.005) MenuItem(Icons.Outlined.NotificationsActive, "Recordar pago") { close(); ui.whatsapp(x.str("phone"), core.reminderOrder(x), x.str("name")) }
+        MenuItem(Icons.Outlined.Favorite, "Agradecer") { close(); ui.whatsapp(x.str("phone"), core.thanksOrder(x), x.str("name")) }
         MenuSep()
         MenuItem(Icons.Outlined.Delete, "Eliminar encargo", danger = true) { close(); deleteOrder(ui, x) }
     }
