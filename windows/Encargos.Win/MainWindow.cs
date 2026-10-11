@@ -206,6 +206,8 @@ public sealed partial class MainWindow : Window
                     if (Math.Abs(Fit - z) > 0.001) { fails++; L($"ERROR: el contenido debería estar al {z * 100:0} % y está al {Fit * 100:0} %"); } else L($"contenido al {Fit * 100:0} %");
                     await Snap(dir, $"{i++:00}_contenido_{z * 100:0}", L);
                 }
+                // pantalla muy ancha (contenido al 50 %): las tarjetas deben empezar junto al menú lateral, sin hueco a la izquierda
+                SetZoom(0.5); foreach (var k in new[] { "home", "orders", "settings" }) { LastRenderError = null; Root(PageFor(k)); await Task.Delay(1100); if (LastRenderError != null) { fails++; L($"ERROR (ancha) en {k}: {LastRenderError}"); } await Snap(dir, $"{i++:00}_ancha_{k}", L); }
                 SetZoom(null);
                 // medida exacta que cabe en la pantalla
                 ApplyWindowMode("900x600", false); await Task.Delay(1200);
@@ -463,7 +465,7 @@ public sealed partial class MainWindow : Window
         if (!_unlocked) return;
         var p = Top; if (!force && !p.Live) { UpdateBadges(); return; }
         var off = _scroll.VerticalOffset;
-        var panel = new StackPanel { Spacing = 12, Padding = new Thickness(28, 10, 28, 48), MaxWidth = 1080, HorizontalAlignment = HorizontalAlignment.Stretch };
+        var panel = new StackPanel { Spacing = 12, Padding = new Thickness(28, 10, 28, 48) };
         try
         {
             if (p.ShowTitle)
@@ -477,7 +479,13 @@ public sealed partial class MainWindow : Window
             p.Build(panel);
         }
         catch (Exception e) { Services.Report(e); LastRenderError = e.GetType().Name + ": " + Services.Redact(e.Message); panel.Children.Clear(); panel.Children.Add(Card(T("No se pudo mostrar esta pantalla.", 15, true), Muted(Services.Redact(e.Message)), Btn("Ir a Inicio", () => Root(new HomePage()), true))); }
-        _scroll.Content = panel;
+        // pegado al menú lateral (alineado con el título de la barra de arriba) en lugar de centrado: en pantallas anchas
+        // no queda un hueco a la izquierda; ocupa el ancho disponible hasta 1400 y lo que sobra queda a la derecha
+        var holder = new Grid();
+        holder.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MaxWidth = 1400 });
+        holder.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        holder.Children.Add(panel);
+        _scroll.Content = holder;
         if (!top) { panel.UpdateLayout(); _scroll.ChangeView(null, off, null, true); }
         else { _scroll.ChangeView(null, 0, null, true); var i = 0; foreach (var c in panel.Children) Fx.EnterUp(c, i++); }
         _title.Text = p.Title;
