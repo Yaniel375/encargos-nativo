@@ -31,6 +31,7 @@ class MainActivity : FragmentActivity() {
         if (BuildConfig.CAPTURE_TEST) intent?.getStringExtra("escala")?.let { app.core.ls.set(com.agencia.encargos.nativo.ui.UiScale.KEY, it) }
         if (BuildConfig.CAPTURE_TEST) intent?.getStringExtra("pin")?.let { if (!app.security.pinOn()) app.security.setPin(it) }
         if (BuildConfig.CAPTURE_TEST && intent?.getStringExtra("fotos") == "si") com.agencia.encargos.nativo.util.TestPhotos.seed(app.core)
+        if (BuildConfig.CAPTURE_TEST && intent?.getStringExtra("recibos") == "si") com.agencia.encargos.nativo.util.TestReceipts.run(this, app.core)
         com.agencia.encargos.nativo.ui.UiScale.load(app.core.ls.get(com.agencia.encargos.nativo.ui.UiScale.KEY, "1"))
         setContent { EncargosTheme(day = app.core.ls.get("encargos_aurora_mode", "") == "day") { AppRoot(app, this) } }
     }

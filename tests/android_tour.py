@@ -206,6 +206,49 @@ if tap("Más", wait=1.2) and tap("Ajustes", wait=2.5):
         adb("shell", "input", "swipe", "540", "1500", "540", "700", "400"); time.sleep(1)
     if tap("Tamaño de la interfaz", exact=True, wait=2): shot("hoja_tamano"); tap("Cerrar", exact=True, wait=1.2)
     adb("shell", "input", "keyevent", "4"); time.sleep(1.2)
+
+def clear_type_nth(i, value):
+    # borra el contenido del campo #i y escribe el valor nuevo
+    hide_kb(); es = edits()
+    if i >= len(es): say(f"  ✗ no hay campo #{i}"); return
+    x, y = center(es[i]); adb("shell", "input", "tap", str(x), str(y)); time.sleep(0.6)
+    adb("shell", "input", "keyevent", "123")
+    for _ in range(40): adb("shell", "input", "keyevent", "67")
+    adb("shell", "input", "text", value.replace(" ", "%s")); time.sleep(0.4); say(f"  ✓ escribí '{value}' en el campo #{i}")
+
+def open_settings():
+    home()
+    return tap("Más", wait=1.2) and tap("Ajustes", wait=2.5)
+
+def goto_row(title):
+    for _ in range(8):
+        nd = find(title, exact=True)
+        if nd is not None and 300 < center(nd)[1] < 1550: time.sleep(0.8); return True
+        y = center(nd)[1] if nd is not None else 9999
+        if nd is not None and y <= 300: adb("shell", "input", "swipe", "540", "700", "540", "1300", "400")
+        else: adb("shell", "input", "swipe", "540", "1500", "540", "800", "400")
+        time.sleep(1.1)
+    nd = find(title, exact=True); return nd is not None and 300 < center(nd)[1] < 1550
+
+def check(label, text):
+    ok = find(text) is not None
+    say(f"  [{'OK' if ok else 'FALLA'}] {label}"); return ok
+
+def audit_sheet(title, slug, action=None, verify=None):
+    """Abre una opción de Ajustes, captura su ventana, prueba su función, la cierra y comprueba que vuelve a Ajustes."""
+    if not goto_row(title): say(f"  [FALLA] no encontré la fila '{title}'"); return
+    if not tap(title, exact=True, wait=1.8): return
+    shot(f"aj_{slug}")
+    if action: action()
+    hide_kb()
+    if find("Cerrar", exact=True) is not None: tap("Cerrar", exact=True, wait=1.4)
+    time.sleep(0.8)
+    # de vuelta en Ajustes: la ventana se cerró (no queda su botón "Cerrar") y la fila sigue a la vista
+    back = find("Cerrar", exact=True) is None and find(title, exact=True) is not None
+    say(f"  [{'OK' if back else 'FALLA'}] {title}: se cierra y vuelve a Ajustes")
+    if verify:
+        goto_row(verify[0]); check(f"{title}: el cambio se ve en Ajustes", verify[1])
+
 def relaunch(extra):
     adb("shell", "am", "start", "-S", "-W", "-n", f"{PKG}/.MainActivity", *extra); time.sleep(8)
     if find("Iniciar sesión") is not None:
@@ -250,6 +293,73 @@ if tap("Más", wait=1.2) and tap("Registro de pagos", wait=2.5):
     if tap("Meta ›", wait=2): shot("ventana_meta"); tap("Cancelar", exact=True, wait=1.2)
     adb("shell", "input", "keyevent", "4"); time.sleep(1.2)
 home()
+
+# ---------- AUDITORÍA DE AJUSTES: cada botón, su ventana, su función y la vuelta atrás (solo datos de prueba) ----------
+say("— auditoría de Ajustes —")
+if open_settings():
+    shot("aj_00_ajustes")
+    def biz():
+        clear_type_nth(0, "Tienda Prueba"); hide_kb(); shot("aj_negocio_escrito"); tap("Guardar", exact=True, wait=1.6)
+    audit_sheet("Nombre del negocio", "negocio", biz, ("Nombre del negocio", "Tienda Prueba"))
+    audit_sheet("Precio por libra (lo que cobras)", "precio_libra")
+    audit_sheet("Costo por libra (lo que te cobran)", "costo_libra")
+    audit_sheet("Mensajes de WhatsApp", "mensajes")
+    def cc():
+        clear_type_nth(0, "1"); hide_kb(); tap("Guardar", exact=True, wait=1.6)
+    audit_sheet("Código de país", "codigo_pais", cc, ("Código de país", "+1"))
+    if goto_row("Código de país") and tap("Código de país", exact=True, wait=1.6):
+        clear_type_nth(0, "53"); hide_kb(); tap("Guardar", exact=True, wait=1.6); check("Código de país restaurado", "+53")
+    def notif():
+        tap("Pagos", exact=True, wait=1.0); shot("aj_notificaciones_cambio")
+    audit_sheet("Notificaciones", "notificaciones", notif, ("Notificaciones", "5 de 6 activas"))
+    if goto_row("Notificaciones") and tap("Notificaciones", exact=True, wait=1.6):
+        tap("Pagos", exact=True, wait=1.0); tap("Cerrar", exact=True, wait=1.2); check("Notificaciones restauradas", "6 de 6 activas")
+    def transit():
+        clear_type_nth(0, "5"); hide_kb(); tap("Guardar alertas", exact=True, wait=1.6)
+    audit_sheet("Alertas de tránsito", "alertas", transit, ("Alertas de tránsito", "Avisar a los 5 días"))
+    def fb():
+        tap("Vibración háptica", exact=True, wait=1.0); shot("aj_sonido_cambio")
+    audit_sheet("Sonido y vibración", "sonido", fb, ("Sonido y vibración", "sin vibración"))
+    if goto_row("Sonido y vibración") and tap("Sonido y vibración", exact=True, wait=1.6):
+        tap("Vibración háptica", exact=True, wait=1.0); tap("Cerrar", exact=True, wait=1.2); check("Vibración restaurada", "vibración activada")
+    audit_sheet("Nombre del saludo", "saludo")
+    def size():
+        tap("Listo", exact=True, wait=1.2)
+    audit_sheet("Tamaño de la interfaz", "tamano", size)
+    # subpantallas de Datos y seguridad
+    for row, slug, back_ok in [("Seguridad", "seguridad", "Acceso"), ("Respaldo e importación", "respaldo", "Respaldo automático"), ("Sincronización (Telegram)", "sincronizacion", "Sincroniza con Telegram")]:
+        if goto_row(row) and tap(row, exact=True, wait=2.2):
+            shot(f"aj_{slug}"); check(f"{row}: abre su pantalla", back_ok)
+            adb("shell", "input", "swipe", "540", "1500", "540", "600", "450"); time.sleep(1.2); shot(f"aj_{slug}_abajo")
+            if slug == "seguridad":
+                adb("shell", "input", "swipe", "540", "600", "540", "1500", "450"); time.sleep(1)
+                # la fila (no el dato de la tarjeta de estado): se reconoce por su ayuda "Después de…"
+                for _ in range(4):
+                    nd = find("fuera de la app")
+                    if nd is not None and center(nd)[1] < 1500: break
+                    adb("shell", "input", "swipe", "540", "1400", "540", "900", "400"); time.sleep(1)
+                if tap("fuera de la app", wait=1.6):
+                    shot("aj_bloqueo_automatico"); tap("15 min", exact=True, wait=1.0); shot("aj_bloqueo_15"); tap("Cerrar", exact=True, wait=1.2)
+                    check("Bloqueo automático: guarda 15 minutos", "15 minutos")
+                    if tap("fuera de la app", wait=1.6): tap("5 min", exact=True, wait=1.0); tap("Cerrar", exact=True, wait=1.2); check("Bloqueo automático: vuelve a 5 minutos", "5 minutos")
+            if slug == "respaldo":
+                adb("shell", "input", "swipe", "540", "600", "540", "1500", "450"); time.sleep(1)
+                if tap("Desactivado", exact=True, wait=1.0): check("Respaldo automático: se desactiva", "No se guardarán copias automáticas"); shot("aj_respaldo_desactivado")
+                if tap("Cada día", exact=True, wait=1.0): check("Respaldo automático: vuelve a cada día", "una vez al día")
+            hide_kb(); adb("shell", "input", "keyevent", "4"); time.sleep(1.6)
+            check(f"{row}: vuelve a Ajustes con Atrás", "Datos y seguridad")
+    # botón del perfil: Editar nombre del saludo
+    for _ in range(8):
+        if find("Editar nombre del saludo", exact=True) is not None: break
+        adb("shell", "input", "swipe", "540", "500", "540", "1600", "300"); time.sleep(0.7)
+    time.sleep(0.8)
+    if tap("Editar nombre del saludo", exact=True, wait=1.6): shot("aj_perfil_saludo"); tap("Cerrar", exact=True, wait=1.2)
+# Centro de notificaciones → Ajustes: debe ser la misma ventana que Ajustes → Notificaciones
+home()
+if tap("Notificaciones", wait=2):
+    if tap("Ajustes", exact=True, wait=1.6): shot("aj_notif_desde_campana"); tap("Cerrar", exact=True, wait=1.2)
+    adb("shell", "input", "keyevent", "4"); time.sleep(1)
+home()
 for esc, tag in [("1.05", "105"), ("0.8", "80")]:
     say(f"— escala {tag} % —")
     relaunch(["--es", "tema", "noche", "--es", "escala", esc])
@@ -269,6 +379,17 @@ if tap("Más", wait=1.2) and tap("Ajustes", wait=2.5):
     shot("escala_recordada")
 say("  tamaño recordado tras reiniciar (80 %): " + ("sí" if ok else "NO"))
 relaunch(["--es", "escala", "1.0"])
+
+# ---------- RECIBOS: imagen del recibo de cada encargo de prueba (casos distintos, solo en la copia de prueba) ----------
+say("— recibos —")
+adb("shell", "am", "start", "-S", "-W", "-n", f"{PKG}/.MainActivity", "--es", "recibos", "si"); time.sleep(9)
+rdir = "/sdcard/Download/EncargosPrueba"
+names = [x.strip() for x in adb("shell", "ls", rdir).split() if x.strip().endswith(".png")]
+say(f"  recibos generados: {len(names)}")
+for nm in names:
+    data = adb("exec-out", "cat", rdir + "/" + nm, binary=True)
+    with open(os.path.join(OUT, "android_rc_" + nm), "wb") as fh: fh.write(data)
+    say(f"  recibo {nm} ({len(data)} bytes)")
 # ---------- acceso con PIN (PIN de prueba 1234, solo en la copia de prueba) ----------
 say("— acceso con PIN —")
 adb("shell", "am", "start", "-S", "-W", "-n", f"{PKG}/.MainActivity", "--es", "pin", "1234", "--es", "tema", "noche"); time.sleep(8)
