@@ -404,7 +404,7 @@ public sealed partial class MainWindow : Window
         body.Children.Add(header); Grid.SetRow(_scroll, 1); body.Children.Add(_scroll);
         Grid.SetColumn(body, 1); _main.Children.Add(body);
     }
-    Button? _back;
+    FrameworkElement? _back;
     Grid _avSlot = new(), _menuAvSlot = new();
     /// <summary>Avatar del chip de la barra: foto de perfil o la inicial.</summary>
     FrameworkElement ChipAvatar() => Media.ProfilePhoto.Length > 0 ? Media.ProfilePic(Services.Core.GreetName.IfEmpty("E"), 30, Alpha(Blue, .45)) :
@@ -415,7 +415,9 @@ public sealed partial class MainWindow : Window
         _avSlot.Children.Clear(); _avSlot.Children.Add(ChipAvatar());
         _menuAvSlot.Children.Clear(); _menuAvSlot.Children.Add(Media.ProfilePic(Services.Core.GreetName.IfEmpty("E"), 30));
     }
-    Button HeadBtn(string glyph, string desc, int badgeIdx, uint badgeColor, Action onClick)
+    /// <summary>Botón redondo de la barra superior. El aviso con el número va por fuera del botón (encima de su esquina):
+    /// dentro del botón quedaba recortado por el borde redondeado y solo se veía un trocito de color.</summary>
+    FrameworkElement HeadBtn(string glyph, string desc, int badgeIdx, uint badgeColor, Action onClick)
     {
         var g = new Grid { Width = 40, Height = 40 };
         g.Children.Add(new FontIcon { Glyph = glyph, FontSize = 16, Foreground = Text });
@@ -427,8 +429,11 @@ public sealed partial class MainWindow : Window
         {
             var t = T("", 10, true, Br(0xFFFFFFFFu), false); t.FontWeight = FontWeights.ExtraBold; t.HorizontalAlignment = HorizontalAlignment.Center; t.VerticalAlignment = VerticalAlignment.Center;
             var bd = new Border { MinWidth = 18, Height = 18, CornerRadius = new CornerRadius(9), Background = Br(badgeColor), BorderBrush = BadgeRing, BorderThickness = new Thickness(2), Padding = new Thickness(3, 0, 3, 0), Child = t,
-                HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, -6, -6, 0), Visibility = Visibility.Collapsed };
-            g.Children.Add(bd); _topBadges[badgeIdx] = (bd, t);
+                HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, -7, -7, 0), Visibility = Visibility.Collapsed, IsHitTestVisible = false };
+            _topBadges[badgeIdx] = (bd, t);
+            var wrap = new Grid { Width = 40, Height = 40, VerticalAlignment = VerticalAlignment.Center };
+            wrap.Children.Add(Fx.Bounce(b, .92)); wrap.Children.Add(bd);
+            return wrap;
         }
         return Fx.Bounce(b, .92);
     }
