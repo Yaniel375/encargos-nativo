@@ -47,6 +47,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.compose.material.icons.outlined.PhotoLibrary
+import androidx.compose.material.icons.outlined.PushPin
 
 private val NOTE_COLORS = linkedMapOf("blue" to C.blue, "green" to C.green, "amber" to C.amber, "rose" to C.rose, "vio" to C.vio)
 private val URL_RE = Regex("\\b((?:https?://|www\\.)[^\\s<>\"']+|wa\\.me/[^\\s<>\"']+)", RegexOption.IGNORE_CASE)
@@ -128,7 +129,7 @@ fun NoteEditor(n: JObj?, close: () -> Unit) {
             }
         }
         item { Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { NOTE_COLORS.forEach { (k, c) -> Box(Modifier.size(34.dp).clip(CircleShape).background(c).border(if (k == color) 3.dp else 0.dp, Color.White, CircleShape).clickable { color = k }) } } }
-        item { Row(verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text("Fijar arriba", fontWeight = FontWeight.Bold); Text("Las notas fijadas aparecen primero", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }; Switch(pinned, { pinned = it }) } }
+        item { SettingsGroup { ToggleRow("Fijar arriba", "Las notas fijadas aparecen primero", pinned, Icons.Outlined.PushPin) { pinned = it } } }
         if (n != null) item { Text("Creada: ${Js.fmt(n["created"])}" + if (Js.num(n["updated"]) != Js.num(n["created"])) " · Editada: ${Js.fmt(n["updated"])}" else "", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         item { Primary("Guardar nota", Modifier.fillMaxWidth()) { core.saveNote(n?.str("id"), title, body, kotlin.math.max(0.0, Js.num(amt)), color, pinned, photos.toList()).onSuccess { ui.toast(if (n != null) "✅ Nota actualizada." else "✅ Nota guardada."); close() }.onFailure { ui.toast(it.message ?: "") } } }
         item { if (n != null) Secondary("Eliminar", Modifier.fillMaxWidth(), color = C.rose) { ui.ask("🗑️ Eliminar nota", "¿Eliminar esta nota? No se puede deshacer.", "Eliminar", true) { core.deleteNote(n.str("id")); close() } } else Secondary("Cancelar", Modifier.fillMaxWidth()) { close() } }

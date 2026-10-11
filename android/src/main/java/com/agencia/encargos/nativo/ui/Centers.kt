@@ -43,6 +43,7 @@ import androidx.compose.material.icons.outlined.LocalShipping
 import androidx.compose.material.icons.outlined.Payments
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.FilterList
 
 /* ======================= Centro de atención ======================= */
 @Composable
@@ -68,7 +69,7 @@ fun AttentionScreen() {
         }
         if (att.recentResolved.isNotEmpty()) item { SectionCard { att.recentResolved.forEach { Text("✓ " + it.second, color = C.green) } } }
         item { Choice(listOf("all" to "Todos", "urgent" to "Urgentes", "pay" to "Pagos", "orders" to "Pedidos", "clients" to "Clientes", "other" to "Otros"), filter) { filter = it } }
-        item { Row(verticalAlignment = Alignment.CenterVertically) { Switch(onlyPending, { onlyPending = it }); Spacer(Modifier.width(10.dp)); Text("Solo pendientes de revisar", fontSize = 13.5.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
+        item { SettingsGroup { ToggleRow("Solo pendientes de revisar", "Oculta lo que ya marcaste como revisado", onlyPending, Icons.Outlined.FilterList) { onlyPending = it } } }
         att.GROUPS.forEach { (cat, title) ->
             val items = list.filter { it.cat == cat }
             if (items.isNotEmpty()) item {
@@ -187,9 +188,12 @@ fun NotifsScreen() {
     }
     if (cfg) {
         val c = nf.cfg()
-        AlertDialog(onDismissRequest = { cfg = false }, icon = Icons.Outlined.Notifications, title = { Text("Notificaciones") }, confirmButton = { TextButton(onClick = { cfg = false }) { Text("Listo") } },
-            text = { Column { listOf("inapp" to "Avisos dentro de la app", "important" to "Notificaciones importantes", "pay" to "Pagos", "order" to "Pedidos", "client" to "Clientes", "system" to "Sistema (respaldos, importaciones y seguridad)").forEach { (k, l) ->
-                Row(verticalAlignment = Alignment.CenterVertically) { Text(l, Modifier.weight(1f), fontWeight = FontWeight.SemiBold); Switch(Js.truthy(c[k]), { nf.toggleCfg(k) }) } } } })
+        // la misma ventana que Ajustes → Notificaciones
+        var tick by remember { mutableStateOf(0) }
+        Sheet("Notificaciones", { cfg = false }, Icons.Outlined.Notifications, "Qué avisos quieres recibir") {
+            @Suppress("UNUSED_VARIABLE") val t = tick
+            NotifToggles(nf.cfg()) { k -> nf.toggleCfg(k); tick++ }
+        }
     }
     @Suppress("UNUSED_VARIABLE") val u = v
 }
