@@ -92,6 +92,19 @@ object Files {
         }
         ctx.startActivity(Intent.createChooser(i, "Enviar recibo").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
+    /** Comparte un artículo: sus fotos (las guardadas en la app, en JPEG) junto con el texto. Sin fotos, solo el texto. */
+    fun shareImages(ctx: Context, photos: List<String>, text: String) {
+        val dir = File(ctx.cacheDir, "compartir").apply { mkdirs() }; dir.listFiles()?.forEach { it.delete() }
+        val uris = ArrayList<Uri>()
+        photos.forEachIndexed { i, p -> try {
+            val b64 = p.substringAfter("base64,", p); val f = File(dir, "articulo_${i + 1}.jpg"); f.writeBytes(android.util.Base64.decode(b64, android.util.Base64.DEFAULT))
+            uris.add(FileProvider.getUriForFile(ctx, ctx.packageName + ".files", f)) } catch (e: Exception) {} }
+        if (uris.isEmpty()) { shareText(ctx, text); return }
+        val i = if (uris.size == 1) Intent(Intent.ACTION_SEND).apply { putExtra(Intent.EXTRA_STREAM, uris[0]) }
+                else Intent(Intent.ACTION_SEND_MULTIPLE).apply { putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris) }
+        i.type = "image/jpeg"; i.putExtra(Intent.EXTRA_TEXT, text); i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        ctx.startActivity(Intent.createChooser(i, "Compartir artículo").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
     fun shareText(ctx: Context, text: String) { ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, text) }, "Compartir").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
     fun open(ctx: Context, url: String) { try { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (e: Exception) {} }
 }

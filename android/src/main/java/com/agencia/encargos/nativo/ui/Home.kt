@@ -200,6 +200,6 @@ fun GlobalResults(q: String) {
         if (od.isNotEmpty()) Text("Encargos", fontWeight = FontWeight.ExtraBold, color = C.blue)
         od.forEach { x -> Text("${x.str("name")} · ${money(x["total"])} · ${x.str("status").ifEmpty { "Pedido" }}", Modifier.fillMaxWidth().clickable { ui.go(Screen.Order(Js.str(x["id"]))) }.padding(vertical = 4.dp)) }
         if (nt.isNotEmpty()) Text("Notas", fontWeight = FontWeight.ExtraBold, color = C.amber)
-        nt.forEach { n -> Text(n.str("title").ifEmpty { "Sin título" }, Modifier.fillMaxWidth().clickable { ui.go(Screen.Notes) }.padding(vertical = 4.dp)) }
+        nt.forEach { n -> Text(n.str("title").ifEmpty { "Sin título" } + if (core.isSale(n)) " · en venta ${money(n["price"])}" else "", Modifier.fillMaxWidth().clickable { ui.go(Screen.Notes) }.padding(vertical = 4.dp)) }
     }
 }
