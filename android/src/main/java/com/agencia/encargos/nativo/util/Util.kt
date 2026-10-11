@@ -153,8 +153,8 @@ object Receipt {
             c.clipPath(path); c.drawBitmap(logo, null, RectF(lx, ly, lx + logoS, ly + logoS), Paint(Paint.FILTER_BITMAP_FLAG)); c.restoreToCount(save)
         } else { rr(lx, ly, logoS, logoS, dp(10f), blue); text("e", lx + logoS / 2, ly + logoS * .72f, 20f, Color.WHITE, fXb, Paint.Align.CENTER) }
         val bizName = app.businessName.ifBlank { "Encargos" }
-        text(bizName, lx + logoS + dp(9f), y + dp(26f), 17f, tx, fXb, maxW = IW - dp(170f))
-        text("Tu negocio, en orden", lx + logoS + dp(9f), y + dp(43f), 11f, mut, fReg)
+        // el nombre del negocio queda centrado a la altura del logo
+        text(bizName, lx + logoS + dp(9f), y + barH / 2 + dp(6f), 17f, tx, fXb, maxW = IW - dp(170f))
         val chipT = "Recibo"; val cw = width(chipT, 12f, fBold) + dp(24f)
         rr(P + IW - dp(14f) - cw, y + (barH - dp(28f)) / 2, cw, dp(28f), dp(14f), alpha(blue, .14f), alpha(blue, .38f))
         text(chipT, P + IW - dp(14f) - cw / 2, y + barH / 2 + dp(4.5f), 12f, blueInk, fBold, Paint.Align.CENTER)
@@ -236,7 +236,7 @@ object Receipt {
         // ---- pie ----
         p.color = blue; c.drawRoundRect(RectF(W / 2f - dp(11f), y + dp(6f), W / 2f + dp(11f), y + dp(9f)), dp(2f), dp(2f), p)
         text("Gracias por tu confianza", W / 2f, y + dp(30f), 13f, mut, fSemi, Paint.Align.CENTER)
-        text(bizName + "  •  Tu negocio, en orden", W / 2f, y + dp(48f), 11f, Color.parseColor("#7C8BA5"), fReg, Paint.Align.CENTER)
+        text(bizName, W / 2f, y + dp(48f), 11f, Color.parseColor("#7C8BA5"), fReg, Paint.Align.CENTER)
         y += dp(64f)
 
         // ---- fondo aurora de la app y composición final ----

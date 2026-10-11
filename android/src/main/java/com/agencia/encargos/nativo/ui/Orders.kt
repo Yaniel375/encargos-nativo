@@ -75,6 +75,7 @@ import androidx.compose.foundation.background
 import androidx.compose.material.icons.outlined.Phone
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.NotificationsActive
+import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Image
@@ -91,12 +92,12 @@ fun OrdersScreen() {
     val words = Js.normSearch(q).split(Regex("\\s+")).filter { it.isNotEmpty() }
     val list = ad.filter { x -> val hay = Js.normSearch(listOf(x.str("name"), x.str("phone"), x.str("accessCode"), Js.str(x["orderNo"]), core.orderLabel(x), x.str("status"), x.str("shippingType"), x.str("note")).joinToString(" "))
         words.all { hay.contains(it) } && (f.isEmpty() || x["status"] == f) }
-    Page(right = "${ad.size} activos") {
+    Page(right = plural(ad.size, "activo", "activos")) {
         item { SearchBox(q, { q = it; limit = 30 }, "Buscar por cliente, teléfono, código o estado") }
         item { Choice(listOf("" to "Todos") + Encargos.STATES.map { it to it }, f) { f = it; limit = 30 } }
         item { TopTiles(Triple("Total", money(ad.sumOf { Js.num(it["total"]) }), null), Triple("Cobrado", money(ad.sumOf { Js.num(it["paid"]) }), C.green),
             Triple("Pendiente", money(ad.sumOf { kotlin.math.max(0.0, Js.num(it["balance"])) }), C.rose)) }
-        if (ad.isNotEmpty()) item { Text("Consejo: toca el estado de un encargo para pasarlo al siguiente.", fontSize = 12.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.fillMaxWidth()) }
+        if (ad.isNotEmpty()) item { Row(verticalAlignment = Alignment.Top) { Icon(Icons.Outlined.Lightbulb, null, Modifier.padding(top = 1.dp).size(15.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant); Spacer(Modifier.width(7.dp)); Text("Consejo: toca el estado de un encargo para pasarlo al siguiente.", fontSize = 12.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
         if (ad.isEmpty()) item { Empty("No hay encargos activos", "Los encargos culminados se guardan en Encargos completados.") { Primary("+ Nuevo encargo") { ui.root(Screen.NewOrder) } } }
         else if (list.isEmpty()) item { Empty("Sin resultados", "No hay encargos que coincidan con tu búsqueda o filtro.") { Secondary("Limpiar búsqueda") { q = ""; f = "" } } }
         list.take(limit).forEach { x -> item { OrderCard(x) } }
@@ -302,8 +303,8 @@ fun OrderScreen(id: String) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Primary("Editar", Modifier.weight(1f), Icons.Filled.Edit) { ui.go(Screen.EditOrder(id)) }; Secondary("WhatsApp", Modifier.weight(1f), Icons.Filled.Chat, color = C.green) { ui.whatsapp(x.str("phone"), "", x.str("name")) } }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Secondary("Enviar recibo", Modifier.weight(1f), Icons.Filled.Send) { receipt = true }
-                    if (b > 0.005) Secondary("Recordar pago", Modifier.weight(1f), color = C.rose) { ui.whatsapp(x.str("phone"), core.reminderOrder(x), x.str("name")) }
-                    else Secondary("Agradecer", Modifier.weight(1f)) { ui.whatsapp(x.str("phone"), core.thanksOrder(x), x.str("name")) }
+                    if (b > 0.005) Secondary("Recordar pago", Modifier.weight(1f), Icons.Outlined.NotificationsActive, color = C.rose) { ui.whatsapp(x.str("phone"), core.reminderOrder(x), x.str("name")) }
+                    else Secondary("Agradecer", Modifier.weight(1f), Icons.Outlined.Favorite) { ui.whatsapp(x.str("phone"), core.thanksOrder(x), x.str("name")) }
                 }
             }
         }
@@ -439,7 +440,7 @@ fun CompletedScreen() {
         if (all.isEmpty()) item { Empty("Aún no hay clientes con todos sus pagos completados.") }
         all.forEach { c -> item {
             SectionCard(modifier = Modifier.clickable { ui.go(Screen.Client(c.name)) }) {
-                Row(verticalAlignment = Alignment.CenterVertically) { Avatar(c.name, C.green); Spacer(Modifier.width(10.dp)); Column { Text(c.name, fontWeight = FontWeight.Bold); Text("${c.phone.ifEmpty { "Sin teléfono" }} · ${c.orders.size} encargo(s)", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
+                Row(verticalAlignment = Alignment.CenterVertically) { Avatar(c.name, C.green); Spacer(Modifier.width(10.dp)); Column { Text(c.name, fontWeight = FontWeight.Bold); Text("${c.phone.ifEmpty { "Sin teléfono" }} · ${plural(c.orders.size, "encargo", "encargos")}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
                 c.orders.sortedByDescending { Js.parseDate(it["date"]) }.forEach { o -> Line("${Js.fmt(o["date"])} · ${o.str("status")}", money(o["total"])) }
                 Line("Libras", lb(c.pounds)); Line("Total cobrado", money(c.paid), C.green, true)
                 Text("✓ Todos los pagos completados", color = C.green, fontWeight = FontWeight.Bold)

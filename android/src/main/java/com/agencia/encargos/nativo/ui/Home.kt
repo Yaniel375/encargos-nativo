@@ -196,7 +196,7 @@ fun GlobalResults(q: String) {
     SectionCard {
         if (cl.isEmpty() && od.isEmpty() && nt.isEmpty()) Text("Sin resultados para \"$q\".", color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (cl.isNotEmpty()) Text("Clientes", fontWeight = FontWeight.ExtraBold, color = C.vio)
-        cl.forEach { c -> Text("${c.name} · ${c.orders.size} encargo(s)" + if (c.pending > 0.005) " · debe ${money(c.pending)}" else "", Modifier.fillMaxWidth().clickable { ui.go(Screen.Client(c.name)) }.padding(vertical = 4.dp)) }
+        cl.forEach { c -> Text("${c.name} · ${plural(c.orders.size, "encargo", "encargos")}" + if (c.pending > 0.005) " · debe ${money(c.pending)}" else "", Modifier.fillMaxWidth().clickable { ui.go(Screen.Client(c.name)) }.padding(vertical = 4.dp)) }
         if (od.isNotEmpty()) Text("Encargos", fontWeight = FontWeight.ExtraBold, color = C.blue)
         od.forEach { x -> Text("${x.str("name")} · ${money(x["total"])} · ${x.str("status").ifEmpty { "Pedido" }}", Modifier.fillMaxWidth().clickable { ui.go(Screen.Order(Js.str(x["id"]))) }.padding(vertical = 4.dp)) }
         if (nt.isNotEmpty()) Text("Notas", fontWeight = FontWeight.ExtraBold, color = C.amber)

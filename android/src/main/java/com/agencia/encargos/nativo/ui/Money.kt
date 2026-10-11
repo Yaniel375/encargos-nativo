@@ -94,7 +94,7 @@ fun PaymentsScreen() {
                 Kpi("Pagos", "${s.list.size}", modifier = Modifier.weight(1f))
             }
         }
-        item { SectionCard("Movimientos recientes", icon = Icons.Outlined.CreditCard, action = { Text("${list.size} pago(s)", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp) }) {
+        item { SectionCard("Movimientos recientes", icon = Icons.Outlined.CreditCard, action = { Text(plural(list.size, "pago", "pagos"), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp) }) {
             Choice(listOf("" to "Todos", "Efectivo" to "Efectivo", "USD" to "USD"), mf) { mf = it; shown = 25 }
             if (list.isEmpty()) Text("Todavía no hay pagos registrados.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             list.take(shown).forEach { it2 ->
@@ -147,7 +147,7 @@ fun PendingScreen() {
             SectionCard {
                 Row {
                     Column(Modifier.weight(1f)) { Hint("Por cobrar"); Text(money(p.pendTotal), fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = C.rose)
-                        Hint("${p.pend.size} pedido${if (p.pend.size == 1) "" else "s"} · ${p.pend.map { it.str("name").trim().lowercase() }.distinct().size} cliente(s)") }
+                        Hint("${p.pend.size} pedido${if (p.pend.size == 1) "" else "s"} · ${p.pend.map { it.str("name").trim().lowercase() }.distinct().size.let { plural(it, "cliente", "clientes") }}") }
                     Column(Modifier.weight(1f)) { Hint("Fondos a favor"); Text(money(p.fundsTotal), fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = C.green); Hint("${p.funds.size} pedido${if (p.funds.size == 1) "" else "s"}") }
                 }
                 ProgressBar(if (p.pendTotal + p.fundsTotal > 0) p.pendTotal / (p.pendTotal + p.fundsTotal) else 0.0, C.rose)
@@ -170,7 +170,7 @@ fun PendingScreen() {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     CardBtn("Cobrar", Icons.Filled.Chat, Modifier.weight(1f), tint = C.green) { ui.whatsapp(x.str("phone"), core.reminderOrder(x), x.str("name")) }
                     CardBtn("Ficha", Icons.Outlined.Description, Modifier.weight(1f)) { ui.go(Screen.Order(id)) }
-                    CardBtn("Registrar pago", Icons.Filled.Edit, Modifier.weight(1.3f)) { ui.go(Screen.EditOrder(id)) }
+                    CardBtn("Abonar", Icons.Filled.Edit, Modifier.weight(1.3f)) { ui.go(Screen.EditOrder(id)) }
                 }
             }
         } }

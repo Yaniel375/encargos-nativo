@@ -139,7 +139,6 @@ fun LockScreen(onUnlocked: () -> Unit) {
             Spacer(Modifier.height(10.dp))
             Column(Modifier.graphicsLayer { translationY = (1 - move.value) * introY * .9f; alpha = move.value }, horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Encargos", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.4).sp, color = Color(0xFFE8EEF8))
-                Text("Tu negocio, en orden.", fontSize = 13.sp, color = NIGHT.mut)
             }
             Spacer(Modifier.height(12.dp))
             // chip "Acceso seguro" → "Acceso autorizado"

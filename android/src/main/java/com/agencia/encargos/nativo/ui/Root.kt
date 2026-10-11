@@ -89,6 +89,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -210,6 +211,9 @@ private fun MainUi(ui: Ui, app: EncargosApp, lock: () -> Unit) {
         val holder = androidx.compose.runtime.saveable.rememberSaveableStateHolder()
         androidx.compose.runtime.DisposableEffect(holder) { ui.onDrop = { s -> holder.removeState(s.toString()) }; onDispose { ui.onDrop = null } }
         Box(Modifier.fillMaxSize().imePadding()) { androidx.compose.runtime.key(cur) { holder.SaveableStateProvider(cur.toString()) { ScreenHost(cur) } } }
+        val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+        Box(Modifier.align(Alignment.TopCenter).fillMaxWidth().height(topInset + 44.dp)
+            .background(Brush.verticalGradient(0f to W.base, .62f to W.base.copy(alpha = .92f), 1f to Color.Transparent)))
         Header(ui, app, lock, Modifier.align(Alignment.TopCenter))
         BottomNav(ui, Modifier.align(Alignment.BottomCenter))
     }
@@ -231,7 +235,6 @@ private fun Header(ui: Ui, app: EncargosApp, lock: () -> Unit, modifier: Modifie
                 // estado de la sincronización como un punto de color (verde = sincronizado); tocarlo abre Sincronización
                 if (app.sync.cfg() != null) { Spacer(Modifier.width(7.dp)); SyncDot(s.kind, s.text) { ui.go(Screen.Sync) } }
             }
-            Text("Tu negocio, en orden", fontSize = 11.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis, color = W.mut)
         }
         val attn = app.core.attention.badge(); val nf = app.core.notifs.unreadCount()
         HeadBtn(Icons.Outlined.TrackChanges, "Centro de atención", attn, Color(0xFFE11D48)) { ui.go(Screen.Attention) }
@@ -370,10 +373,9 @@ const val AUTO_TITLE = "\u0000"
 
 @Composable fun PageTitle(title: String, sub: String? = null, right: String? = null, back: Boolean = false) {
     val ui = LocalUi.current
-    // las fichas (encargo, cliente, editar) se presentan como en la referencia: título y botón "Cerrar" a la derecha
-    val sheetLike = back && (ui.current is Screen.Order || ui.current is Screen.EditOrder || ui.current is Screen.Client)
+    // todas las pantallas que no son pestañas (fichas incluidas) vuelven con la misma flecha a la izquierda del título
     Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        if (back && !sheetLike) {
+        if (back) {
             val src = remember { MutableInteractionSource() }; val sh = RoundedCornerShape(12.dp)
             Box(Modifier.pressBounce(src, .9f).size(36.dp).clip(sh).background(W.btnBg).border(1.dp, W.btnLine, sh).clickable(src, null) { tapFeedback(); ui.back() }, contentAlignment = Alignment.Center) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver", Modifier.size(19.dp), tint = MaterialTheme.colorScheme.onSurface)
@@ -385,7 +387,6 @@ const val AUTO_TITLE = "\u0000"
             if (sub != null) Text(sub, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (right != null) Text(right, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        if (sheetLike) { Spacer(Modifier.width(8.dp)); Secondary("Cerrar", Modifier.height(38.dp)) { ui.back() } }
     }
 }
 
