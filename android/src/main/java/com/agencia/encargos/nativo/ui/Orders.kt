@@ -69,6 +69,10 @@ import androidx.compose.material.icons.outlined.Scale
 import androidx.compose.material.icons.outlined.Summarize
 import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.Receipt
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.background
+import androidx.compose.material.icons.outlined.Phone
 
 /* ======================= Lista de encargos activos ======================= */
 @Composable
@@ -231,16 +235,57 @@ fun OrderScreen(id: String) {
     var viewer by remember { mutableStateOf<Int?>(null) }; var receipt by remember { mutableStateOf(false) }; var note by remember { mutableStateOf<String?>(null) }; var menu by remember { mutableStateOf(false) }
     val photos = core.orderPhotos(x)
     Page {
+        // ---- cabecera con la misma apariencia que la ficha del cliente: quién es, su saldo y los datos clave ----
         item {
+            val owes = b > 0.005
             SectionCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Avatar(x.str("name"), C.status(st), 52); Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) { Text(x.str("name"), fontSize = 20.sp, fontWeight = FontWeight.ExtraBold); Text("${core.orderLabel(x)} · ${x.str("phone").ifEmpty { "Sin teléfono" }} · ${Js.fmt(x["date"])}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                    Box { IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, "Más") }; OrderMenu(x, menu) { menu = false } }
+                    Avatar(x.str("name"), if (owes) C.rose else C.blue, 60); Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(x.str("name"), fontSize = 21.sp, fontWeight = FontWeight.ExtraBold, maxLines = 2)
+                        IconLabel(Icons.Outlined.Phone, x.str("phone").ifEmpty { "Sin teléfono" })
+                        IconLabel(Icons.Outlined.LocalShipping, core.shippingName(core.typeOf(x)) + " · " + lb(Js.num(x["pounds"])))
+                        Text("Encargo del ${Js.fmt(x["date"]).substringBefore(",")}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Box { IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, "Más") }; OrderMenu(x, menu) { menu = false } }
+                        StatusChip(st)
+                    }
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { StatusChip(st); Chip(core.shippingName(core.typeOf(x)) + " · " + lb(Js.num(x["pounds"])), C.teal) }
-                Row { Text("Pagado ${money(p)} de ${money(t)}", Modifier.weight(1f)); Text(if (b > 0.005) "Debe ${money(b)}" else if (b < -0.005) "A favor ${money(-b)}" else "Pagado completo", color = if (b > 0.005) C.rose else C.green, fontWeight = FontWeight.Bold) }
-                ProgressBar(if (t > 0) p / t else 1.0)
+                // saldo: rojo si debe, verde si está pagado o tiene saldo a favor
+                val tone = if (owes) C.rose else C.green
+                val shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+                Column(Modifier.fillMaxWidth().clip(shape).background(tone.copy(alpha = .08f)).border(1.dp, tone.copy(alpha = .30f), shape).padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Column(Modifier.weight(1f)) {
+                            Text(if (owes) "Pendiente por cobrar" else if (b < -0.005) "Saldo a favor" else "Pagado completo", fontSize = 12.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(if (owes) "- " + money(countUp(b)) else if (b < -0.005) "+ " + money(-b) else money(0), fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, color = tone)
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text("Total", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(money(t), fontSize = 17.sp, fontWeight = FontWeight.ExtraBold)
+                        }
+                    }
+                    ProgressBar(if (t > 0) p / t else 1.0)
+                    Text("Pagó ${money(p)} de ${money(t)}" + if (t > 0) " · ${Math.round((p / t).coerceIn(0.0, 1.0) * 100)} %" else "", fontSize = 12.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Kpi("Pedido", money(x["cost"]), modifier = Modifier.weight(1f))
+                    Kpi("Envío", money(x["shipping"]), sub = "${Js.toFixed(Js.num(x["pounds"]), 2)} × ${money(x["lbCost"])}", modifier = Modifier.weight(1f))
+                    Kpi("Ganancia", (if (g < 0) "-" else "") + money(kotlin.math.abs(g)), if (g >= 0) C.green else C.rose, sub = money(core.marginOf(x)) + "/lb", modifier = Modifier.weight(1f))
+                }
+            }
+        }
+        // ---- acciones (mismo orden y estilo que en la ficha del cliente) ----
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Primary("Editar", Modifier.weight(1f), Icons.Filled.Edit) { ui.go(Screen.EditOrder(id)) }; Secondary("WhatsApp", Modifier.weight(1f), Icons.Filled.Chat, color = C.green) { ui.whatsapp(x.str("phone"), "", x.str("name")) } }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Secondary("Enviar recibo", Modifier.weight(1f), Icons.Filled.Send) { receipt = true }
+                    if (b > 0.005) Secondary("Recordar pago", Modifier.weight(1f), color = C.rose) { ui.whatsapp(x.str("phone"), core.reminderOrder(x), x.str("name")) }
+                    else Secondary("Agradecer", Modifier.weight(1f)) { ui.whatsapp(x.str("phone"), core.thanksOrder(x), x.str("name")) }
+                }
             }
         }
         item {
@@ -249,27 +294,7 @@ fun OrderScreen(id: String) {
                 StatusStepper(Encargos.FLOW, st)
             }
         }
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Kpi("Pedido", money(x["cost"]), modifier = Modifier.weight(1f)); Kpi("Envío", money(x["shipping"]), sub = "${Js.toFixed(Js.num(x["pounds"]), 2)} × ${money(x["lbCost"])}", modifier = Modifier.weight(1f)); Kpi("Total", money(t), C.blue, modifier = Modifier.weight(1f)) }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Kpi("Pagado", money(p), C.green, modifier = Modifier.weight(1f))
-                    Kpi(if (b < -0.005) "A favor" else "Saldo", if (b > 0.005) "-" + money(b) else if (b < -0.005) "+" + money(-b) else "$0.00", if (b > 0.005) C.rose else C.green, modifier = Modifier.weight(1f))
-                    Kpi("Ganancia", (if (g < 0) "-" else "") + money(kotlin.math.abs(g)), if (g >= 0) C.green else C.rose, sub = money(core.marginOf(x)) + "/lb", modifier = Modifier.weight(1f))
-                }
-            }
-        }
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Primary("Editar", Modifier.weight(1f), Icons.Filled.Edit) { ui.go(Screen.EditOrder(id)) }; Secondary("WhatsApp", Modifier.weight(1f).height(52.dp), Icons.Filled.Chat, color = C.green) { ui.whatsapp(x.str("phone"), "", x.str("name")) } }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Secondary("Enviar recibo", Modifier.weight(1f), Icons.Filled.Send) { receipt = true }
-                    if (b > 0.005) Secondary("Recordar pago", Modifier.weight(1f), color = C.rose) { ui.whatsapp(x.str("phone"), core.reminderOrder(x), x.str("name")) }
-                    else Secondary("Agradecer", Modifier.weight(1f)) { ui.whatsapp(x.str("phone"), core.thanksOrder(x), x.str("name")) }
-                }
-            }
-        }
-        item { SectionCard("Nota interna", icon = Icons.Outlined.EditNote, action = { Text(if (x.str("note").isEmpty()) "Agregar" else "Editar", color = C.blue, modifier = Modifier.clickable { note = x.str("note") }) }) {
+        item { SectionCard("Nota interna", icon = Icons.Outlined.EditNote, action = { LinkText(if (x.str("note").isEmpty()) "Agregar" else "Editar") { note = x.str("note") } }) {
             Text(x.str("note").ifEmpty { "Solo para ti: el cliente nunca la ve." }, color = if (x.str("note").isEmpty()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface) } }
         item {
             SectionCard("Fotos (${photos.size})", icon = Icons.Outlined.PhotoLibrary) {

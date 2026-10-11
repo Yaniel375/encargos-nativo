@@ -142,8 +142,8 @@ fun ClientScreen(name: String) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Primary("Nuevo encargo", Modifier.weight(1f), Icons.Filled.Add) { ui.go(Screen.NewFor(c.name, c.phone)) }
-                    if (owes) Secondary("Cobrar", Modifier.weight(1f).height(52.dp), Icons.Filled.Chat, color = C.green) { ui.whatsapp(c.phone, core.reminderClient(c), c.name) }
-                    else Secondary("WhatsApp", Modifier.weight(1f).height(52.dp), Icons.Filled.Chat, color = C.green) { ui.whatsapp(c.phone, "", c.name) }
+                    if (owes) Secondary("Cobrar", Modifier.weight(1f), Icons.Filled.Chat, color = C.green) { ui.whatsapp(c.phone, core.reminderClient(c), c.name) }
+                    else Secondary("WhatsApp", Modifier.weight(1f), Icons.Filled.Chat, color = C.green) { ui.whatsapp(c.phone, "", c.name) }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Secondary("Avisar llegada", Modifier.weight(1f), Icons.Filled.Inventory2) { ui.whatsapp(c.phone, core.arrivalMessage(c), c.name) }
@@ -153,7 +153,7 @@ fun ClientScreen(name: String) {
         }
         // ---- datos fijos del cliente ----
         item {
-            SectionCard("Datos del cliente", icon = Icons.Outlined.ContactPage, action = { Text(if (inf.str("address").isEmpty() && inf.str("note").isEmpty()) "Agregar ✎" else "Editar ✎", color = C.blue, fontWeight = FontWeight.Bold, modifier = Modifier.clickable { edit = true }) }) {
+            SectionCard("Datos del cliente", icon = Icons.Outlined.ContactPage, action = { LinkText(if (inf.str("address").isEmpty() && inf.str("note").isEmpty()) "Agregar" else "Editar") { edit = true } }) {
                 if (inf.str("address").isEmpty() && inf.str("note").isEmpty()) Text("Guarda su dirección de entrega y detalles importantes (tallas, preferencias, horarios…).", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (inf.str("address").isNotEmpty()) InfoLine(Icons.Outlined.Place, "Dirección", inf.str("address"))
                 if (inf.str("note").isNotEmpty()) InfoLine(Icons.Outlined.StickyNote2, "Nota fija", inf.str("note"))
@@ -169,7 +169,7 @@ fun ClientScreen(name: String) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
                                 Text("${Js.fmt(x["date"]).substringBefore(",")} · ${core.shippingName(core.typeOf(x))} ${lb(Js.num(x["pounds"]))}", fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, maxLines = 1)
-                                Text("${core.orderLabel(x)} · ${money(x["lbCost"])}/lb", fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                                Text("${money(x["lbCost"])}/lb · total ${money(t)}", fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                             }
                             StatusChip(x.str("status"))
                         }
@@ -196,7 +196,7 @@ fun ClientScreen(name: String) {
                     Row(Modifier.fillMaxWidth().clickable { editPaymentState.value = Pair(Js.str(x["id"]), i) }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text("${dayLabel(h["date"])} · ${h.str("method").ifEmpty { "Efectivo" }}", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            Text(core.orderLabel(x) + if (h.str("note").isNotEmpty()) " · " + h.str("note") else "", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                            Text("Encargo del ${Js.fmt(x["date"]).substringBefore(",")}" + if (h.str("note").isNotEmpty()) " · " + h.str("note") else "", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                         }
                         Text("+ " + money(h["amount"]), color = C.green, fontWeight = FontWeight.ExtraBold)
                     }

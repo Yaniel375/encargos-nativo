@@ -294,7 +294,7 @@ fun SecurityScreen() {
         } }
         item { Hint("El PIN se guarda con sal y hash iterado; las huellas nunca salen del sistema Android. Ningún respaldo incluye tu PIN ni tu contraseña.") }
     }
-    if (lockSheet) Sheet("Bloqueo automático", { lockSheet = false }, Icons.Outlined.Schedule) {
+    if (lockSheet) Sheet("Bloqueo automático", { lockSheet = false }, Icons.Outlined.Schedule, "Cuándo se vuelve a pedir el PIN o la contraseña") {
         val opts = listOf("0" to "Al salir", "1" to "1 min", "5" to "5 min", "15" to "15 min", "30" to "30 min", "never" to "Nunca")
         val l2 = sec.lockCfg(); val sel = if (!l2.on) "never" else Js.numberToString(l2.minutes)
         Choice(opts, sel) { k -> sec.setLock(if (k == "never") null else k.toDouble()); refresh() }
@@ -425,21 +425,21 @@ fun SettingsScreen() {
         item { Hint("Encargos nativo para Android · tus datos se guardan en este teléfono y, si lo activas, en tu propio bot de Telegram cifrados.") }
     }
     when (sheet) {
-        "biz" -> Sheet("Nombre del negocio", { sheet = null }, Icons.Outlined.Storefront) {
+        "biz" -> Sheet("Nombre del negocio", { sheet = null }, Icons.Outlined.Storefront, "Aparece en recibos y mensajes") {
             InfoBox("Aparece en los recibos y en los mensajes de WhatsApp.")
             Field(biz, { biz = it }, "Nombre del negocio (aparece en recibos)")
             Primary("Guardar", Modifier.fillMaxWidth()) { core.businessName = biz.trim(); ui.toast("✅ Datos guardados."); sheet = null }
         }
-        "greet" -> Sheet("Nombre del saludo", { sheet = null }, Icons.Outlined.WavingHand) {
+        "greet" -> Sheet("Nombre del saludo", { sheet = null }, Icons.Outlined.WavingHand, "Cómo te saluda la app en Inicio") {
             Field(greet, { greet = it }, "Tu nombre (para el saludo)")
             Primary("Guardar", Modifier.fillMaxWidth()) { core.greetName = greet.trim(); ui.toast("✅ Datos guardados."); sheet = null }
         }
-        "cc" -> Sheet("Código de país", { sheet = null }, Icons.Outlined.Phone) {
+        "cc" -> Sheet("Código de país", { sheet = null }, Icons.Outlined.Phone, "Para abrir WhatsApp con números cortos") {
             InfoBox("Se agrega a los números de 8 cifras al abrir WhatsApp.")
             Field(cc, { s -> cc = s.filter { it.isDigit() }.take(4) }, "Código de país para WhatsApp", number = true, prefix = "+")
             Primary("Guardar", Modifier.fillMaxWidth()) { core.phoneCC = cc.ifEmpty { "53" }; ui.toast("✅ Datos guardados."); sheet = null }
         }
-        "rates" -> Sheet("Precios de envío por libra", { sheet = null }, Icons.Outlined.LocalShipping) {
+        "rates" -> Sheet("Precios de envío por libra", { sheet = null }, Icons.Outlined.LocalShipping, "Lo que cobras por libra en cada tipo de envío") {
             InfoBox("Configura todos tus tipos de envío. Cada tipo puede tener su propio precio por libra. Al crear un encargo, el precio se selecciona automáticamente según el envío.")
             keys.forEach { k ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -461,7 +461,7 @@ fun SettingsScreen() {
                 if (bad) ui.toast("Revisa las tarifas: deben ser números de 0 en adelante.") else { core.setShippingRates(m); ui.toast("✅ Tarifas guardadas. Se aplican a los encargos nuevos."); sheet = null }
             }
         }
-        "buy" -> Sheet("Lo que te cuesta a ti la libra", { sheet = null }, Icons.Outlined.Sell) {
+        "buy" -> Sheet("Lo que te cuesta a ti la libra", { sheet = null }, Icons.Outlined.Sell, "Se usa para calcular tu ganancia") {
             InfoBox("Se usa para calcular tu ganancia por encargo.")
             keys.forEach { k -> Field(buy[k] ?: "", { buy[k] = it }, core.shippingLabel(k), number = true, prefix = "$", suffix = "USD/lb") }
             ToggleRow("Aplicar también a encargos activos", "Actualiza el costo en los encargos de clientes que aún no terminan", applyActive) { applyActive = it }
@@ -470,7 +470,7 @@ fun SettingsScreen() {
                 core.saveBuyRates(m, applyActive); ui.toast("✅ Costos guardados."); sheet = null
             }
         }
-        "tpl" -> Sheet("Mensajes de WhatsApp", { sheet = null }, Icons.Outlined.Chat) {
+        "tpl" -> Sheet("Mensajes de WhatsApp", { sheet = null }, Icons.Outlined.Chat, "Llegada, recordatorio de pago y agradecimiento") {
             InfoBox("Puedes usar {nombre}, {total}, {pagado}, {saldo}, {libras} y {negocio}.")
             Field(tArr, { tArr = it }, "Aviso de llegada", singleLine = false, minLines = 3)
             Field(tRem, { tRem = it }, "Recordatorio de pago", singleLine = false, minLines = 3)
@@ -480,7 +480,7 @@ fun SettingsScreen() {
                 Primary("Guardar mensajes", Modifier.weight(1.4f)) { core.saveTemplates(tArr, tRem, tTh); ui.toast("✅ Mensajes guardados."); sheet = null }
             }
         }
-        "transit" -> Sheet("Alertas de tránsito", { sheet = null }, Icons.Outlined.LocalShipping) {
+        "transit" -> Sheet("Alertas de tránsito", { sheet = null }, Icons.Outlined.LocalShipping, "Cuándo avisar de un pedido que tarda") {
             InfoBox("El centro de atención te avisa cuando un encargo lleva muchos días en tránsito.")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Field(warn, { s -> warn = s.filter { it.isDigit() } }, "Avisar a los (días)", Modifier.weight(1f), number = true)
@@ -491,14 +491,14 @@ fun SettingsScreen() {
                 warn = core.transitWarn.toString(); late = core.transitLate.toString(); ui.toast("✅ Alertas guardadas."); sheet = null
             }
         }
-        "notif" -> Sheet("Notificaciones", { sheet = null }, Icons.Outlined.Notifications) {
+        "notif" -> Sheet("Notificaciones", { sheet = null }, Icons.Outlined.Notifications, "Qué avisos quieres recibir") {
             var tick by remember { mutableStateOf(0) }
             val cfg = core.notifs.cfg(); @Suppress("UNUSED_VARIABLE") val t = tick
             listOf("inapp" to "Avisos dentro de la app", "pay" to "Pagos", "order" to "Encargos", "client" to "Clientes", "system" to "Sistema y seguridad", "important" to "Avisos importantes").forEach { (k, l) ->
                 ToggleRow(l, "", Js.truthy(cfg[k])) { core.notifs.toggleCfg(k); tick++ }
             }
         }
-        "scale" -> Sheet("Tamaño de la interfaz", { sheet = null }, Icons.Outlined.FormatSize) {
+        "scale" -> Sheet("Tamaño de la interfaz", { sheet = null }, Icons.Outlined.FormatSize, "Textos, botones y tarjetas de toda la app") {
             var pending by remember { mutableStateOf(UiScale.value) }
             InfoBox("Cambia el tamaño visual de toda la app: textos, iconos, botones, tarjetas, menús, ventanas y gráficas. No cambia tus datos ni tus importes. Se aplica al soltar el control y se recuerda al volver a abrir la app.")
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -524,7 +524,7 @@ fun SettingsScreen() {
                 Primary("Listo", Modifier.weight(1f)) { if (UiScale.value != pending) { UiScale.value = pending; core.ls.set(UiScale.KEY, pending.toString()) }; sheet = null }
             }
         }
-        "fb" -> Sheet("Sonido y vibración", { sheet = null }, Icons.Outlined.VolumeUp) {
+        "fb" -> Sheet("Sonido y vibración", { sheet = null }, Icons.Outlined.VolumeUp, "Respuesta al entrar y al tocar") {
             var snd by remember { mutableStateOf(fb.soundOn()) }
             var hap by remember { mutableStateOf(fb.hapticsOn()) }
             ToggleRow("Sonido de inicio de sesión", "Un sonido corto y discreto al entrar correctamente", snd) { snd = it; fb.set("loginSoundEnabled", it); if (it) fb.loginSound() }
