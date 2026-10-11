@@ -189,8 +189,8 @@ public sealed partial class MainWindow
             UIElement Pick(string key, string glyph, string title, string sub) => PickRow(glyph, title, sub, mode == key, () => { ApplyWindowMode(key); Later(); });
             var modes = SettingsGroup(
                 Pick("", "", "Recordar el último tamaño", "Se abre como la cerraste"),
-                Pick("max", "", "Maximizada", "Ocupa la pantalla, con la barra de tareas visible"),
-                Pick("full", "", "Pantalla completa", "Sin bordes ni barra de tareas · F11 o Esc para salir"));
+                Pick("max", "\uE922", "Maximizada", "Ocupa la pantalla, con la barra de tareas visible"),
+                Pick("full", "\uE740", "Pantalla completa", "Sin bordes ni barra de tareas · F11 o Esc para salir"));
             var fits = Presets.Where(p => sw == 0 || (p.W <= sw && p.H <= sh)).Select(p => ($"{p.W}x{p.H}", $"{p.W} × {p.H}"));
             var presets = Choice(fits, mode, k => { ApplyWindowMode(k); Later(); });
             if (cw.Length == 0 && TryParseSize(mode, out var mw, out var mh)) { cw = mw.ToString(); ch = mh.ToString(); }
