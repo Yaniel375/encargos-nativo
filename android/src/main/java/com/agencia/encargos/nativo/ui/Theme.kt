@@ -80,7 +80,7 @@ class Palette(
 )
 val NIGHT = Palette(false, base = Color(0xFF020611), tx = Color(0xFFF1F5F9), mut = Color(0xFF9AA6B8), navOff = Color(0xFF7C8BA5),
     glassA = Color(30, 41, 59, 158), glassB = Color(15, 23, 42, 184), line = Color(148, 163, 184, 36), line2 = Color(148, 163, 184, 61), tile = Color(148, 163, 184, 20),
-    bar = Color(9, 13, 24, 199), nav = Color(9, 13, 24, 240), btnBg = Color(255, 255, 255, 15), btnLine = Color(255, 255, 255, 26),
+    bar = Color(9, 13, 24, 242), nav = Color(9, 13, 24, 255), btnBg = Color(255, 255, 255, 15), btnLine = Color(255, 255, 255, 26),
     blue = Color(0xFF3B82F6), blueTop = Color(0xFF4F8DF7), blueDeep = Color(0xFF2563EB), blueInk = Color(0xFF93C5FD), blueSoft = Color(0xFF0F2544),
     green = Color(0xFF34D399), greenInk = Color(0xFF6EE7B7), rose = Color(0xFFFB7185), amber = Color(0xFFFBBF24), cyan = Color(0xFF22D3EE), vio = Color(0xFFA78BFA), teal = Color(0xFF2DD4BF),
     inputBg = Color(15, 23, 42, 140), track = Color(148, 163, 184, 40), icon = Color(0xFFCBD5E1), chipTx = Color(0xFFCBD5E1), avatarBg = Color(0xFF1E293B),
@@ -88,7 +88,7 @@ val NIGHT = Palette(false, base = Color(0xFF020611), tx = Color(0xFFF1F5F9), mut
 /** Modo día: claro y legible (contraste AA para textos; rojo = pendiente, verde = a favor). */
 val DAY = Palette(true, base = Color(0xFFEEF2F8), tx = Color(0xFF0F172A), mut = Color(0xFF526079), navOff = Color(0xFF64748B),
     glassA = Color(0xFFFFFFFF), glassB = Color(0xFFF8FAFC), line = Color(15, 23, 42, 26), line2 = Color(15, 23, 42, 41), tile = Color(15, 23, 42, 10),
-    bar = Color(255, 255, 255, 230), nav = Color(255, 255, 255, 245), btnBg = Color(15, 23, 42, 10), btnLine = Color(15, 23, 42, 26),
+    bar = Color(255, 255, 255, 248), nav = Color(255, 255, 255, 255), btnBg = Color(15, 23, 42, 10), btnLine = Color(15, 23, 42, 26),
     blue = Color(0xFF2563EB), blueTop = Color(0xFF3B82F6), blueDeep = Color(0xFF1D4ED8), blueInk = Color(0xFF1D4ED8), blueSoft = Color(0xFFDBEAFE),
     green = Color(0xFF047857), greenInk = Color(0xFF065F46), rose = Color(0xFFE11D48), amber = Color(0xFFB45309), cyan = Color(0xFF0891B2), vio = Color(0xFF7C3AED), teal = Color(0xFF0F766E),
     inputBg = Color(0xFFF8FAFC), track = Color(15, 23, 42, 22), icon = Color(0xFF475569), chipTx = Color(0xFF334155), avatarBg = Color(0xFFE2E8F0),

@@ -52,7 +52,7 @@ fun StatsScreen() {
     @Composable fun delta(n: Double, o: Double) { val d = st.pct(n, o)
         Text(if (d == null) "▲ nuevo" else if (abs(d) < 0.5) "= igual que antes" else (if (d > 0) "▲ " else "▼ ") + Js.toFixed(abs(d), 0) + "% vs anterior", fontSize = 11.sp, color = if (d == null) W.blueInk else if (abs(d) < 0.5) MaterialTheme.colorScheme.onSurfaceVariant else if (d > 0) C.green else C.rose) }
     @Composable fun kpi(label: String, value: String, color: Color, n: Double, o: Double, m: Modifier) {
-        Column(m) { Kpi(label, value, color, modifier = Modifier.fillMaxWidth()); delta(n, o) } }
+        Kpi(label, value, color, modifier = m) { delta(n, o) } }
     Page(right = "${cur.ord.size} encargo${if (cur.ord.size == 1) "" else "s"}") {
         item { Choice(listOf("WEEK" to "Semana", "MONTH" to "Mes", "YEAR" to "Año"), period) { period = it; ref = LocalDate.now().toString() } }
         item {

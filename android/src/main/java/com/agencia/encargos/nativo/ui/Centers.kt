@@ -77,7 +77,7 @@ fun AttentionScreen() {
                 val col = if (cat == "funds" || cat == "ready") C.green else pc[pr]!!
                 val tot = items.sumOf { it.amount ?: 0.0 }
                 val sub = when (cat) { "pay" -> "${items.size} cliente${if (items.size == 1) " debe" else "s deben"} dinero · total ${money(tot)}"; "ready" -> "${items.size} pedido${if (items.size == 1) " llegó" else "s llegaron"}"
-                    "transit" -> "${items.size} pedido(s) con mucho tiempo en tránsito"; "funds" -> "${items.size} cliente(s) · total ${money(tot)}"; "incomplete" -> "${items.size} encargo(s) con datos faltantes"; else -> "" }
+                    "transit" -> "${plural(items.size, "pedido", "pedidos")} con mucho tiempo en tránsito"; "funds" -> "${plural(items.size, "cliente", "clientes")} · total ${money(tot)}"; "incomplete" -> "${plural(items.size, "encargo", "encargos")} con datos faltantes"; else -> "" }
                 val ic = when (cat) { "pay" -> Icons.Outlined.Payments; "ready" -> Icons.Outlined.Inventory2; "transit" -> Icons.Outlined.LocalShipping; "funds" -> Icons.Outlined.AccountBalanceWallet; "incomplete" -> Icons.Outlined.ErrorOutline; else -> Icons.Outlined.Info }
                 SectionCard(title, icon = ic, action = { Text("${items.size}", color = col, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp) }) {
                     if (sub.isNotEmpty()) Text(sub, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)

@@ -181,13 +181,18 @@ fun lb(v: Double) = Js.toFixed(v, 2) + " lb"
 }
 
 /** Recuadro de dato (Libras / Cobrado / Pendiente): neutro, o teñido del color del dato. */
-@Composable fun Kpi(label: String, value: String, color: Color = MaterialTheme.colorScheme.onSurface, sub: String? = null, modifier: Modifier = Modifier) {
+/** "1 encargo" / "3 encargos": singular o plural según la cantidad (sin "(s)"). */
+fun plural(n: Int, one: String, many: String) = "$n ${if (n == 1) one else many}"
+
+/** Recuadro de dato. extra: algo más dentro del recuadro (por ejemplo la variación en Estadísticas). */
+@Composable fun Kpi(label: String, value: String, color: Color = MaterialTheme.colorScheme.onSurface, sub: String? = null, modifier: Modifier = Modifier, extra: (@Composable () -> Unit)? = null) {
     val neutral = color == MaterialTheme.colorScheme.onSurface
     val shape = RoundedCornerShape(12.dp)
     Box(modifier.clip(shape).background(if (neutral) W.tile else color.copy(alpha = .08f)).border(1.dp, if (neutral) W.line else color.copy(alpha = .30f), shape).padding(horizontal = 11.dp, vertical = 9.dp)) {
         Column { Text(label, fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             Text(value, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.2).sp, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (sub != null) Text(sub, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            if (sub != null) Text(sub, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            extra?.invoke() }
     }
 }
 
