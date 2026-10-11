@@ -57,6 +57,8 @@ public sealed partial class MainWindow : Window
     readonly StackPanel _side = new() { Spacing = 4 };
     readonly ScrollViewer _scroll = new() { HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
     TextBlock _title = H("Inicio", 18);
+    /// <summary>Dato corto de la pantalla junto al título de la barra (por ejemplo "3 activos").</summary>
+    TextBlock _titleRight = Muted("", 12.5);
     TextBlock _syncText = Muted("", 11.5);
     AuroraBg? _aurora;
     bool _narrow;
@@ -206,6 +208,8 @@ public sealed partial class MainWindow : Window
                     if (Math.Abs(Fit - z) > 0.001) { fails++; L($"ERROR: el contenido debería estar al {z * 100:0} % y está al {Fit * 100:0} %"); } else L($"contenido al {Fit * 100:0} %");
                     await Snap(dir, $"{i++:00}_contenido_{z * 100:0}", L);
                 }
+                // pantalla muy ancha (contenido al 50 %): las tarjetas deben empezar junto al menú lateral, sin hueco a la izquierda
+                SetZoom(0.5); foreach (var k in new[] { "home", "orders", "settings" }) { LastRenderError = null; Root(PageFor(k)); await Task.Delay(1100); if (LastRenderError != null) { fails++; L($"ERROR (ancha) en {k}: {LastRenderError}"); } await Snap(dir, $"{i++:00}_ancha_{k}", L); }
                 SetZoom(null);
                 // medida exacta que cabe en la pantalla
                 ApplyWindowMode("900x600", false); await Task.Delay(1200);
@@ -314,7 +318,7 @@ public sealed partial class MainWindow : Window
         if (_side.Parent is ScrollViewer oldSv) oldSv.Content = null;
         if (_scroll.Parent is Panel oldP) oldP.Children.Remove(_scroll);
         _main.Children.Clear(); _main.ColumnDefinitions.Clear(); _side.Children.Clear(); _items.Clear();
-        _title = H("Inicio", 18); _syncText = Muted("Tu negocio, en orden", 11.5); _syncDot = SyncDotBtn();
+        _title = H("Inicio", 18); _titleRight = T("", 12.5, true, Mut, false); _syncText = Muted("Tu negocio, en orden", 11.5); _syncDot = SyncDotBtn();
         _main.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(240) });
         _main.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
@@ -351,7 +355,7 @@ public sealed partial class MainWindow : Window
         bar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         for (var i = 0; i < 3; i++) bar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var back = HeadBtn("", "Volver", -1, 0, () => Back()); back.Visibility = Visibility.Collapsed; _back = back;
-        var titleRow = Hs(10, back, V(0, Hs(8, _title, _syncDot), _syncText)); bar.Children.Add(titleRow);
+        var titleRow = Hs(10, back, V(0, Hs(8, _title, _titleRight, _syncDot), _syncText)); bar.Children.Add(titleRow);
         var attn = HeadBtn("", "Centro de atención", 0, 0xFFF43F5Eu, () => Go(new AttentionPage())); Grid.SetColumn(attn, 1); bar.Children.Add(attn);
         var bell = HeadBtn("", "Notificaciones", 1, 0xFF3B82F6u, () => Go(new NotifsPage())); Grid.SetColumn(bell, 2); bar.Children.Add(bell);
         // chip de perfil con menú
@@ -402,7 +406,7 @@ public sealed partial class MainWindow : Window
         body.Children.Add(header); Grid.SetRow(_scroll, 1); body.Children.Add(_scroll);
         Grid.SetColumn(body, 1); _main.Children.Add(body);
     }
-    Button? _back;
+    FrameworkElement? _back;
     Grid _avSlot = new(), _menuAvSlot = new();
     /// <summary>Avatar del chip de la barra: foto de perfil o la inicial.</summary>
     FrameworkElement ChipAvatar() => Media.ProfilePhoto.Length > 0 ? Media.ProfilePic(Services.Core.GreetName.IfEmpty("E"), 30, Alpha(Blue, .45)) :
@@ -413,7 +417,9 @@ public sealed partial class MainWindow : Window
         _avSlot.Children.Clear(); _avSlot.Children.Add(ChipAvatar());
         _menuAvSlot.Children.Clear(); _menuAvSlot.Children.Add(Media.ProfilePic(Services.Core.GreetName.IfEmpty("E"), 30));
     }
-    Button HeadBtn(string glyph, string desc, int badgeIdx, uint badgeColor, Action onClick)
+    /// <summary>Botón redondo de la barra superior. El aviso con el número va por fuera del botón (encima de su esquina):
+    /// dentro del botón quedaba recortado por el borde redondeado y solo se veía un trocito de color.</summary>
+    FrameworkElement HeadBtn(string glyph, string desc, int badgeIdx, uint badgeColor, Action onClick)
     {
         var g = new Grid { Width = 40, Height = 40 };
         g.Children.Add(new FontIcon { Glyph = glyph, FontSize = 16, Foreground = Text });
@@ -425,8 +431,11 @@ public sealed partial class MainWindow : Window
         {
             var t = T("", 10, true, Br(0xFFFFFFFFu), false); t.FontWeight = FontWeights.ExtraBold; t.HorizontalAlignment = HorizontalAlignment.Center; t.VerticalAlignment = VerticalAlignment.Center;
             var bd = new Border { MinWidth = 18, Height = 18, CornerRadius = new CornerRadius(9), Background = Br(badgeColor), BorderBrush = BadgeRing, BorderThickness = new Thickness(2), Padding = new Thickness(3, 0, 3, 0), Child = t,
-                HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, -6, -6, 0), Visibility = Visibility.Collapsed };
-            g.Children.Add(bd); _topBadges[badgeIdx] = (bd, t);
+                HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, -7, -7, 0), Visibility = Visibility.Collapsed, IsHitTestVisible = false };
+            _topBadges[badgeIdx] = (bd, t);
+            var wrap = new Grid { Width = 40, Height = 40, VerticalAlignment = VerticalAlignment.Center };
+            wrap.Children.Add(Fx.Bounce(b, .92)); wrap.Children.Add(bd);
+            return wrap;
         }
         return Fx.Bounce(b, .92);
     }
@@ -463,24 +472,25 @@ public sealed partial class MainWindow : Window
         if (!_unlocked) return;
         var p = Top; if (!force && !p.Live) { UpdateBadges(); return; }
         var off = _scroll.VerticalOffset;
-        var panel = new StackPanel { Spacing = 12, Padding = new Thickness(28, 10, 28, 48), MaxWidth = 1080, HorizontalAlignment = HorizontalAlignment.Stretch };
+        var panel = new StackPanel { Spacing = 12, Padding = new Thickness(28, 10, 28, 48) };
         try
         {
-            if (p.ShowTitle)
-            {
-                var big = H(p.Title, 24); big.CharacterSpacing = -10;
-                var left = V(2, big, p.Sub != null ? Muted(p.Sub, 13) : null);
-                // las fichas se presentan como en la referencia: título y botón "Cerrar" a la derecha
-                var close = p is OrderPage or EditOrderPage or ClientPage ? Btn("Cerrar", () => Back(), false, null, null, false) : null;
-                panel.Children.Add(p.Right != null || close != null ? Row(left, p.Right != null ? T(p.Right, 12.5, true, Mut, false) : null, close) : left);
-            }
+            // un solo título por pantalla: el de la barra de arriba (con su dato corto al lado y la flecha para volver);
+            // aquí solo queda la frase de ayuda de la pantalla, si tiene
+            if (p.ShowTitle && p.Sub != null) panel.Children.Add(Muted(p.Sub, 13));
             p.Build(panel);
         }
         catch (Exception e) { Services.Report(e); LastRenderError = e.GetType().Name + ": " + Services.Redact(e.Message); panel.Children.Clear(); panel.Children.Add(Card(T("No se pudo mostrar esta pantalla.", 15, true), Muted(Services.Redact(e.Message)), Btn("Ir a Inicio", () => Root(new HomePage()), true))); }
-        _scroll.Content = panel;
+        // pegado al menú lateral (alineado con el título de la barra de arriba) en lugar de centrado: en pantallas anchas
+        // no queda un hueco a la izquierda; ocupa el ancho disponible hasta 1400 y lo que sobra queda a la derecha
+        var holder = new Grid();
+        holder.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MaxWidth = 1400 });
+        holder.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        holder.Children.Add(panel);
+        _scroll.Content = holder;
         if (!top) { panel.UpdateLayout(); _scroll.ChangeView(null, off, null, true); }
         else { _scroll.ChangeView(null, 0, null, true); var i = 0; foreach (var c in panel.Children) Fx.EnterUp(c, i++); }
-        _title.Text = p.Title;
+        _title.Text = p.Title; _titleRight.Text = p.Right != null ? "· " + p.Right : "";
         if (_back != null) _back.Visibility = _stack.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
         foreach (var (k, it) in _items)
         {

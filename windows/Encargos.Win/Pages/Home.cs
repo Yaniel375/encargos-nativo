@@ -114,7 +114,7 @@ public sealed class HomePage : Screen
         var items = new List<UIElement>();
         if (cl.Count == 0 && od.Count == 0 && nt.Count == 0) items.Add(Muted($"Sin resultados para \"{_q}\".", 14));
         if (cl.Count > 0) items.Add(T("Clientes", 14, true, Vio));
-        foreach (var c in cl) items.Add(Click(T($"{c.Name} · {c.OrderList.Count} encargo(s)" + (c.Pending > 0.005 ? $" · debe {Money(c.Pending)}" : "")), () => S.Go(new ClientPage(c.Name))));
+        foreach (var c in cl) items.Add(Click(T($"{c.Name} · {Plural(c.OrderList.Count, "encargo", "encargos")}" + (c.Pending > 0.005 ? $" · debe {Money(c.Pending)}" : "")), () => S.Go(new ClientPage(c.Name))));
         if (od.Count > 0) items.Add(T("Encargos", 14, true, Blue));
         foreach (var x in od) items.Add(Click(T($"{x.Str("name")} · {Money(x["total"])} · {x.Str("status").IfEmpty("Pedido")}"), () => S.Go(new OrderPage(Js.Str(x["id"])))));
         if (nt.Count > 0) items.Add(T("Notas", 14, true, Amber));

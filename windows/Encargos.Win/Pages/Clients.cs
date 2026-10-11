@@ -10,7 +10,7 @@ public sealed class ClientsPage : Screen
 {
     public override string Title => "Clientes";
     public override string Nav => "clients";
-    public override string? Right => $"{Core.ActiveClients().Count} activos";
+    public override string? Right => Plural(Core.ActiveClients().Count, "activo", "activos");
     string _q = ""; int _limit = 30; StackPanel _list = new();
 
     public override void Build(StackPanel p)
@@ -97,7 +97,7 @@ public sealed class ClientPage : Screen
         var actions = Grid2(new List<UIElement?> { Btn("Nuevo encargo", () => S.Go(new NewOrderPage(c.Name, c.Phone)), true, null, "\uE710"),
             owes ? Btn("Cobrar", () => S.WhatsApp(c.Phone, Core.ReminderClient(c), c.Name), false, Green, "\uE8BD") : Btn("WhatsApp", () => S.WhatsApp(c.Phone, "", c.Name), false, Green, "\uE8BD"),
             Btn("Avisar llegada", () => S.WhatsApp(c.Phone, Core.ArrivalMessage(c), c.Name), false, null, "\uE7B8"),
-            !owes ? Btn("Agradecer compra", () => S.WhatsApp(c.Phone, Core.ThanksClient(c), c.Name), false, null, "\uEB51") : null }.Where(b => b != null).Cast<UIElement>().ToList(), 2);
+            !owes ? Btn("Agradecer compra", () => S.WhatsApp(c.Phone, Core.ThanksClient(c), c.Name), false, null, "\uEB51") : null }.Where(b => b != null).Cast<UIElement>().ToList(), 2, true);
         // ---- datos fijos ----
         var empty = inf.Str("address").Length == 0 && inf.Str("note").Length == 0;
         UIElement InfoLine(string glyph, string label, string value) => Lead(IconTile(glyph, 32), V(0, Muted(label, 11), T(value, 14)));
