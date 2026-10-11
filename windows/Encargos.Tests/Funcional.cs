@@ -76,6 +76,41 @@ static class Funcional
         var rv = app.RemoveOrder(nv["id"]); Check("Vista: al eliminarlo desaparece", app.FindClient("Vista Prueba") == null);
         app.UndoRemove(rv!); Check("Vista: deshacer lo devuelve", app.FindClient("Vista Prueba") != null);
 
+        // ---------- Artículos en venta (se guardan como notas con kind = "sale") — mismas cuentas que Funcional.kt ----------
+        var sapp = new EncargosApp(new MemoryStorage(), "PRUEBA");
+        Check("Venta: rechaza artículo sin nombre", !sapp.SaveSaleItem(null, " ", "", 10, 5, 1, new List<string>()).Ok);
+        var s1 = sapp.SaveSaleItem(null, "Tenis Prueba", "Talla 40", 25, 15, 4, new List<string> { "data:image/jpeg;base64,AAAA", "data:image/jpeg;base64,BBBB" }).GetOrThrow();
+        sapp.SaveSaleItem(null, "Gorra Prueba", "", 8, 3, 2, new List<string>()).GetOrThrow();
+        var sm = sapp.SaleSummaryOf();
+        Check("Venta: 2 artículos y 6 unidades", sm.Items == 2 && sm.Units == 6, $"{sm.Items} / {sm.Units}");
+        Check("Venta: valor en venta 4×25 + 2×8 = 116", Eq(sm.Value, 116), sm.Value);
+        Check("Venta: invertido 4×15 + 2×3 = 66", Eq(sm.Invested, 66), sm.Invested);
+        Check("Venta: ganancia posible 116 − 66 = 50", Eq(sm.Potential, 50), sm.Potential);
+        Check("Venta: guarda varias fotos", s1["photos"] is JArr ph && ph.Count == 2);
+        Check("Venta: la lista de notas no la cuenta como nota normal", sapp.Notes().Count(nn => !EncargosApp.IsSale(nn)) == 0);
+        sapp.SellSaleItem(s1.Str("id"), 2, 22).GetOrThrow();
+        sm = sapp.SaleSummaryOf();
+        Check("Venta: vender 2 deja 2 disponibles", N(sapp.SaleItems().First(it => it.Str("id") == s1.Str("id")), "stock") == 2);
+        Check("Venta: cobrado 2×22 = 44 y ganancia real 2×(22−15) = 14", Eq(sm.Income, 44) && Eq(sm.Realized, 14) && sm.SoldUnits == 2, $"{sm.Income} / {sm.Realized}");
+        Check("Venta: no deja vender más de lo que queda", !sapp.SellSaleItem(s1.Str("id"), 3, 25).Ok);
+        Check("Venta: deshacer devuelve las unidades", sapp.UndoLastSale(s1.Str("id")) && sapp.SaleSummaryOf().Units == 6 && Eq(sapp.SaleSummaryOf().Income, 0));
+        Check("Venta: no cuenta como dinero que te deben en notas", sapp.Notes().Sum(nn => Js.Num(nn["amount"])) == 0);
+        // peso y envío: compra 10 + 2 lb × $5/lb + 1 de otros = 21 por unidad
+        var s3 = sapp.SaveSaleItem(null, "Perfume Prueba", "", 40, 10, 3, new List<string>(), 2, "avion", 5, 1).GetOrThrow();
+        Check("Venta: costo por unidad = compra + peso × costo/lb + otros = 21", Eq(EncargosApp.SaleUnitCost(s3), 21), EncargosApp.SaleUnitCost(s3));
+        sm = sapp.SaleSummaryOf();
+        Check("Venta: inversión incluye el envío por peso (66 + 3×21 = 129)", Eq(sm.Invested, 129), sm.Invested);
+        Check("Venta: libras de lo que tienes = 3 × 2 = 6", Eq(sm.Lbs, 6), sm.Lbs);
+        sapp.SellSaleItem(s3.Str("id"), 1, 40).GetOrThrow();
+        sm = sapp.SaleSummaryOf();
+        Check("Venta: ganancia neta real = 40 − 21 = 19", Eq(sm.Realized, 19), sm.Realized);
+        Check("Venta: inversión total incluye lo vendido (66 + 2×21 + 21 = 129)", Eq(sm.TotalInvested, 129) && Eq(sm.Invested, 108), $"{sm.TotalInvested} / {sm.Invested}");
+        sapp.UndoLastSale(s3.Str("id"));
+        var sjson = new Backup(sapp).ExportJson(); var sapp2 = new EncargosApp(new MemoryStorage(), "PRUEBA"); var sbk = new Backup(sapp2);
+        if (sbk.Parse(sjson) is Backup.Parsed.Plain sp) sbk.ApplyImport(sp.O);
+        Check("Venta: los artículos viajan en el respaldo (con peso y costos)", sapp2.SaleItems().Count == 3 && Eq(sapp2.SaleSummaryOf().Value, 236) && Eq(sapp2.SaleSummaryOf().Invested, 129),
+            $"{sapp2.SaleItems().Count} / {sapp2.SaleSummaryOf().Value} / {sapp2.SaleSummaryOf().Invested}");
+
         var dir = Path.Combine(Path.GetTempPath(), "encargos-prueba-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(dir);
         try
         {

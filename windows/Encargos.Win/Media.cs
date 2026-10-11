@@ -97,13 +97,29 @@ public static class Media
 
     static async Task SetAsync(Image img, string dataUrl, int decode) { var s = await Load(dataUrl, decode); if (s != null) img.Source = s; }
 
-    /// <summary>Elegir una foto y comprimirla (JPEG, lado mayor maxDim) como data URL.</summary>
-    public static async Task<string?> PickPhoto(int maxDim = 1000, double quality = 0.6)
+    static FileOpenPicker PhotoPicker()
     {
         var p = new FileOpenPicker { SuggestedStartLocation = PickerLocationId.PicturesLibrary, ViewMode = PickerViewMode.Thumbnail };
         foreach (var e in new[] { ".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif", ".heic" }) p.FileTypeFilter.Add(e);
         WinRT.Interop.InitializeWithWindow.Initialize(p, MainWindow.I.Hwnd);
-        var f = await p.PickSingleFileAsync(); if (f == null) return null;
+        return p;
+    }
+    /// <summary>Elegir una foto y comprimirla (JPEG, lado mayor maxDim) como data URL.</summary>
+    public static async Task<string?> PickPhoto(int maxDim = 1000, double quality = 0.6)
+    {
+        var f = await PhotoPicker().PickSingleFileAsync(); if (f == null) return null;
+        return await Compress(f, maxDim, quality);
+    }
+    /// <summary>Elegir varias fotos a la vez (hasta max) y comprimirlas igual que PickPhoto.</summary>
+    public static async Task<List<string>> PickPhotos(int max = 10, int maxDim = 1000, double quality = 0.6)
+    {
+        var got = new List<string>();
+        var files = await PhotoPicker().PickMultipleFilesAsync(); if (files == null) return got;
+        foreach (var f in files.Take(max)) { var d = await Compress(f, maxDim, quality); if (d != null) got.Add(d); }
+        return got;
+    }
+    static async Task<string?> Compress(StorageFile f, int maxDim, double quality)
+    {
         try
         {
             using var src = await f.OpenReadAsync();

@@ -181,6 +181,32 @@ public sealed partial class MainWindow : Window
             // ficha del encargo como la del cliente y ventana de recibo con opciones
             if (r.Ok) { LastRenderError = null; Go(new OrderPage(Js.Str(x!["id"]))); await Task.Delay(1000); if (LastRenderError != null) { fails++; L($"ERROR en ficha nueva: {LastRenderError}"); } await Snap(dir, $"{i++:00}_ficha_como_cliente", L);
                 await SnapDialog(dir, $"{i++:00}_ventana_recibo", L, () => Media.Receipt(Services.Core.ById(x["id"])!)); }
+            // Notas → En venta: artículos de muestra (solo en la carpeta de prueba) y comprobación de las cuentas
+            {
+                var c = Services.Core;
+                var t1 = c.SaveSaleItem(null, "Tenis de prueba", "Talla 40 · blancos", 45, 15, 4, new List<string> { await TestPhoto(600, 600, "TENIS"), await TestPhoto(800, 600, "TENIS 2") }, 2.5, "avion", 5, 1);
+                c.SaveSaleItem(null, "Gorra de prueba", "", 8, 0, 2, new List<string>());
+                c.SaveSaleItem(null, "Bolso de prueba", "Cuero", 30, 18, 0, new List<string> { await TestPhoto(600, 800, "BOLSO") }, 1, "barco", 2.8, 0);
+                if (t1.Ok) c.SellSaleItem(t1.Value!.Str("id"), 1, 42);
+                // Tenis: costo 15 + 2.5 lb × 5 + 1 = 28.50; quedan 3 → valor 3×45 + Gorra 2×8 = 151; inversión 3×28.50 = 85.50; ganancia neta vendida 42 − 28.50 = 13.50
+                var sm = c.SaleSummaryOf();
+                L($"en venta: {sm.Items} artículos · valor {Js.Money(sm.Value)} · inversión {Js.Money(sm.Invested)} · ganancia neta {Js.Money(sm.Realized)} · cobrado {Js.Money(sm.Income)}");
+                if (Math.Abs(sm.Value - 151) > 0.005 || Math.Abs(sm.Invested - 85.5) > 0.005 || Math.Abs(sm.Realized - 13.5) > 0.005) { fails++; L("ERROR: las cuentas de En venta no cuadran (valor 151, inversión 85.50, ganancia 13.50)"); }
+                LastRenderError = null; Root(new NotesPage("sale")); await Task.Delay(1300); if (LastRenderError != null) { fails++; L($"ERROR en en_venta: {LastRenderError}"); }
+                await Snap(dir, $"{i++:00}_en_venta", L);
+                LastRenderError = null; Root(new NotesPage()); await Task.Delay(900); if (LastRenderError != null) { fails++; L($"ERROR en notas: {LastRenderError}"); }
+                await Snap(dir, $"{i++:00}_notas_sin_articulos", L);
+                if (t1.Ok)
+                {
+                    var id = t1.Value!.Str("id");
+                    LastRenderError = null; Go(new SaleEditorPage(id)); await Task.Delay(1300); if (LastRenderError != null) { fails++; L($"ERROR en articulo: {LastRenderError}"); }
+                    await Snap(dir, $"{i++:00}_articulo", L);
+                    await SnapDialog(dir, $"{i++:00}_ventana_vendi", L, () => SaleUi.Sell(c.SaleItems().First(n => n.Str("id") == id)));
+                    await SnapDialog(dir, $"{i++:00}_ventana_compartir", L, () => SaleUi.Share(c.SaleItems().First(n => n.Str("id") == id)));
+                }
+                LastRenderError = null; Go(new SaleEditorPage(null)); await Task.Delay(1000); if (LastRenderError != null) { fails++; L($"ERROR en articulo_nuevo: {LastRenderError}"); }
+                await Snap(dir, $"{i++:00}_articulo_nuevo", L);
+            }
             // anillos: fase 1 (llenándose) y fase 2 (lleno, con brillo recorriéndolo)
             Root(new HomePage()); await Task.Delay(800); await Snap(dir, $"{i++:00}_anillo_llenandose", L);
             await Task.Delay(3200); await Snap(dir, $"{i++:00}_anillo_lleno", L);
@@ -239,6 +265,7 @@ public sealed partial class MainWindow : Window
                 await Snap(dir, $"dia_{i++:00}_{k}", L);
             }
             if (r.Ok) { LastRenderError = null; Go(new OrderPage(Js.Str(x!["id"]))); await Task.Delay(900); await Snap(dir, $"dia_{i++:00}_ficha", L); }
+            LastRenderError = null; Root(new NotesPage("sale")); await Task.Delay(1000); if (LastRenderError != null) { fails++; L($"ERROR (día) en en_venta: {LastRenderError}"); } await Snap(dir, $"dia_{i++:00}_en_venta", L);
             ApplyTheme(false); await Task.Delay(300);
             L(fails == 0 ? "RESULTADO: OK" : $"RESULTADO: {fails} error(es)");
         }
