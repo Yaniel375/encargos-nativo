@@ -115,14 +115,17 @@ private fun SaleSummaryCard(sm: Encargos.SaleSummary) {
             Kpi("Artículos", "${sm.items}", modifier = Modifier.weight(1f)); Kpi("Unidades", "${sm.units}", modifier = Modifier.weight(1f))
             Kpi("Peso", "${Js.toFixed(sm.lbs, 2)} lb", modifier = Modifier.weight(1f))
         }
+        // rótulos cortos (caben en el recuadro) y la explicación debajo
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Kpi("Inversión en lo que tienes", money(sm.invested), sub = "compra + envío + otros", modifier = Modifier.weight(1f))
-            Kpi("Inversión total", money(sm.totalInvested), sub = "incluye lo vendido", modifier = Modifier.weight(1f))
+            Kpi("Inversión", money(sm.invested), sub = "en lo que tienes", modifier = Modifier.weight(1f))
+            Kpi("Inversión total", money(sm.totalInvested), sub = "con lo vendido", modifier = Modifier.weight(1f))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Kpi("Ganancia neta posible", money(sm.potential), if (sm.potential >= 0) C.green else C.rose, sub = "si vendes todo", modifier = Modifier.weight(1f))
-            Kpi("Cobrado", money(sm.income), C.green, sub = plural(sm.soldUnits, "vendida", "vendidas"), modifier = Modifier.weight(1f))
-            Kpi("Ganancia neta real", money(sm.realized), if (sm.realized >= 0) C.green else C.rose, sub = "de lo vendido", modifier = Modifier.weight(1f))
+            Kpi("Por ganar", money(sm.potential), if (sm.potential >= 0) C.green else C.rose, sub = "neto, si vendes todo", modifier = Modifier.weight(1f))
+            Kpi("Ganancia neta", money(sm.realized), if (sm.realized >= 0) C.green else C.rose, sub = "de lo vendido", modifier = Modifier.weight(1f))
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Kpi("Cobrado en ventas", money(sm.income), C.green, sub = plural(sm.soldUnits, "unidad vendida", "unidades vendidas"), modifier = Modifier.weight(1f))
         }
     }
 }
