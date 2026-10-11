@@ -243,7 +243,9 @@ def audit_sheet(title, slug, action=None, verify=None):
     hide_kb()
     if find("Cerrar", exact=True) is not None: tap("Cerrar", exact=True, wait=1.4)
     time.sleep(0.8)
-    check(f"{title}: vuelve a Ajustes", "Negocio y tarifas") or check(f"{title}: vuelve a Ajustes (abajo)", "Datos y seguridad")
+    # de vuelta en Ajustes: la ventana se cerró (no queda su botón "Cerrar") y la fila sigue a la vista
+    back = find("Cerrar", exact=True) is None and find(title, exact=True) is not None
+    say(f"  [{'OK' if back else 'FALLA'}] {title}: se cierra y vuelve a Ajustes")
     if verify:
         goto_row(verify[0]); check(f"{title}: el cambio se ve en Ajustes", verify[1])
 
@@ -331,16 +333,25 @@ if open_settings():
             adb("shell", "input", "swipe", "540", "1500", "540", "600", "450"); time.sleep(1.2); shot(f"aj_{slug}_abajo")
             if slug == "seguridad":
                 adb("shell", "input", "swipe", "540", "600", "540", "1500", "450"); time.sleep(1)
-                if goto_row("Bloqueo automático") and tap("Bloqueo automático", exact=True, wait=1.6):
+                # la fila (no el dato de la tarjeta de estado): se reconoce por su ayuda "Después de…"
+                for _ in range(4):
+                    nd = find("fuera de la app")
+                    if nd is not None and center(nd)[1] < 1500: break
+                    adb("shell", "input", "swipe", "540", "1400", "540", "900", "400"); time.sleep(1)
+                if tap("fuera de la app", wait=1.6):
                     shot("aj_bloqueo_automatico"); tap("5 min", exact=True, wait=1.0); tap("Cerrar", exact=True, wait=1.2)
                     check("Bloqueo automático: guarda 5 min", "Después de 5 min fuera de la app")
             if slug == "respaldo":
                 adb("shell", "input", "swipe", "540", "600", "540", "1500", "450"); time.sleep(1)
-                if tap("Cada semana", exact=True, wait=1.0): check("Respaldo automático: cambia a cada semana", "una vez por semana"); tap("Desactivado", exact=True, wait=1.0)
+                if tap("Desactivado", exact=True, wait=1.0): check("Respaldo automático: se desactiva", "No se guardarán copias automáticas"); shot("aj_respaldo_desactivado")
+                if tap("Cada día", exact=True, wait=1.0): check("Respaldo automático: vuelve a cada día", "una vez al día")
             hide_kb(); adb("shell", "input", "keyevent", "4"); time.sleep(1.6)
             check(f"{row}: vuelve a Ajustes con Atrás", "Datos y seguridad")
     # botón del perfil: Editar nombre del saludo
-    adb("shell", "input", "swipe", "540", "500", "540", "1600", "300"); time.sleep(0.6); adb("shell", "input", "swipe", "540", "500", "540", "1600", "300"); time.sleep(1)
+    for _ in range(8):
+        if find("Editar nombre del saludo", exact=True) is not None: break
+        adb("shell", "input", "swipe", "540", "500", "540", "1600", "300"); time.sleep(0.7)
+    time.sleep(0.8)
     if tap("Editar nombre del saludo", exact=True, wait=1.6): shot("aj_perfil_saludo"); tap("Cerrar", exact=True, wait=1.2)
 # Centro de notificaciones → Ajustes: debe ser la misma ventana que Ajustes → Notificaciones
 home()
@@ -371,7 +382,7 @@ relaunch(["--es", "escala", "1.0"])
 # ---------- RECIBOS: imagen del recibo de cada encargo de prueba (casos distintos, solo en la copia de prueba) ----------
 say("— recibos —")
 adb("shell", "am", "start", "-S", "-W", "-n", f"{PKG}/.MainActivity", "--es", "recibos", "si"); time.sleep(9)
-rdir = "/sdcard/Android/data/" + PKG + "/files/recibos"
+rdir = "/sdcard/Download/EncargosPrueba"
 names = [x.strip() for x in adb("shell", "ls", rdir).split() if x.strip().endswith(".png")]
 say(f"  recibos generados: {len(names)}")
 for nm in names:
