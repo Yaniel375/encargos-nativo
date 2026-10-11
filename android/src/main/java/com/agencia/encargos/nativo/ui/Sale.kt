@@ -168,7 +168,7 @@ private fun SellSheet(n: JObj, close: () -> Unit) {
             if (uc > 0.005) { Line("Costo (compra + envío + otros)", money(uc * qty)); Line("Ganancia neta de esta venta", money(gain), if (gain >= 0) C.green else C.rose, true) }
             Line("Quedarán", plural(st - qty, "unidad", "unidades"))
         }
-        Primary("Registrar venta", Modifier.fillMaxWidth(), Icons.Outlined.Sell, color = C.green) {
+        Primary("Guardar venta", Modifier.fillMaxWidth(), Icons.Outlined.Sell, color = C.green) {
             core.sellSaleItem(n.str("id"), qty, numIn(price)).onSuccess {
                 close(); ui.toast("✅ Venta registrada · ${money(total)}") { core.undoLastSale(n.str("id")) }
             }.onFailure { ui.toast(it.message ?: "") }

@@ -288,7 +288,7 @@ if tap("En venta", exact=True, wait=2):
     adb("shell", "input", "swipe", "540", "600", "540", "1600", "300"); time.sleep(1)
     if swipe_to("Vendí") and tap("Vendí", exact=True, wait=1.8):
         shot("venta_registrar")
-        if tap("Registrar venta", exact=True, wait=2): shot("venta_registrada")
+        if tap("Guardar venta", exact=True, wait=2): shot("venta_registrada"); say("  venta guardada (cobrado $50.00): " + ("sí" if find("$50.00") is not None else "NO"))
     if swipe_to("Tenis de prueba") and tap("Tenis de prueba", exact=True, wait=2):
         shot("venta_editor"); adb("shell", "input", "swipe", "540", "1500", "540", "600", "450"); time.sleep(1.2); shot("venta_editor_abajo")
         adb("shell", "input", "keyevent", "4"); time.sleep(1.2)
