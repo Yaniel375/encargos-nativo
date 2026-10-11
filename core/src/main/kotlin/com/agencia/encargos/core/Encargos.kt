@@ -393,25 +393,41 @@ class Encargos(val storage: Storage, val platform: String = "ANDROID") {
     /* ---------------- Artículos en venta ----------------
      * Se guardan junto a las notas (kind = "sale"): así entran en los respaldos y viajan cifrados por Telegram con sus fotos,
      * sin cambiar el formato de sincronización. Las apps que no conocen los artículos los ven como una nota normal (sin monto). */
+    /** items/available/units: artículos y unidades · value: lo que cobrarías por lo que tienes · invested: lo que te costó lo que tienes
+     *  (compra + envío por peso + otros) · potential: ganancia neta si vendes todo · lbs: libras de lo que tienes ·
+     *  soldUnits/income/realized: vendido, cobrado y ganancia neta real · totalInvested: todo lo invertido (lo que tienes + lo vendido). */
     data class SaleSummary(val items: Int, val available: Int, val units: Int, val value: Double, val invested: Double, val potential: Double,
-                           val soldUnits: Int, val income: Double, val realized: Double)
+                           val soldUnits: Int, val income: Double, val realized: Double, val lbs: Double = 0.0, val totalInvested: Double = 0.0)
     fun isSale(n: JObj) = n.str("kind") == "sale"
     fun saleItems(): List<JObj> = notes().filter { isSale(it) }.sortedByDescending { Js.num(it["updated"]) }
     fun saleSales(n: JObj): List<JObj> = (n["sales"] as? JArr)?.objs() ?: emptyList()
-    /** Cálculos de todos los artículos: lo que vale lo que tienes, lo invertido, lo que ganarías y lo ya vendido. */
+    /** Envío de una unidad: libras × costo por libra. */
+    fun saleShipCost(n: JObj): Double = Js.num(n["weight"]) * Js.num(n["lbRate"])
+    /** Lo que te cuesta una unidad puesta en tus manos: compra + envío por peso + otros gastos. */
+    fun saleUnitCost(n: JObj): Double = Js.num(n["cost"]) + saleShipCost(n) + Js.num(n["extra"])
+    /** Cálculos de todos los artículos: lo que vale lo que tienes, la inversión, la ganancia neta posible y la ya obtenida. */
     fun saleSummary(list: List<JObj> = saleItems()): SaleSummary {
-        var units = 0; var value = 0.0; var invested = 0.0; var soldU = 0; var income = 0.0; var realized = 0.0
-        list.forEach { n -> val st = Js.num(n["stock"]).toInt().coerceAtLeast(0); val pr = Js.num(n["price"]); val co = Js.num(n["cost"])
-            units += st; value += st * pr; invested += st * co
-            saleSales(n).forEach { v -> val q = Js.num(v["qty"]).toInt(); soldU += q; income += q * Js.num(v["price"]); realized += q * (Js.num(v["price"]) - Js.num(v["cost"])) } }
-        return SaleSummary(list.size, list.count { Js.num(it["stock"]) > 0 }, units, value, invested, value - invested, soldU, income, realized)
+        var units = 0; var value = 0.0; var invested = 0.0; var soldU = 0; var income = 0.0; var realized = 0.0; var lbs = 0.0; var soldCost = 0.0
+        list.forEach { n -> val st = Js.num(n["stock"]).toInt().coerceAtLeast(0); val pr = Js.num(n["price"]); val uc = saleUnitCost(n)
+            units += st; value += st * pr; invested += st * uc; lbs += st * Js.num(n["weight"])
+            saleSales(n).forEach { v -> val q = Js.num(v["qty"]).toInt(); soldU += q; income += q * Js.num(v["price"]); soldCost += q * Js.num(v["cost"]); realized += q * (Js.num(v["price"]) - Js.num(v["cost"])) } }
+        return SaleSummary(list.size, list.count { Js.num(it["stock"]) > 0 }, units, value, invested, value - invested, soldU, income, realized, lbs, invested + soldCost)
     }
-    private fun saleBody(name: String, desc: String, price: Double, stock: Int): String =
-        "Artículo en venta · ${Js.money(price)} · ${if (stock == 1) "1 disponible" else "$stock disponibles"}" + if (desc.isNotBlank()) "\n" + desc.trim() else ""
-    fun saveSaleItem(id: String?, name: String, desc: String, price: Double, cost: Double, stock: Int, photos: List<String>): Result<JObj> {
+    private fun saleBody(n: JObj): String {
+        val st = Js.num(n["stock"]).toInt(); val w = Js.num(n["weight"])
+        return "Artículo en venta · ${Js.money(n["price"])} · ${if (st == 1) "1 disponible" else "$st disponibles"}" +
+            (if (w > 0) " · ${Js.toFixed(w, 2)} lb c/u" else "") + " · costo ${Js.money(saleUnitCost(n))} c/u" +
+            (if (n.str("desc").isNotBlank()) "\n" + n.str("desc") else "")
+    }
+    /** Guarda un artículo. cost = precio de compra por unidad; weight = libras por unidad; lbRate = costo del envío por libra;
+     *  extra = otros gastos por unidad (aduana, empaque…). */
+    fun saveSaleItem(id: String?, name: String, desc: String, price: Double, cost: Double, stock: Int, photos: List<String>,
+                     weight: Double = 0.0, shipType: String = "avion", lbRate: Double = 0.0, extra: Double = 0.0): Result<JObj> {
         if (name.isBlank()) return Result.failure(Exception("Escribe el nombre del artículo."))
         if (price.isNaN() || price <= 0) return Result.failure(Exception("Escribe el precio de venta."))
-        if (cost.isNaN() || cost < 0) return Result.failure(Exception("Revisa lo que te costó."))
+        if (cost.isNaN() || cost < 0) return Result.failure(Exception("Revisa el precio de compra."))
+        if (weight.isNaN() || weight < 0 || lbRate.isNaN() || lbRate < 0) return Result.failure(Exception("Revisa el peso y el costo por libra."))
+        if (extra.isNaN() || extra < 0) return Result.failure(Exception("Revisa los otros gastos."))
         val st = stock.coerceAtLeast(0); val all = ls.arr("encargos_notes"); val now = System.currentTimeMillis().toDouble()
         val n: JObj
         if (!id.isNullOrEmpty()) {
@@ -421,10 +437,11 @@ class Encargos(val storage: Storage, val platform: String = "ANDROID") {
             all.add(n)
         }
         n["title"] = name.trim(); n["desc"] = desc.trim(); n["price"] = Js.toFixed2(price); n["cost"] = Js.toFixed2(cost); n["stock"] = st.toDouble()
-        n["photos"] = JArr(photos); n["updated"] = now; n["body"] = saleBody(name, desc, price, st); n.remove("amount")
+        n["weight"] = Js.toFixed(weight, 2).toDouble(); n["shipType"] = shipType.ifEmpty { "avion" }; n["lbRate"] = Js.toFixed2(lbRate); n["extra"] = Js.toFixed2(extra)
+        n["photos"] = JArr(photos); n["updated"] = now; n["body"] = saleBody(n); n.remove("amount")
         return if (putBusiness("encargos_notes", all)) Result.success(n) else Result.failure(Exception("No se pudo guardar el artículo (memoria llena)."))
     }
-    /** Registra una venta: baja las unidades disponibles y guarda precio y costo de ese momento (para la ganancia real). */
+    /** Registra una venta: baja las unidades y guarda el precio y el costo completo de ese momento (para la ganancia neta real). */
     fun sellSaleItem(id: String, qty: Int, price: Double): Result<JObj> {
         val all = ls.arr("encargos_notes")
         val n = all.firstOrNull { (it as? JObj)?.get("id") == id } as? JObj ?: return Result.failure(Exception("No existe el artículo"))
@@ -434,8 +451,8 @@ class Encargos(val storage: Storage, val platform: String = "ANDROID") {
         if (price.isNaN() || price < 0) return Result.failure(Exception("Revisa el precio de venta."))
         val now = System.currentTimeMillis().toDouble()
         val sales = (n["sales"] as? JArr) ?: JArr().also { n["sales"] = it }
-        sales.add(jobj("t" to now, "qty" to qty.toDouble(), "price" to Js.toFixed2(price), "cost" to Js.num(n["cost"])))
-        n["stock"] = (st - qty).toDouble(); n["updated"] = now; n["body"] = saleBody(n.str("title"), n.str("desc"), Js.num(n["price"]), st - qty)
+        sales.add(jobj("t" to now, "qty" to qty.toDouble(), "price" to Js.toFixed2(price), "cost" to Js.toFixed2(saleUnitCost(n))))
+        n["stock"] = (st - qty).toDouble(); n["updated"] = now; n["body"] = saleBody(n)
         return if (putBusiness("encargos_notes", all)) Result.success(n) else Result.failure(Exception("No se pudo guardar la venta."))
     }
     /** Deshace la última venta registrada del artículo (devuelve las unidades). */
@@ -444,8 +461,7 @@ class Encargos(val storage: Storage, val platform: String = "ANDROID") {
         val n = all.firstOrNull { (it as? JObj)?.get("id") == id } as? JObj ?: return false
         val sales = n["sales"] as? JArr ?: return false; if (sales.isEmpty()) return false
         val last = sales.removeAt(sales.size - 1) as? JObj ?: return false
-        val st = Js.num(n["stock"]).toInt() + Js.num(last["qty"]).toInt()
-        n["stock"] = st.toDouble(); n["updated"] = System.currentTimeMillis().toDouble(); n["body"] = saleBody(n.str("title"), n.str("desc"), Js.num(n["price"]), st)
+        n["stock"] = (Js.num(n["stock"]).toInt() + Js.num(last["qty"]).toInt()).toDouble(); n["updated"] = System.currentTimeMillis().toDouble(); n["body"] = saleBody(n)
         return putBusiness("encargos_notes", all)
     }
 

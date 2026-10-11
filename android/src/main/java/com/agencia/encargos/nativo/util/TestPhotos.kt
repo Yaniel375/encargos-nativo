@@ -35,8 +35,8 @@ object TestPhotos {
         core.addOrderPhoto(x["id"], v); core.addOrderPhoto(x["id"], h)
         core.saveNote(null, "Nota con fotos", "Fotos de prueba del recorrido", 0.0, "blue", true, listOf(v, h, s))
         // artículos en venta de prueba (solo en el emulador): uno con varias fotos, uno sin costo y uno agotado
-        core.saveSaleItem(null, "Tenis de prueba", "Talla 40 · nuevos", 25.0, 15.0, 4, listOf(s, v, h)).getOrNull()?.let { core.sellSaleItem(it.str("id"), 1, 24.0) }
+        core.saveSaleItem(null, "Tenis de prueba", "Talla 40 · nuevos", 45.0, 15.0, 4, listOf(s, v, h), 2.5, "avion", 5.0, 1.0).getOrNull()?.let { core.sellSaleItem(it.str("id"), 1, 42.0) }
         core.saveSaleItem(null, "Gorra de prueba", "", 8.0, 0.0, 2, listOf(make(700, 700, "GORRA")))
-        core.saveSaleItem(null, "Bolso de prueba", "Agotado", 30.0, 18.0, 0, emptyList())
+        core.saveSaleItem(null, "Bolso de prueba", "Agotado", 30.0, 18.0, 0, emptyList(), 1.0, "barco", 2.8, 0.0)
     }
 }
