@@ -834,29 +834,27 @@ fun noEmoji(t: String): String { var i = 0; while (i < t.length && !t[i].isLette
 /** Icono del tipo de envío (avión, barco u otro). */
 fun shipIcon(type: String?): ImageVector = when (type) { "barco" -> androidx.compose.material.icons.Icons.Outlined.DirectionsBoat; null, "", "avion" -> androidx.compose.material.icons.Icons.Outlined.Flight; else -> androidx.compose.material.icons.Icons.Outlined.LocalShipping }
 
-/** Menú desplegable de la app: vidrio, radio 16, borde fino y filas con icono en recuadro. */
+/** Menú desplegable de la app: mismo marco, ancho y filas que el menú del perfil (vidrio, radio 16, borde fino). */
 @Composable fun AppMenu(open: Boolean, close: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
     androidx.compose.material3.DropdownMenu(open, close, shape = RoundedCornerShape(16.dp), containerColor = W.menu,
-        modifier = Modifier.width(250.dp).border(1.dp, W.line2, RoundedCornerShape(16.dp))) {
-        Column(Modifier.padding(horizontal = 6.dp), verticalArrangement = Arrangement.spacedBy(2.dp), content = content)
+        modifier = Modifier.width(226.dp).border(1.dp, W.line2, RoundedCornerShape(16.dp))) {
+        Column(Modifier.padding(horizontal = 6.dp), verticalArrangement = Arrangement.spacedBy(5.dp), content = content)
     }
 }
-/** Fila de menú: icono en recuadro pequeño, texto y, si hace falta, una ayuda; las acciones destructivas en rojo. */
-@Composable fun MenuItem(icon: ImageVector, text: String, sub: String? = null, danger: Boolean = false, onClick: () -> Unit) {
-    val src = remember { MutableInteractionSource() }; val c = if (danger) C.rose else W.icon
-    Row(Modifier.fillMaxWidth().pressBounce(src, .97f).clip(RoundedCornerShape(12.dp)).clickable(src, null) { tapFeedback(); onClick() }.padding(horizontal = 6.dp, vertical = 7.dp),
+/** Fila de menú (idéntica a las del menú del perfil): icono en recuadro de 26, texto de 12,5 y misma altura en todas;
+ *  las acciones destructivas en rojo. */
+@Composable fun MenuItem(icon: ImageVector, text: String, @Suppress("UNUSED_PARAMETER") sub: String? = null, danger: Boolean = false, onClick: () -> Unit) {
+    val src = remember { MutableInteractionSource() }; val c = if (danger) C.rose else W.tx
+    Row(Modifier.fillMaxWidth().height(34.dp).pressBounce(src, .97f).clip(RoundedCornerShape(12.dp)).clickable(src, null) { tapFeedback(); onClick() }.padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically) {
-        val ts = RoundedCornerShape(9.dp)
-        Box(Modifier.size(30.dp).clip(ts).background(if (danger) C.rose.copy(alpha = .10f) else W.tile).border(1.dp, if (danger) C.rose.copy(alpha = .30f) else W.line, ts), contentAlignment = Alignment.Center) {
-            Icon(icon, null, Modifier.size(16.dp), tint = c) }
-        Spacer(Modifier.width(10.dp))
-        Column(Modifier.weight(1f)) {
-            Text(text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = if (danger) C.rose else MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (sub != null) Text(sub, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
+        val ts = RoundedCornerShape(8.dp)
+        Box(Modifier.size(26.dp).clip(ts).background(if (danger) C.rose.copy(alpha = .10f) else W.tile).border(1.dp, c.copy(alpha = .25f), ts), contentAlignment = Alignment.Center) {
+            Icon(icon, null, Modifier.size(14.dp), tint = c) }
+        Spacer(Modifier.width(9.dp))
+        Text(text, Modifier.weight(1f), fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold, color = c, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
-@Composable fun MenuSep() = Box(Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 3.dp).height(1.dp).background(W.line))
+@Composable fun MenuSep() = Box(Modifier.fillMaxWidth().padding(horizontal = 4.dp).height(1.dp).background(W.line))
 
 /** Opción de una ventana (Enviar como imagen, PDF…): fila con icono, título, detalle y flecha; la principal con icono azul. */
 @Composable fun OptionRow(icon: ImageVector, title: String, sub: String, primary: Boolean = false, onClick: () -> Unit) {

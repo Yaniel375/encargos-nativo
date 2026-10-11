@@ -289,18 +289,8 @@ private fun ProfileMenu(ui: Ui, app: EncargosApp, lock: () -> Unit, close: () ->
         Box(Modifier.fillMaxWidth().padding(horizontal = 4.dp).height(1.dp).background(W.line))
         // modo día / noche y bloquear: filas compactas
         val day = W.day
-        @Composable fun MenuRow(icon: ImageVector, text: String, color: Color, tint: Color, bg: Color, f: () -> Unit) {
-            val src = remember { MutableInteractionSource() }
-            Row(Modifier.fillMaxWidth().pressBounce(src, .97f).clip(RoundedCornerShape(12.dp)).clickable(src, null) { act(f) }.padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                val ts = RoundedCornerShape(8.dp)
-                Box(Modifier.size(26.dp).clip(ts).background(bg).border(1.dp, tint.copy(alpha = .25f), ts), contentAlignment = Alignment.Center) { Icon(icon, null, Modifier.size(14.dp), tint = tint) }
-                Spacer(Modifier.width(9.dp))
-                Text(text, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp, color = color)
-            }
-        }
-        MenuRow(if (day) Icons.Outlined.DarkMode else Icons.Outlined.LightMode, if (day) "Modo noche" else "Modo día", W.tx, W.tx, W.tile) {
-            core.ls.set("encargos_aurora_mode", if (day) "night" else "day"); ui.act.recreate() }
-        MenuRow(Icons.Outlined.Lock, "Bloquear app", C.rose, C.rose, C.rose.copy(alpha = .10f)) { lock() }
+        MenuItem(if (day) Icons.Outlined.DarkMode else Icons.Outlined.LightMode, if (day) "Modo noche" else "Modo día") { act { core.ls.set("encargos_aurora_mode", if (day) "night" else "day"); ui.act.recreate() } }
+        MenuItem(Icons.Outlined.Lock, "Bloquear app", danger = true) { act { lock() } }
     }
 }
 
