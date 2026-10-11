@@ -242,8 +242,7 @@ public sealed class SettingsPage : Screen
                 NavRow("\uE767", "Sonido", Sound.On() ? "Sonido al entrar" : "Sin sonido", null, null, Switch(Sound.On(), v => { Sound.Set(v); if (v) Sound.Login(); }))));
         var right = V(14,
             Group("Apariencia",
-                NavRow("\uE740", "Adaptar a la pantalla", MainWindow.FitAuto() ? $"Automático: todo crece o se reduce según la resolución y el tamaño de la ventana · ahora {Math.Round(S.Fit * 100)} %" : "Desactivado: tamaño normal en cualquier ventana", null, null,
-                    Switch(MainWindow.FitAuto(), v => { Core.Ls.Set("encargos_win_fit", v ? "auto" : "off"); S.RefreshFit(); FlashTitle = "Adaptar a la pantalla"; Redraw(); })),
+                NavRow("\uE7F4", "Pantalla y resolución", S.DisplaySummary(), () => S.DisplaySheet(() => { FlashTitle = "Pantalla y resolución"; Redraw(); })),
                 NavRow("\uE8D4", "Nombre del saludo", $"\"¡Hola, {Core.GreetName.IfEmpty("…")}!\"", Greet),
                 NavRow("\uE708", "Modo noche", !day ? "Encendido · fondo oscuro" : "Apagado · colores claros", null, null, Switch(!day, v =>
                 {

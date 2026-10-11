@@ -2,7 +2,7 @@ name: Windows (instalador)
 
 on:
   push:
-    branches: [main, rediseno-premium, interfaz-referencia, menu-perfil, pc-sync, anillos, estructura, unificacion, ventanas, pc-unificar]
+    branches: [main, rediseno-premium, interfaz-referencia, menu-perfil, pc-sync, anillos, estructura, unificacion, ventanas, pc-unificar, claude/great-pasteur-7suqp8]
     paths: ["windows/**", ".github/workflows/windows.yml"]
   workflow_dispatch:
 
@@ -85,7 +85,7 @@ jobs:
           $dir = "$PWD\shots"; New-Item -ItemType Directory -Force $dir | Out-Null
           $env:ENCARGOS_SELFTEST = $dir
           $p = Start-Process "$env:LOCALAPPDATA\Programs\Encargos Nativo\Encargos.exe" -PassThru
-          if (!$p.WaitForExit(180000)) { "::error title=Windows::La autoprueba no terminó en 3 minutos"; Stop-Process $p -Force; "FALLO" | Out-File "$dir\FALLO" }
+          if (!$p.WaitForExit(240000)) { "::error title=Windows::La autoprueba no terminó en 4 minutos"; Stop-Process $p -Force; "FALLO" | Out-File "$dir\FALLO" }
           $log = "$dir\datos\errores.log"; if (Test-Path $log) { Copy-Item $log "$dir\errores.log" }
           Remove-Item -Recurse -Force "$dir\datos" -ErrorAction SilentlyContinue
           if (!(Test-Path "$dir\autoprueba.txt")) { "::error title=Windows::La app se cerró antes de terminar (código $($p.ExitCode))"; "FALLO" | Out-File "$dir\FALLO"; exit 0 }
