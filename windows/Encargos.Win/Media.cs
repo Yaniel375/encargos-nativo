@@ -208,7 +208,7 @@ public static class Media
         var bar = new Grid { ColumnSpacing = 9 };
         bar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); bar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }); bar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         bar.Children.Add(new Border { CornerRadius = new CornerRadius(10), Child = logo, VerticalAlignment = VerticalAlignment.Center });
-        var bizT = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Children = { Tx(biz, 17, tx, "xb", true), Tx("Tu negocio, en orden", 11, mut) } }; Grid.SetColumn(bizT, 1); bar.Children.Add(bizT);
+        var bizT = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Children = { Tx(biz, 17, tx, "xb", true) } }; Grid.SetColumn(bizT, 1); bar.Children.Add(bizT);
         var chip = new Border { CornerRadius = new CornerRadius(14), Background = A(blue, .14), BorderBrush = A(blue, .38), BorderThickness = new Thickness(1), Padding = new Thickness(12, 4, 12, 5), VerticalAlignment = VerticalAlignment.Center, Child = Tx("Recibo", 12, blueInk, "b") };
         Grid.SetColumn(chip, 2); bar.Children.Add(chip);
         var barB = new Border { Background = C(0xC7090D18u), BorderBrush = line, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(20), Padding = new Thickness(14, 12, 14, 12), Child = bar };
@@ -272,7 +272,7 @@ public static class Media
         var pag = Section("Pagos", prow);
         var foot = new StackPanel { Spacing = 4, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 4, 0, 4), Children = {
             new Border { Width = 22, Height = 3, CornerRadius = new CornerRadius(2), Background = blue, HorizontalAlignment = HorizontalAlignment.Center },
-            Tx("Gracias por tu confianza", 13, mut, "s"), Tx(biz + "  •  Tu negocio, en orden", 11, C(0xFF7C8BA5u)) } };
+            Tx("Gracias por tu confianza", 13, mut, "s"), Tx(biz, 11, C(0xFF7C8BA5u)) } };
         foreach (var ch in foot.Children) ((FrameworkElement)ch).HorizontalAlignment = HorizontalAlignment.Center;
         var code = x.Str("accessCode"); if (code.Length > 0) foot.Children.Add(new TextBlock { Text = "Código de cliente: " + code, FontFamily = Font, FontSize = 11, Foreground = C(0xFF7C8BA5u), HorizontalAlignment = HorizontalAlignment.Center });
 

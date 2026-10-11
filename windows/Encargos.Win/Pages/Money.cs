@@ -110,7 +110,7 @@ public sealed class PendingPage : Screen
                 Row(Chips(Chip(x.Str("status").IfEmpty("Pedido"), Status(x.Str("status"))), Chip(Core.Attention.Ago(x["date"]), n >= 30 ? Rose : Mut)), Muted($"Total {Money(t)} · Pagó {Money(pdd)}", 12)),
                 Progress(t > 0 ? pdd / t : 0),
                 Cols(CardBtn("Cobrar", "\uE8BD", () => S.WhatsApp(x.Str("phone"), Core.ReminderOrder(x), x.Str("name")), Green), CardBtn("Ficha", "\uE8A5", () => S.Go(new OrderPage(id))),
-                    CardBtn("Registrar pago", "\uE70F", () => S.Go(new EditOrderPage(id))))));
+                    CardBtn("Abonar", "\uE70F", () => S.Go(new EditOrderPage(id))))));
         }
         if (cards.Count > 0) p.Children.Add(Grid2(cards, S.ContentWidth < 760 ? 1 : 2));
         p.Children.Add(DotHeader("Fondos a favor", Green, Money(pd.FundsTotal)));

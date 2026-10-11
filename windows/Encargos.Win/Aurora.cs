@@ -208,6 +208,23 @@ public static class Fx
         var list = new List<Timeline> { Anim(c, "TranslateY", fromY, 0, ms, delayMs) }; if (fade) list.Add(Anim(e, "Opacity", 0, 1, ms, delayMs));
         Run(() => { c.TranslateY = 0; if (fade) e.Opacity = 1; }, list.ToArray());
     }
+    /// <summary>Barra lateral: la sección elegida se ilumina (fondo que aparece desde la izquierda, barrita que crece,
+    /// icono que da un pequeño salto y texto que se desliza).</summary>
+    public static void NavIn(Border hl, Border bar, UIElement icon, UIElement text)
+    {
+        var hc = CT(hl); hl.RenderTransformOrigin = new Point(0, .5); var bc = CT(bar); var ic = CT(icon); var tc = CT(text);
+        var back = new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = .5 };
+        Run(() => { hl.Opacity = 1; hc.ScaleX = 1; bar.Opacity = 1; bc.ScaleY = 1; ic.ScaleX = ic.ScaleY = 1; tc.TranslateX = 0; },
+            Anim(hl, "Opacity", 0, 1, 260, 0), Anim(hc, "ScaleX", .9, 1, 320, 0),
+            Anim(bar, "Opacity", 0, 1, 200, 60), Anim(bc, "ScaleY", 0, 1, 360, 60, back),
+            Anim(ic, "ScaleX", .7, 1, 420, 40, back), Anim(ic, "ScaleY", .7, 1, 420, 40, back),
+            Anim(tc, "TranslateX", -6, 0, 360, 40));
+    }
+    /// <summary>La sección que deja de estar elegida se apaga suavemente.</summary>
+    public static void NavOut(Border hl, Border bar)
+    {
+        Run(() => { hl.Opacity = 0; bar.Opacity = 0; }, Anim(hl, "Opacity", hl.Opacity, 0, 220, 0), Anim(bar, "Opacity", bar.Opacity, 0, 160, 0));
+    }
     public static void Shake(UIElement e)
     {
         var c = CT(e); var k = new DoubleAnimationUsingKeyFrames();

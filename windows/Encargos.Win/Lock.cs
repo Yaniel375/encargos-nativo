@@ -58,8 +58,7 @@ public sealed class LockView : Grid
         var logo = new Border { CornerRadius = new CornerRadius(15), BorderBrush = Br(0x5A60A5FAu), BorderThickness = new Thickness(1), Child = img, HorizontalAlignment = HorizontalAlignment.Center };
         _box.Children.Add(logo);
         var t = Big("Encargos", Br(0xFFE8EEF8u), 24); t.HorizontalAlignment = HorizontalAlignment.Center; t.Margin = new Thickness(0, 10, 0, 0);
-        var sub = Muted("Tu negocio, en orden.", 13); sub.HorizontalAlignment = HorizontalAlignment.Center;
-        var brand = V(0, t, sub); _box.Children.Add(brand);
+        var brand = V(0, t); _box.Children.Add(brand);
         var chipC = _granted ? GreenB : BlueInk;
         var chip = new Border { HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 12, 0, 14), CornerRadius = new CornerRadius(99), Background = Alpha(chipC, .10), BorderBrush = Alpha(chipC, .35), BorderThickness = new Thickness(1), Padding = new Thickness(12, 4, 12, 5),
             Child = Hs(6, new FontIcon { Glyph = _granted ? "\uE73E" : "\uE72E", FontSize = 11, Foreground = chipC }, T(_granted ? "Acceso autorizado" : "Acceso seguro", 12, true, chipC, false)) };
