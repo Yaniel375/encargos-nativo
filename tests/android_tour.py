@@ -349,8 +349,10 @@ if open_settings():
             hide_kb(); adb("shell", "input", "keyevent", "4"); time.sleep(1.6)
             check(f"{row}: vuelve a Ajustes con Atrás", "Datos y seguridad")
     # botón del perfil: Editar nombre del saludo
+    # sube hasta que el botón quede a la vista, por debajo de la barra superior (que ahora es opaca: lo que queda detrás no se puede tocar)
     for _ in range(8):
-        if find("Editar nombre del saludo", exact=True) is not None: break
+        nd = find("Editar nombre del saludo", exact=True)
+        if nd is not None and center(nd)[1] > 330: break
         adb("shell", "input", "swipe", "540", "500", "540", "1600", "300"); time.sleep(0.7)
     time.sleep(0.8)
     if tap("Editar nombre del saludo", exact=True, wait=1.6): shot("aj_perfil_saludo"); tap("Cerrar", exact=True, wait=1.2)
