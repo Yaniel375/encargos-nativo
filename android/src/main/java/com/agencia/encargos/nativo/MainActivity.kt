@@ -24,6 +24,7 @@ class MainActivity : FragmentActivity() {
         com.agencia.encargos.nativo.ui.Motion.refresh()
         enableEdgeToEdge(androidx.activity.SystemBarStyle.dark(android.graphics.Color.TRANSPARENT), androidx.activity.SystemBarStyle.dark(android.graphics.Color.TRANSPARENT))
         applyPrivacy()
+        com.agencia.encargos.nativo.util.Receipt.ctx = applicationContext   // tipografía, logo y fondo del recibo
         // "Pedir contraseña al abrir" desactivado y con acceso ya creado: entra directo
         if (!app.unlocked && app.security.hasCredentials() && !app.security.lockCfg().onOpen) app.unlocked = true
         // Solo en la copia de PRUEBA automática: permite elegir el tema al abrir (recorrido día/noche)
