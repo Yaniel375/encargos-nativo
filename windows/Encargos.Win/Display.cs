@@ -168,6 +168,37 @@ public sealed partial class MainWindow
         ApplyWindowMode(mode, false);
     }
 
+    /* ---------------- autoprueba de los atajos (solo con ENCARGOS_SELFTEST) ---------------- */
+    [DllImport("user32.dll")] static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
+    [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr h);
+    static async Task Press(params byte[] keys)
+    {
+        foreach (var k in keys) keybd_event(k, 0, 0, UIntPtr.Zero);
+        for (var i = keys.Length - 1; i >= 0; i--) keybd_event(keys[i], 0, 2, UIntPtr.Zero);
+        await Task.Delay(900);
+    }
+    /// <summary>Pulsa F11, Esc, Ctrl + y Ctrl 0 como lo haría una persona. Primero sin preparar el foco (como al usar la app)
+    /// y, si no responde, con el foco en el menú lateral para distinguir un fallo de la app de un fallo del equipo de prueba.</summary>
+    async Task KeyTest(Action<string> L, Action fail)
+    {
+        SetZoom(null); Root(new HomePage()); Activate(); SetForegroundWindow(Hwnd); await Task.Delay(1200);
+        async Task<bool> Round(string label)
+        {
+            var ok = true;
+            await Press(0x7A); var full = IsFullScreen; L($"{label} F11 → pantalla completa: {(full ? "sí" : "no")}"); ok &= full;
+            await Press(0x1B); var outF = !IsFullScreen; L($"{label} Esc → sale de pantalla completa: {(outF ? "sí" : "no")}"); ok &= outF;
+            if (IsFullScreen) ExitFull();
+            var before = Fit; await Press(0x11, 0xBB); var up = Fit > before + .001 && !FitAuto(); L($"{label} Ctrl + → contenido {before * 100:0} % → {Fit * 100:0} %"); ok &= up;
+            await Press(0x11, 0x30); var one = Math.Abs(Fit - 1) < .001; L($"{label} Ctrl 0 → contenido {Fit * 100:0} %"); ok &= one;
+            SetZoom(null); await Task.Delay(400);
+            return ok;
+        }
+        if (await Round("teclado:")) { L("atajos de teclado: OK"); return; }
+        if (_items.Count > 0) { _items.Values.First().B.Focus(FocusState.Programmatic); await Task.Delay(500); }
+        if (await Round("teclado (con foco):")) { fail(); L("ERROR: los atajos solo responden si un botón tiene el foco"); }
+        else L("(aviso) el equipo de prueba no acepta teclas simuladas; los atajos no se pudieron comprobar aquí");
+    }
+
     /* ---------------- ventana de Ajustes: Pantalla y resolución ---------------- */
     /// <summary>Resumen para la fila de Ajustes.</summary>
     public string DisplaySummary()
@@ -189,8 +220,8 @@ public sealed partial class MainWindow
             UIElement Pick(string key, string glyph, string title, string sub) => PickRow(glyph, title, sub, mode == key, () => { ApplyWindowMode(key); Later(); });
             var modes = SettingsGroup(
                 Pick("", "", "Recordar el último tamaño", "Se abre como la cerraste"),
-                Pick("max", "", "Maximizada", "Ocupa la pantalla, con la barra de tareas visible"),
-                Pick("full", "", "Pantalla completa", "Sin bordes ni barra de tareas · F11 o Esc para salir"));
+                Pick("max", "\uE922", "Maximizada", "Ocupa la pantalla, con la barra de tareas visible"),
+                Pick("full", "\uE740", "Pantalla completa", "Sin bordes ni barra de tareas · F11 o Esc para salir"));
             var fits = Presets.Where(p => sw == 0 || (p.W <= sw && p.H <= sh)).Select(p => ($"{p.W}x{p.H}", $"{p.W} × {p.H}"));
             var presets = Choice(fits, mode, k => { ApplyWindowMode(k); Later(); });
             if (cw.Length == 0 && TryParseSize(mode, out var mw, out var mh)) { cw = mw.ToString(); ch = mh.ToString(); }
