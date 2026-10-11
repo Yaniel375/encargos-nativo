@@ -238,6 +238,6 @@ public static class Media
             var path = Path.Combine(Path.GetTempPath(), FileBase(x) + ".png"); await File.WriteAllBytesAsync(path, png);
             await Windows.System.Launcher.LaunchFileAsync(await StorageFile.GetFileFromPathAsync(path));
         });
-        await MainWindow.I.Dialog("Enviar recibo", V(12, view, OptionGroup(copy, save, print)), "Cerrar", null, null, glyph: "\uE8A5", sub: $"{x.Str("name")} · total {Money(x["total"])}");
+        await MainWindow.I.Dialog("Enviar recibo", V(12, OptionGroup(copy, save, print), view), "Cerrar", null, null, glyph: "\uE8A5", sub: $"{x.Str("name")} · total {Money(x["total"])}");
     }
 }
