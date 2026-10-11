@@ -76,7 +76,7 @@ public sealed class PaymentsPage : Screen
         }
         if (list.Count > _shown) rows.Add(Btn($"Ver más pagos ({list.Count - _shown})", () => { _shown += 25; Redraw(); }));
         if (list.Count > 0) rows.Add(Muted("Pulsa un pago para corregirlo o eliminarlo.", 11));
-        p.Children.Add(IconCard("\uE8C7", "Movimientos recientes", Muted($"{list.Count} pago(s)"), rows.ToArray()));
+        p.Children.Add(IconCard("\uE8C7", "Movimientos recientes", Muted(Plural(list.Count, "pago", "pagos")), rows.ToArray()));
     }
 }
 
@@ -93,7 +93,7 @@ public sealed class PendingPage : Screen
         var pd = Services.Stats.Pending(); int Days(JObj x) => Core.Attention.DaysSince(x["date"]);
         var shown = pd.Pend.Where(x => _age == 0 || Days(x) >= _age).ToList();
         var nCli = pd.Pend.Select(x => x.Str("name").Trim().ToLowerInvariant()).Distinct().Count();
-        p.Children.Add(Card(Cols(V(2, Muted("Por cobrar", 13), Big(Money(pd.PendTotal), Rose, 28), Muted($"{pd.Pend.Count} pedido{(pd.Pend.Count == 1 ? "" : "s")} · {nCli} cliente(s)")),
+        p.Children.Add(Card(Cols(V(2, Muted("Por cobrar", 13), Big(Money(pd.PendTotal), Rose, 28), Muted($"{pd.Pend.Count} pedido{(pd.Pend.Count == 1 ? "" : "s")} · {Plural(nCli, "cliente", "clientes")}")),
                 V(2, Muted("Fondos a favor", 13), Big(Money(pd.FundsTotal), Green, 28), Muted($"{pd.Funds.Count} pedido{(pd.Funds.Count == 1 ? "" : "s")}"))),
             Progress(pd.PendTotal + pd.FundsTotal > 0 ? pd.PendTotal / (pd.PendTotal + pd.FundsTotal) : 0, Rose)));
         p.Children.Add(DotHeader("Saldo pendiente", Rose, Money(pd.PendTotal)));
@@ -147,7 +147,7 @@ public sealed class StatsPage : Screen
             return T(txt, 11, false, d == null ? BlueInk : Math.Abs(d.Value) < 0.5 ? Mut : d > 0 ? Green : Rose);
         }
         UIElement KpiD(string label, string value, Microsoft.UI.Xaml.Media.Brush? color, double n, double o) =>
-            V(4, Kpi(label, value, color), Delta(n, o));
+            Kpi(label, value, color).Also(k => ((StackPanel)k.Child).Children.Add(Delta(n, o)));
         p.Children.Add(Choice(new[] { ("Week", "Semana"), ("Month", "Mes"), ("Year", "Año") }, _period.ToString(), k => { _period = Enum.Parse<Stats.Period>(k); _ref = Js.Today(); Redraw(); }));
         var prevB = Btn("‹", () => { _ref = st.Shift(_period, _ref, -1); Redraw(); }, false, null, null, false);
         var nextB = Btn("›", () => { _ref = st.Shift(_period, _ref, 1); Redraw(); }, false, null, null, false); nextB.IsEnabled = !isNow;

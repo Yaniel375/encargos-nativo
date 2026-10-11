@@ -96,7 +96,7 @@ public sealed class OrdersPage : Screen
 {
     public override string Title => "Encargos";
     public override string Nav => "orders";
-    public override string? Right => $"{Core.ActiveOrders().Count} activos";
+    public override string? Right => Plural(Core.ActiveOrders().Count, "activo", "activos");
     string _q = "", _f = ""; int _limit = 30; StackPanel _list = new();
 
     public override void Build(StackPanel p)
@@ -106,7 +106,7 @@ public sealed class OrdersPage : Screen
         p.Children.Add(Search(_q, "Buscar por cliente, teléfono, código o estado", q => { _q = q; _limit = 30; Fill(); }));
         p.Children.Add(Choice(new[] { ("", "Todos") }.Concat(EncargosApp.STATES.Select(s => (s, s))), _f, k => { _f = k; _limit = 30; Redraw(); }));
         p.Children.Add(TopTiles(("Total", Money(ad.Sum(x => Js.Num(x["total"]))), null), ("Cobrado", Money(ad.Sum(x => Js.Num(x["paid"]))), Green), ("Pendiente", Money(ad.Sum(x => Math.Max(0, Js.Num(x["balance"])))), Rose)));
-        if (ad.Count > 0) { var tip = Muted("Consejo: pulsa el estado de un encargo para pasarlo al siguiente.", 12.5); tip.HorizontalAlignment = HorizontalAlignment.Center; p.Children.Add(tip); }
+        if (ad.Count > 0) { p.Children.Add(Hs(8, new FontIcon { Glyph = "\uEA80", FontSize = 13, Foreground = Mut }, Muted("Consejo: pulsa el estado de un encargo para pasarlo al siguiente.", 12.5))); }
         p.Children.Add(_list);
         p.Children.Add(CompletedLink(Core.CompletedClients().Count, () => S.Go(new CompletedPage())));
         Fill();
@@ -162,7 +162,7 @@ public sealed class OrderPage : Screen
         // ---- acciones (mismo orden y estilo que en la ficha del cliente) ----
         var actions = Grid2(new List<UIElement> { Btn("Editar", () => S.Go(new EditOrderPage(_id)), true, null, "\uE70F"), Btn("WhatsApp", () => S.WhatsApp(x.Str("phone"), "", x.Str("name")), false, Green, "\uE8BD"),
             Btn("Enviar recibo", () => Media.Receipt(x), false, null, "\uE724"),
-            b > 0.005 ? Btn("Recordar pago", () => S.WhatsApp(x.Str("phone"), Core.ReminderOrder(x), x.Str("name")), false, Rose, "\uEA8F") : Btn("Agradecer", () => S.WhatsApp(x.Str("phone"), Core.ThanksOrder(x), x.Str("name")), false, null, "\uEB51") }, 2);
+            b > 0.005 ? Btn("Recordar pago", () => S.WhatsApp(x.Str("phone"), Core.ReminderOrder(x), x.Str("name")), false, Rose, "\uEA8F") : Btn("Agradecer", () => S.WhatsApp(x.Str("phone"), Core.ThanksOrder(x), x.Str("name")), false, null, "\uEB51") }, 2, true);
         UIElement estado = st == "Cancelado" ? Card(Muted("Este encargo está cancelado.", 14))
             : IconCard("\uE804", "Estado del pedido", nx != null ? Link($"Pasar a {nx} ›", () => OrderActions.Advance(x)) : null, Stepper(EncargosApp.FLOW, st));
         p.Children.Add(S.ContentWidth < 760 ? V(12, head, actions, estado) : Cols(V(12, head), V(12, actions, estado)));
@@ -277,7 +277,7 @@ public sealed class CompletedPage : Screen
         if (all.Count == 0) _list.Children.Add(Empty("Aún no hay clientes con todos sus pagos completados."));
         foreach (var c in all)
         {
-            var items = new List<UIElement> { Lead(Avatar(c.Name, Green), V(0, T(c.Name, 15, true), Muted($"{c.Phone.IfEmpty("Sin teléfono")} · {c.OrderList.Count} encargo(s)"))) };
+            var items = new List<UIElement> { Lead(Avatar(c.Name, Green), V(0, T(c.Name, 15, true), Muted($"{c.Phone.IfEmpty("Sin teléfono")} · {Plural(c.OrderList.Count, "encargo", "encargos")}"))) };
             foreach (var o in c.OrderList.OrderByDescending(o => Js.ParseDate(o["date"]))) items.Add(Line($"{Js.Fmt(o["date"])} · {o.Str("status")}", Money(o["total"])));
             items.Add(Line("Libras", Lb(c.Pounds))); items.Add(Line("Total cobrado", Money(c.Paid), Green, true)); items.Add(T("✓ Todos los pagos completados", 14, true, Green));
             var name = c.Name; _list.Children.Add(ClickCard(() => S.Go(new ClientPage(name)), items.ToArray()));

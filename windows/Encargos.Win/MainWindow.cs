@@ -57,6 +57,8 @@ public sealed partial class MainWindow : Window
     readonly StackPanel _side = new() { Spacing = 4 };
     readonly ScrollViewer _scroll = new() { HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
     TextBlock _title = H("Inicio", 18);
+    /// <summary>Dato corto de la pantalla junto al título de la barra (por ejemplo "3 activos").</summary>
+    TextBlock _titleRight = Muted("", 12.5);
     TextBlock _syncText = Muted("", 11.5);
     AuroraBg? _aurora;
     bool _narrow;
@@ -316,7 +318,7 @@ public sealed partial class MainWindow : Window
         if (_side.Parent is ScrollViewer oldSv) oldSv.Content = null;
         if (_scroll.Parent is Panel oldP) oldP.Children.Remove(_scroll);
         _main.Children.Clear(); _main.ColumnDefinitions.Clear(); _side.Children.Clear(); _items.Clear();
-        _title = H("Inicio", 18); _syncText = Muted("Tu negocio, en orden", 11.5); _syncDot = SyncDotBtn();
+        _title = H("Inicio", 18); _titleRight = T("", 12.5, true, Mut, false); _syncText = Muted("Tu negocio, en orden", 11.5); _syncDot = SyncDotBtn();
         _main.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(240) });
         _main.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
@@ -353,7 +355,7 @@ public sealed partial class MainWindow : Window
         bar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         for (var i = 0; i < 3; i++) bar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var back = HeadBtn("", "Volver", -1, 0, () => Back()); back.Visibility = Visibility.Collapsed; _back = back;
-        var titleRow = Hs(10, back, V(0, Hs(8, _title, _syncDot), _syncText)); bar.Children.Add(titleRow);
+        var titleRow = Hs(10, back, V(0, Hs(8, _title, _titleRight, _syncDot), _syncText)); bar.Children.Add(titleRow);
         var attn = HeadBtn("", "Centro de atención", 0, 0xFFF43F5Eu, () => Go(new AttentionPage())); Grid.SetColumn(attn, 1); bar.Children.Add(attn);
         var bell = HeadBtn("", "Notificaciones", 1, 0xFF3B82F6u, () => Go(new NotifsPage())); Grid.SetColumn(bell, 2); bar.Children.Add(bell);
         // chip de perfil con menú
@@ -473,14 +475,9 @@ public sealed partial class MainWindow : Window
         var panel = new StackPanel { Spacing = 12, Padding = new Thickness(28, 10, 28, 48) };
         try
         {
-            if (p.ShowTitle)
-            {
-                var big = H(p.Title, 24); big.CharacterSpacing = -10;
-                var left = V(2, big, p.Sub != null ? Muted(p.Sub, 13) : null);
-                // las fichas se presentan como en la referencia: título y botón "Cerrar" a la derecha
-                var close = p is OrderPage or EditOrderPage or ClientPage ? Btn("Cerrar", () => Back(), false, null, null, false) : null;
-                panel.Children.Add(p.Right != null || close != null ? Row(left, p.Right != null ? T(p.Right, 12.5, true, Mut, false) : null, close) : left);
-            }
+            // un solo título por pantalla: el de la barra de arriba (con su dato corto al lado y la flecha para volver);
+            // aquí solo queda la frase de ayuda de la pantalla, si tiene
+            if (p.ShowTitle && p.Sub != null) panel.Children.Add(Muted(p.Sub, 13));
             p.Build(panel);
         }
         catch (Exception e) { Services.Report(e); LastRenderError = e.GetType().Name + ": " + Services.Redact(e.Message); panel.Children.Clear(); panel.Children.Add(Card(T("No se pudo mostrar esta pantalla.", 15, true), Muted(Services.Redact(e.Message)), Btn("Ir a Inicio", () => Root(new HomePage()), true))); }
@@ -493,7 +490,7 @@ public sealed partial class MainWindow : Window
         _scroll.Content = holder;
         if (!top) { panel.UpdateLayout(); _scroll.ChangeView(null, off, null, true); }
         else { _scroll.ChangeView(null, 0, null, true); var i = 0; foreach (var c in panel.Children) Fx.EnterUp(c, i++); }
-        _title.Text = p.Title;
+        _title.Text = p.Title; _titleRight.Text = p.Right != null ? "· " + p.Right : "";
         if (_back != null) _back.Visibility = _stack.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
         foreach (var (k, it) in _items)
         {

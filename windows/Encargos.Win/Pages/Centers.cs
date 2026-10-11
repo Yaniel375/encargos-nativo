@@ -43,9 +43,9 @@ public sealed class AttentionPage : Screen
             {
                 "pay" => $"{items.Count} cliente{(items.Count == 1 ? " debe" : "s deben")} dinero · total {Money(tot)}",
                 "ready" => $"{items.Count} pedido{(items.Count == 1 ? " llegó" : "s llegaron")}",
-                "transit" => $"{items.Count} pedido(s) con mucho tiempo en tránsito",
-                "funds" => $"{items.Count} cliente(s) · total {Money(tot)}",
-                "incomplete" => $"{items.Count} encargo(s) con datos faltantes", _ => "",
+                "transit" => $"{Plural(items.Count, "pedido", "pedidos")} con mucho tiempo en tránsito",
+                "funds" => $"{Plural(items.Count, "cliente", "clientes")} · total {Money(tot)}",
+                "incomplete" => $"{Plural(items.Count, "encargo", "encargos")} con datos faltantes", _ => "",
             };
             var rows = new List<UIElement>(); if (sub.Length > 0) rows.Add(Muted(sub));
             var open = _open.Contains(cat);

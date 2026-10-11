@@ -46,7 +46,7 @@ public sealed class BackupPage : Screen
             Choice(new[] { ("off", "Desactivado"), ("daily", "Cada día"), ("weekly", "Cada semana") }, mode, k => { bk.AutoMode = k; Redraw(); }),
             Muted(mode == "off" ? "No se guardarán copias automáticas." : "Al abrir la app se guarda una copia en Documentos\\Encargos " + (mode == "weekly" ? "una vez por semana." : "una vez al día.") +
                 (bk.LastAuto > 0 ? " Última: " + Js.Fmt(bk.LastAuto) : " Todavía no se ha hecho ningún respaldo automático."), 13),
-            Cols(Btn("Hacer copia automática ahora", () =>
+            Cols(Btn("Copiar ahora", () =>
             {
                 var payload = bk.AutoDue(true); if (payload == null) return;
                 try { File.WriteAllText(Path.Combine(Services.DocsDir(), "respaldo_auto_" + Js.NowIso()[..10] + ".json"), payload); bk.AutoDone(); S.Toast("✅ Copia guardada en Documentos\\Encargos."); }

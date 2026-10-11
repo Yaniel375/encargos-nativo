@@ -95,6 +95,8 @@ public static partial class K
         var b = Click(g, onClick); b.Padding = new Thickness(12, 7, 12, 7); b.CornerRadius = new CornerRadius(0);
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(b, title + (selected ? " (elegida)" : "")); return b;
     }
+    /// <summary>"1 encargo" / "3 encargos": singular o plural según la cantidad (sin "(s)").</summary>
+    public static string Plural(int n, string one, string many) => $"{n} {(n == 1 ? one : many)}";
     public static Border OptionGroup(params UIElement[] rows)
     {
         var inner = new StackPanel(); var first = true;
@@ -198,8 +200,9 @@ public static partial class K
         var r = NavRow("", "Encargos completados", $"{n} {(n == 1 ? "cliente" : "clientes")} con todo pagado", onClick, tint: Green);
         return new Border { Child = r, CornerRadius = new CornerRadius(18), Background = Glass, BorderBrush = LineBr, BorderThickness = new Thickness(1) };
     }
-    /// <summary>Reparte tarjetas en columnas según el ancho (2 en PC normal, 1 en ventana estrecha).</summary>
-    public static Grid Grid2(IList<UIElement> items, int cols = 2)
+    /// <summary>Reparte tarjetas en columnas según el ancho (2 en PC normal, 1 en ventana estrecha).
+    /// fillLast: si el último queda solo en su fila, ocupa toda la fila (botones de las fichas, sin hueco al lado).</summary>
+    public static Grid Grid2(IList<UIElement> items, int cols = 2, bool fillLast = false)
     {
         var grid = new Grid { ColumnSpacing = 12, RowSpacing = 12 };
         for (var c = 0; c < cols; c++) grid.ColumnDefinitions.Add(new ColumnDefinition());
@@ -207,6 +210,7 @@ public static partial class K
         {
             if (i % cols == 0) grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             var e = (FrameworkElement)items[i]; e.VerticalAlignment = VerticalAlignment.Top; Grid.SetRow(e, i / cols); Grid.SetColumn(e, i % cols); grid.Children.Add(e);
+            if (fillLast && i == items.Count - 1 && i % cols == 0 && cols > 1) Grid.SetColumnSpan(e, cols);
         }
         return grid;
     }
