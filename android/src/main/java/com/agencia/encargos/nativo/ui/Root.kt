@@ -107,6 +107,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.animation.core.animateFloat
 
 /* ======================= Navegación ======================= */
 sealed class Screen(val title: String) {
@@ -222,10 +225,13 @@ private fun Header(ui: Ui, app: EncargosApp, lock: () -> Unit, modifier: Modifie
         Image(painterResource(R.mipmap.ic_launcher), null, Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)).clickable { ui.root(Screen.Home) })
         Spacer(Modifier.width(9.dp))
         Column(Modifier.weight(1f)) {
-            Text("Encargos", fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.2).sp, maxLines = 1)
             val s = app.sync.status()
-            Text(if (s.kind == "off" && app.sync.cfg() == null) "Tu negocio, en orden" else s.text, fontSize = 11.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                color = when (s.kind) { "ok" -> W.green; "error" -> W.rose; "offline", "pending" -> W.amber; else -> W.mut })
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Encargos", fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.2).sp, maxLines = 1)
+                // estado de la sincronización como un punto de color (verde = sincronizado); tocarlo abre Sincronización
+                if (app.sync.cfg() != null) { Spacer(Modifier.width(7.dp)); SyncDot(s.kind, s.text) { ui.go(Screen.Sync) } }
+            }
+            Text("Tu negocio, en orden", fontSize = 11.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis, color = W.mut)
         }
         val attn = app.core.attention.badge(); val nf = app.core.notifs.unreadCount()
         HeadBtn(Icons.Outlined.TrackChanges, "Centro de atención", attn, Color(0xFFE11D48)) { ui.go(Screen.Attention) }
@@ -426,4 +432,20 @@ const val AUTO_TITLE = "\u0000"
 
 @Composable fun IconLabel(icon: ImageVector, text: String, color: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
     Row(verticalAlignment = Alignment.CenterVertically) { Icon(icon, null, tint = color, modifier = Modifier.padding(end = 6.dp)); Text(text, color = color, fontSize = 13.sp) }
+}
+
+
+/** Punto de estado de la sincronización: verde = sincronizado · azul (latiendo) = sincronizando ·
+ *  ámbar = pendiente o sin conexión · rojo = error · gris = en pausa. El texto completo queda para lectores de pantalla. */
+@Composable fun SyncDot(kind: String, text: String, onClick: () -> Unit) {
+    val c by androidx.compose.animation.animateColorAsState(when (kind) { "ok" -> W.green; "run" -> W.blue; "error" -> W.rose; "offline", "pending" -> W.amber; else -> W.mut },
+        androidx.compose.animation.core.tween(400), label = "syncDot")
+    val pulse = if (kind == "run" && Motion.enabled) androidx.compose.animation.core.rememberInfiniteTransition(label = "sync").animateFloat(1f, .35f,
+        androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(700), androidx.compose.animation.core.RepeatMode.Reverse), label = "a").value else 1f
+    Box(Modifier.size(22.dp).clip(CircleShape).clickable(remember { MutableInteractionSource() }, null) { tapFeedback(); onClick() }
+        .semantics { contentDescription = text }, contentAlignment = Alignment.Center) {
+        Box(Modifier.size(14.dp).graphicsLayer { alpha = pulse }.clip(CircleShape).background(c.copy(alpha = .25f)), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(8.dp).clip(CircleShape).background(c))
+        }
+    }
 }

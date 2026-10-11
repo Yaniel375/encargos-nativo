@@ -31,6 +31,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -149,7 +150,9 @@ private fun appShapes() = androidx.compose.material3.Shapes(extraSmall = Rounded
     W.p = if (day) DAY else NIGHT   // tema central: lo leen todos los componentes
     // tamaño de la interfaz: se escala solo la densidad; como sp = dp × fontScale, textos y medidas crecen en la misma proporción
     // (y se respeta el tamaño de letra que el usuario eligió en Android)
-    val base = androidx.compose.ui.platform.LocalDensity.current; val s = UiScale.value
+    // al cambiar el tamaño, toda la interfaz crece o se reduce suavemente hasta el nuevo valor
+    val base = androidx.compose.ui.platform.LocalDensity.current
+    val s by androidx.compose.animation.core.animateFloatAsState(UiScale.value, if (Motion.enabled) tween(450, easing = EaseOut) else androidx.compose.animation.core.snap(), label = "escala")
     androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(base.density * s, base.fontScale)) {
         MaterialTheme(colorScheme = if (day) lightScheme() else darkScheme(), typography = manropeTypography(), shapes = appShapes(), content = content)
     }
@@ -220,16 +223,16 @@ private fun lerpInk(c: Color) = if (W.day) Color(c.red * .8f, c.green * .8f, c.b
     val src = remember { MutableInteractionSource() }; val focused by src.collectIsFocusedAsState()
     var show by remember { mutableStateOf(false) }
     val bd by animateColorAsState(if (focused) W.blue.copy(alpha = .85f) else W.line2, tween(200), label = "fb")
-    val day = isDay(); val shape = RoundedCornerShape(14.dp)
-    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(label, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    val day = isDay(); val compact = LocalCompact.current; val shape = RoundedCornerShape(if (compact) 12.dp else 14.dp)
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 6.dp)) {
+        Text(label, fontSize = if (compact) 11.5.sp else 12.5.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
         BasicTextField(value, onChange, Modifier.fillMaxWidth().let { if (focused) it.glow(W.blue, 6.dp, 0.dp, .22f) else it }, singleLine = singleLine, minLines = minLines,
-            textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontFamily = Manrope, fontSize = 15.sp, fontWeight = FontWeight.SemiBold),
+            textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontFamily = Manrope, fontSize = if (compact) 14.sp else 15.sp, fontWeight = FontWeight.SemiBold),
             cursorBrush = SolidColor(W.blue), interactionSource = src,
             visualTransformation = if (password && !show) PasswordVisualTransformation() else VisualTransformation.None,
             keyboardOptions = KeyboardOptions(keyboardType = if (number) KeyboardType.Decimal else if (password) KeyboardType.Password else KeyboardType.Text),
             decorationBox = { inner ->
-                Row(Modifier.fillMaxWidth().clip(shape).background(W.inputBg).border(1.dp, bd, shape).padding(horizontal = 14.dp, vertical = if (singleLine) 14.dp else 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().clip(shape).background(W.inputBg).border(1.dp, bd, shape).padding(horizontal = if (compact) 12.dp else 14.dp, vertical = if (compact) 11.dp else if (singleLine) 14.dp else 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (prefix != null) Text(prefix + " ", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                     Box(Modifier.weight(1f)) { inner() }
                     if (suffix != null) Text(" $suffix", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
@@ -264,18 +267,19 @@ private fun lerpInk(c: Color) = if (W.day) Color(c.red * .8f, c.green * .8f, c.b
 @Composable fun Primary(text: String, modifier: Modifier = Modifier, icon: ImageVector? = null, enabled: Boolean = true, color: Color = C.blue, onClick: () -> Unit) {
     val src = remember { MutableInteractionSource() }; val shape = RoundedCornerShape(14.dp); val once = rememberOnce(onClick)
     val brush = if (color == C.blue) W.primary else Brush.linearGradient(listOf(Color(color.red + (1 - color.red) * .15f, color.green + (1 - color.green) * .15f, color.blue + (1 - color.blue) * .15f), color))
-    Row(modifier.height(50.dp).pressBounce(src).graphicsLayer { alpha = if (enabled) 1f else .5f }.glow(color, 14.dp, 8.dp, if (enabled) .45f else 0f)
+    val compact = LocalCompact.current
+    Row(modifier.height(if (compact) 44.dp else 50.dp).pressBounce(src).graphicsLayer { alpha = if (enabled) 1f else .5f }.glow(color, 14.dp, 8.dp, if (enabled) .45f else 0f)
         .clip(shape).background(brush).clickable(src, null, enabled = enabled) { tapFeedback(); once() }.padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
         if (icon != null) { Icon(icon, null, Modifier.size(18.dp), tint = Color.White); Spacer(Modifier.width(8.dp)) }
-        Text(text, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(text, fontWeight = FontWeight.ExtraBold, fontSize = if (compact) 14.sp else 15.sp, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 /** Botón secundario (.secondary): vidrio gris con borde. */
 @Composable fun Secondary(text: String, modifier: Modifier = Modifier, icon: ImageVector? = null, color: Color? = null, onClick: () -> Unit) {
     val src = remember { MutableInteractionSource() }; val shape = RoundedCornerShape(14.dp); val once = rememberOnce(onClick)
     val fg = color ?: MaterialTheme.colorScheme.onSurface
-    Row(modifier.height(50.dp).pressBounce(src).clip(shape).background(if (color != null) color.copy(alpha = .08f) else W.tile).border(1.dp, if (color != null) color.copy(alpha = .35f) else W.line2, shape)
+    Row(modifier.height(if (LocalCompact.current) 44.dp else 50.dp).pressBounce(src).clip(shape).background(if (color != null) color.copy(alpha = .08f) else W.tile).border(1.dp, if (color != null) color.copy(alpha = .35f) else W.line2, shape)
         .clickable(src, null) { tapFeedback(); once() }.padding(horizontal = 14.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
         if (icon != null) { Icon(icon, null, Modifier.size(17.dp), tint = fg); Spacer(Modifier.width(7.dp)) }
         Text(text, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -481,13 +485,22 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.waterIn(c: Offset, 
 /** Tarjeta de fila con icono, título, subtítulo, valor a la derecha y flecha (como en Ajustes y "Encargos completados"). */
 @Composable fun NavRow(icon: ImageVector, title: String, sub: String? = null, value: String? = null, tint: Color = W.icon, right: (@Composable () -> Unit)? = null, titleColor: Color? = null, onClick: (() -> Unit)?) {
     val src = remember { MutableInteractionSource() }
-    Row(Modifier.fillMaxWidth().let { if (onClick != null) it.clickable(src, null) { tapFeedback(); onClick() } else it }.padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+    // al aplicar un ajuste, la fila destella en azul y el texto nuevo entra deslizándose
+    val flash = remember { Animatable(0f) }; val first = remember { booleanArrayOf(true) }
+    LaunchedEffect(sub, value) {
+        if (first[0]) { first[0] = false; return@LaunchedEffect }
+        if (Motion.enabled) { flash.snapTo(1f); flash.animateTo(0f, tween(1100, easing = EaseOut)) }
+    }
+    Row(Modifier.fillMaxWidth().drawBehind { if (flash.value > 0f) drawRect(W.blue.copy(alpha = .16f * flash.value)) }
+        .let { if (onClick != null) it.clickable(src, null) { tapFeedback(); onClick() } else it }.padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
         IconTile(icon, tint, 34); Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(title, fontWeight = FontWeight.ExtraBold, fontSize = 14.5.sp, maxLines = 2, color = titleColor ?: MaterialTheme.colorScheme.onSurface)
-            if (!sub.isNullOrEmpty()) Text(sub, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            if (!sub.isNullOrEmpty()) androidx.compose.animation.AnimatedContent(sub, transitionSpec = { (fadeIn(tween(260)) + androidx.compose.animation.slideInVertically(tween(260)) { it / 2 }) togetherWith fadeOut(tween(160)) }, label = "sub") { s2 ->
+                Text(s2, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis) }
         }
-        if (value != null) { Spacer(Modifier.width(8.dp)); Text(value, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        if (value != null) { Spacer(Modifier.width(8.dp)); androidx.compose.animation.AnimatedContent(value, transitionSpec = { (fadeIn(tween(260)) + androidx.compose.animation.scaleIn(tween(260), .85f)) togetherWith fadeOut(tween(160)) }, label = "val") { v2 ->
+            Text(v2, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (flash.value > .05f) W.blueInk else MaterialTheme.colorScheme.onSurfaceVariant) } }
         if (right != null) { Spacer(Modifier.width(8.dp)); right() }
         else if (onClick != null) { Spacer(Modifier.width(6.dp)); Text("›", fontSize = 20.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
@@ -511,29 +524,38 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.waterIn(c: Offset, 
 
 /** Marco común de todas las ventanas (hojas de Ajustes, Meta, confirmaciones…): tarjeta de vidrio centrada, radio 22,
  *  cabecera con icono en recuadro y título como las tarjetas de Inicio; se desplaza y respeta el teclado. */
-@Composable private fun WindowFrame(dismiss: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+@Composable private fun WindowFrame(dismiss: () -> Unit, compact: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
     androidx.compose.ui.window.Dialog(onDismissRequest = dismiss, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
         val none = remember { MutableInteractionSource() }; val none2 = remember { MutableInteractionSource() }
         val shape = RoundedCornerShape(22.dp)
         Box(Modifier.fillMaxSize().clickable(none, null) { dismiss() }.imePadding().padding(horizontal = 14.dp, vertical = 18.dp), contentAlignment = Alignment.Center) {
             Column(Modifier.fillMaxWidth().widthIn(max = 560.dp).enterUp(0).clip(shape).background(W.menu).border(1.dp, W.line2, shape).clickable(none2, null) {}
-                .padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp), content = content)
+                .padding(if (compact) 15.dp else 18.dp), verticalArrangement = Arrangement.spacedBy(if (compact) 11.dp else 14.dp), content = content)
         }
     }
 }
-@Composable private fun WindowHead(title: @Composable () -> Unit, icon: ImageVector?, close: (() -> Unit)?) {
+@Composable private fun WindowHead(title: @Composable () -> Unit, icon: ImageVector?, close: (() -> Unit)?, sub: String? = null, compact: Boolean = false) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        if (icon != null) { IconTile(icon, W.icon, 36); Spacer(Modifier.width(12.dp)) }
-        Box(Modifier.weight(1f)) { androidx.compose.material3.ProvideTextStyle(TextStyle(fontFamily = Manrope, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.18).sp)) { title() } }
-        if (close != null) { Spacer(Modifier.width(8.dp)); Secondary("Cerrar", Modifier.height(38.dp)) { close() } }
+        if (icon != null) { IconTile(icon, W.icon, if (compact) 32 else 36); Spacer(Modifier.width(if (compact) 10.dp else 12.dp)) }
+        Column(Modifier.weight(1f)) {
+            androidx.compose.material3.ProvideTextStyle(TextStyle(fontFamily = Manrope, fontSize = if (compact) 16.sp else 18.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.16).sp)) { title() }
+            if (sub != null) Text(sub, fontSize = 11.5.sp, lineHeight = 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        }
+        if (close != null) { Spacer(Modifier.width(8.dp)); Secondary("Cerrar", Modifier.height(if (compact) 34.dp else 38.dp)) { close() } }
     }
 }
 
-/** Hoja de Ajustes: mismo marco, título con icono y botón "Cerrar". */
-@Composable fun Sheet(title: String, dismiss: () -> Unit, icon: ImageVector? = null, content: @Composable ColumnScope.() -> Unit) {
-    WindowFrame(dismiss) {
-        WindowHead({ Text(title) }, icon, dismiss)
-        Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
+/** ¿Estamos dentro de una hoja compacta de Ajustes? (campos, botones y avisos se dibujan más pequeños). */
+val LocalCompact = androidx.compose.runtime.compositionLocalOf { false }
+
+/** Hoja de Ajustes: marco común compacto, icono, título, una línea de detalle y botón "Cerrar". */
+@Composable fun Sheet(title: String, dismiss: () -> Unit, icon: ImageVector? = null, sub: String? = null, content: @Composable ColumnScope.() -> Unit) {
+    WindowFrame(dismiss, compact = true) {
+        WindowHead({ Text(title) }, icon, dismiss, sub, compact = true)
+        Box(Modifier.fillMaxWidth().height(1.dp).background(W.line))
+        androidx.compose.runtime.CompositionLocalProvider(LocalCompact provides true) {
+            Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp), content = content)
+        }
     }
 }
 
@@ -595,7 +617,11 @@ object Profile {
 /** Recuadro informativo azul de las hojas. */
 @Composable fun InfoBox(text: String) {
     val shape = RoundedCornerShape(14.dp)
-    Text(text, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.fillMaxWidth().clip(shape).background(W.blue.copy(alpha = .10f)).border(1.dp, W.blue.copy(alpha = .45f), shape).padding(12.dp))
+    val compact = LocalCompact.current
+    Row(Modifier.fillMaxWidth().clip(shape).background(W.blue.copy(alpha = .08f)).border(1.dp, W.blue.copy(alpha = .35f), shape).padding(horizontal = if (compact) 10.dp else 12.dp, vertical = if (compact) 9.dp else 12.dp), verticalAlignment = Alignment.Top) {
+        Icon(Icons.Filled.Info, null, Modifier.padding(top = 1.dp).size(if (compact) 15.dp else 17.dp), tint = W.blueInk); Spacer(Modifier.width(8.dp))
+        Text(text, fontSize = if (compact) 12.sp else 13.sp, lineHeight = if (compact) 16.sp else 18.sp, color = MaterialTheme.colorScheme.onSurface)
+    }
 }
 
 /** Tarjeta de acción grande (Respaldar datos, Respaldo cifrado, Importar…): la principal va en degradado azul. */
