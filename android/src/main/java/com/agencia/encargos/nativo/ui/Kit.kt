@@ -32,6 +32,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.outlined.LocalShipping
+import androidx.compose.material.icons.outlined.Flight
+import androidx.compose.material.icons.outlined.DirectionsBoat
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -821,4 +824,57 @@ private fun ratioOf(bm: Bitmap) = (bm.width.toFloat() / bm.height.coerceAtLeast(
         if (bm == null) Text("No se pudo abrir esta foto.", color = Color.White)
         else Image(bm.asImageBitmap(), "Foto ampliable", Modifier.fillMaxSize().graphicsLayer { scaleX = scale; scaleY = scale; translationX = off.x; translationY = off.y }, contentScale = ContentScale.Fit)
     }
+}
+
+
+/* ======================= Menús y opciones con el estilo de la app ======================= */
+/** Quita el emoji del principio de un texto (los iconos van en su recuadro). */
+fun noEmoji(t: String): String { var i = 0; while (i < t.length && !t[i].isLetterOrDigit() && t[i] != '¿' && t[i] != '¡' && t[i] != '$' && t[i] != '+' && t[i] != '-') i++; return t.substring(i).trim() }
+
+/** Icono del tipo de envío (avión, barco u otro). */
+fun shipIcon(type: String?): ImageVector = when (type) { "barco" -> androidx.compose.material.icons.Icons.Outlined.DirectionsBoat; null, "", "avion" -> androidx.compose.material.icons.Icons.Outlined.Flight; else -> androidx.compose.material.icons.Icons.Outlined.LocalShipping }
+
+/** Menú desplegable de la app: vidrio, radio 16, borde fino y filas con icono en recuadro. */
+@Composable fun AppMenu(open: Boolean, close: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+    androidx.compose.material3.DropdownMenu(open, close, shape = RoundedCornerShape(16.dp), containerColor = W.menu,
+        modifier = Modifier.width(250.dp).border(1.dp, W.line2, RoundedCornerShape(16.dp))) {
+        Column(Modifier.padding(horizontal = 6.dp), verticalArrangement = Arrangement.spacedBy(2.dp), content = content)
+    }
+}
+/** Fila de menú: icono en recuadro pequeño, texto y, si hace falta, una ayuda; las acciones destructivas en rojo. */
+@Composable fun MenuItem(icon: ImageVector, text: String, sub: String? = null, danger: Boolean = false, onClick: () -> Unit) {
+    val src = remember { MutableInteractionSource() }; val c = if (danger) C.rose else W.icon
+    Row(Modifier.fillMaxWidth().pressBounce(src, .97f).clip(RoundedCornerShape(12.dp)).clickable(src, null) { tapFeedback(); onClick() }.padding(horizontal = 6.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        val ts = RoundedCornerShape(9.dp)
+        Box(Modifier.size(30.dp).clip(ts).background(if (danger) C.rose.copy(alpha = .10f) else W.tile).border(1.dp, if (danger) C.rose.copy(alpha = .30f) else W.line, ts), contentAlignment = Alignment.Center) {
+            Icon(icon, null, Modifier.size(16.dp), tint = c) }
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = if (danger) C.rose else MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (sub != null) Text(sub, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+@Composable fun MenuSep() = Box(Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 3.dp).height(1.dp).background(W.line))
+
+/** Opción de una ventana (Enviar como imagen, PDF…): fila con icono, título, detalle y flecha; la principal con icono azul. */
+@Composable fun OptionRow(icon: ImageVector, title: String, sub: String, primary: Boolean = false, onClick: () -> Unit) {
+    val src = remember { MutableInteractionSource() }; val once = rememberOnce(onClick)
+    Row(Modifier.fillMaxWidth().pressBounce(src, .98f).clickable(src, null) { tapFeedback(); once() }.padding(horizontal = 12.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
+        val ts = RoundedCornerShape(11.dp)
+        Box(Modifier.size(36.dp).clip(ts).let { if (primary) it.background(W.primary) else it.background(W.tile).border(1.dp, W.line, ts) }, contentAlignment = Alignment.Center) {
+            Icon(icon, null, Modifier.size(18.dp), tint = if (primary) Color.White else W.icon) }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, fontSize = 14.5.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface)
+            Text(sub, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
+        }
+        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(18.dp), tint = W.mut)
+    }
+}
+/** Grupo de opciones con separadores finos, dentro de un recuadro de vidrio. */
+@Composable fun OptionGroup(content: @Composable ColumnScope.() -> Unit) {
+    val sh = RoundedCornerShape(16.dp)
+    Column(Modifier.fillMaxWidth().clip(sh).background(W.tile).border(1.dp, W.line, sh), content = content)
 }

@@ -97,7 +97,7 @@ fun StatsScreen() {
         item {
             SectionCard("Clientes inactivos", icon = Icons.Outlined.PersonOff) {
                 val ina = st.inactiveClients()
-                if (ina.isEmpty()) Text("Todos tus clientes compraron en los últimos 30 días. 👏", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (ina.isEmpty()) Text("Todos tus clientes compraron en los últimos 30 días.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 ina.forEach { (c, last) -> Row(verticalAlignment = Alignment.CenterVertically) {
                     Avatar(c.name, C.mut, 34); Spacer(Modifier.width(8.dp)); Column(Modifier.weight(1f)) { Text(c.name, fontWeight = FontWeight.Bold); Text("Última compra " + core.attention.ago(last), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     TextButton(onClick = { ui.whatsapp(c.phone, "", c.name) }) { Text("Escribir") } } }

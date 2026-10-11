@@ -155,7 +155,7 @@ fun PendingScreen() {
         }
         item { DotHeader("Saldo pendiente", C.rose, money(p.pendTotal)) }
         item { Choice(listOf("0" to "Todas", "15" to "+15 días (${p.pend.count { days(it) >= 15 }})", "30" to "+30 días (${p.pend.count { days(it) >= 30 }})"), age.toString()) { age = it.toInt() } }
-        if (shown.isEmpty()) item { Empty("🎉 No hay saldos pendientes.") }
+        if (shown.isEmpty()) item { Empty("No hay saldos pendientes.") }
         shown.forEach { x -> item {
             val n = days(x); val id = Js.str(x["id"]); val t = Js.num(x["total"]); val pd = Js.num(x["paid"])
             SectionCard(modifier = Modifier.clickable { ui.go(Screen.Order(id)) }) {
@@ -180,7 +180,7 @@ fun PendingScreen() {
             SectionCard(modifier = Modifier.clickable { ui.go(Screen.Order(Js.str(x["id"]))) }) {
                 Row(verticalAlignment = Alignment.CenterVertically) { Avatar(x.str("name"), C.green); Spacer(Modifier.width(10.dp)); Column(Modifier.weight(1f)) { Text(x.str("name"), fontWeight = FontWeight.Bold); Text(x.str("phone").ifEmpty { "Sin teléfono" }, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     Text("+ " + money(-Js.num(x["balance"])), color = C.green, fontWeight = FontWeight.ExtraBold) }
-                Text("🟢 Este importe queda a favor del cliente.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Este importe queda a favor del cliente.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } }
     }

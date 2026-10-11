@@ -89,7 +89,7 @@ fun AttentionScreen() {
         if (list.isEmpty()) item { Empty(if (all.isNotEmpty()) "Nada en este filtro" else "Todo está en orden", if (all.isNotEmpty()) "Prueba con otro filtro o desactiva \"Solo pendientes\"." else "En este momento no tienes elementos que requieran atención.") }
         item {
             val lb = att.lastBackup()
-            if (lb > 0 && System.currentTimeMillis() - lb <= 7 * 86400000.0) Text("☁️ Todo respaldado · último respaldo ${Js.fmt(lb)}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (lb > 0 && System.currentTimeMillis() - lb <= 7 * 86400000.0) Text("Todo respaldado · último respaldo ${Js.fmt(lb)}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         item {
             val acts = att.activity()

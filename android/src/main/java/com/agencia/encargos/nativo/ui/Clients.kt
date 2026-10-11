@@ -79,7 +79,7 @@ fun ClientCard(c: com.agencia.encargos.core.Encargos.Client) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Kpi("Libras", lb(c.pounds), modifier = Modifier.weight(1f)); Kpi("Cobrado", money(c.paid), C.green, modifier = Modifier.weight(1f)); Kpi("Pendiente", if (c.pending > 0.005) "- " + money(c.pending) else "$0.00", if (c.pending > 0.005) C.rose else C.green, modifier = Modifier.weight(1f)) }
         Text("Pagó ${money(c.paid)} de ${money(total)}", fontSize = 12.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         ProgressBar(if (total > 0) c.paid / total else 0.0)
-        if (c.funds > 0) Text("🟢 Fondo a favor + ${money(c.funds)}", color = C.green, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+        if (c.funds > 0) Text("Fondo a favor + ${money(c.funds)}", color = C.green, fontWeight = FontWeight.Bold, fontSize = 13.sp)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             CardBtn("Ficha", Icons.Outlined.Description, Modifier.weight(1f)) { ui.go(Screen.Client(c.name)) }
             if (c.pending > 0.005) CardBtn("Cobrar", Icons.Filled.Chat, Modifier.weight(1f), tint = C.green) { ui.whatsapp(c.phone, core.reminderClient(c), c.name) }
