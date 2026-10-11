@@ -3,6 +3,7 @@ using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Animation;
 using Windows.Foundation;
 using Color = Windows.UI.Color;
 
@@ -34,11 +35,65 @@ public static partial class K
         if (right != null) rest.Add(right); else if (onClick != null) rest.Add(new FontIcon { Glyph = "", FontSize = 12, Foreground = Mut });
         var g = Lead(tile, V(1, tt, string.IsNullOrEmpty(sub) ? null : Muted(sub, 12)), rest.ToArray());
         g.Padding = new Thickness(14, 11, 14, 11);
-        if (onClick == null) return g;
+        if (onClick == null) return Flashable(g, title);
         var b = Click(g, onClick); b.CornerRadius = new CornerRadius(0);
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(b, title);
-        return b;
+        return Flashable(b, title);
     }
+    /// <summary>Título de la fila de Ajustes que acaba de cambiar: al redibujar, esa fila destella en azul y se desvanece.</summary>
+    public static string? FlashTitle;
+    static FrameworkElement Flashable(FrameworkElement row, string title)
+    {
+        if (FlashTitle != title) return row;
+        FlashTitle = null;
+        var hl = new Border { Background = Alpha(Blue, .18), Opacity = 0, IsHitTestVisible = false };
+        var g = new Grid(); g.Children.Add(hl); g.Children.Add(row);
+        g.Loaded += (_, _) =>
+        {
+            hl.Opacity = 1; Fx.Move(row, 6, 0, 320, true);
+            var sb = new Storyboard(); sb.Children.Add(Fx.Anim(hl, "Opacity", 1, 0, 1100, 150)); sb.Completed += (_, _) => hl.Opacity = 0; try { sb.Begin(); } catch { hl.Opacity = 0; }
+        };
+        return g;
+    }
+
+    /* ---------- menús con el estilo del menú del perfil ---------- */
+    /// <summary>Fila de menú: icono en recuadro de 26, texto de 12,5 (en rojo si es destructiva).</summary>
+    public static Button MenuItemBtn(string glyph, string text, Action onClick, bool danger = false)
+    {
+        var tint = danger ? Rose : Text;
+        var ic = new Border { Width = 26, Height = 26, CornerRadius = new CornerRadius(8), Background = danger ? Alpha(Rose, .10) : Tile, BorderBrush = Alpha(tint, .25), BorderThickness = new Thickness(1), Child = new FontIcon { Glyph = glyph, FontSize = 12, Foreground = tint } };
+        var lab = T(text, 12.5, true, tint, false); lab.FontWeight = FontWeights.SemiBold;
+        var g = Lead(ic, lab); g.ColumnSpacing = 9;
+        var b = Click(g, onClick); b.Padding = new Thickness(4); Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(b, text); return b;
+    }
+    public static Border MenuSep() => new() { Height = 1, Background = LineBr, Margin = new Thickness(4, 2, 4, 2) };
+    /// <summary>Menú desplegable con el mismo marco que el del perfil (vidrio, radio 16, borde fino, 226 de ancho).</summary>
+    public static Flyout AppFlyout(StackPanel content)
+    {
+        var f = new Flyout();
+        f.FlyoutPresenterStyle = new Style(typeof(FlyoutPresenter)) { Setters = { new Setter(Control.PaddingProperty, new Thickness(8)), new Setter(Control.CornerRadiusProperty, new CornerRadius(16)), new Setter(Control.BackgroundProperty, CardBg), new Setter(Control.BorderBrushProperty, Line2), new Setter(Control.BorderThicknessProperty, new Thickness(1)) } };
+        content.Spacing = 5; content.Width = 226; f.Content = content; return f;
+    }
+
+    /* ---------- opciones de una ventana (Enviar recibo…) ---------- */
+    public static Button OptionRow(string glyph, string title, string sub, Action onClick, bool primary = false)
+    {
+        var ic = new Border { Width = 36, Height = 36, CornerRadius = new CornerRadius(11), Background = primary ? PrimaryBrush : Tile, BorderBrush = LineBr, BorderThickness = new Thickness(primary ? 0 : 1), Child = new FontIcon { Glyph = glyph, FontSize = 16, Foreground = primary ? White : Text } };
+        var tt = T(title, 14.5, true, null, false); tt.FontWeight = FontWeights.ExtraBold;
+        var g = Lead(ic, V(1, tt, Muted(sub, 12)), new FontIcon { Glyph = "\uE76C", FontSize = 11, Foreground = Mut }); g.ColumnSpacing = 12;
+        var b = Click(g, onClick); b.Padding = new Thickness(12, 10, 12, 10); b.CornerRadius = new CornerRadius(0);
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(b, title); return b;
+    }
+    public static Border OptionGroup(params UIElement[] rows)
+    {
+        var inner = new StackPanel(); var first = true;
+        foreach (var r in rows) { if (!first) inner.Children.Add(new Border { Height = 1, Background = LineBr, Margin = new Thickness(12, 0, 12, 0) }); inner.Children.Add(r); first = false; }
+        return new Border { Child = inner, CornerRadius = new CornerRadius(16), Background = Tile, BorderBrush = LineBr, BorderThickness = new Thickness(1) };
+    }
+    /// <summary>Icono del tipo de envío: avión o paquete.</summary>
+    public static string ShipGlyph(string? type) => type is null or "" or "avion" ? "\uE709" : "\uE7B8";
+    /// <summary>Quita el emoji del principio de un texto (los iconos van en su recuadro).</summary>
+    public static string NoEmoji(string t) { var i = 0; while (i < t.Length && !char.IsLetterOrDigit(t[i]) && t[i] != '¿' && t[i] != '¡' && t[i] != '$' && t[i] != '+' && t[i] != '-') i++; return t[i..].Trim(); }
     public static Border RowSep() => new() { Height = 1, Background = LineBr, Margin = new Thickness(14, 0, 14, 0) };
     /// <summary>Grupo de filas con título pequeño encima (Negocio y tarifas, WhatsApp…).</summary>
     public static StackPanel Group(string? title, params UIElement?[] rows)
@@ -119,7 +174,10 @@ public static partial class K
     /// <summary>Interruptor suelto para el lado derecho de una fila.</summary>
     public static ToggleSwitch Switch(bool value, Action<bool> onChange)
     {
+        // mismos colores en toda la app: azul encendido, borde neutro apagado
         var sw = new ToggleSwitch { IsOn = value, OnContent = "", OffContent = "", MinWidth = 0 };
+        foreach (var k in new[] { "ToggleSwitchFillOn", "ToggleSwitchFillOnPointerOver", "ToggleSwitchFillOnPressed" }) sw.Resources[k] = Blue;
+        foreach (var k in new[] { "ToggleSwitchStrokeOff", "ToggleSwitchStrokeOffPointerOver" }) sw.Resources[k] = Line2;
         sw.Toggled += (_, _) => { if (sw.IsOn != value) { value = sw.IsOn; onChange(sw.IsOn); } };
         return sw;
     }

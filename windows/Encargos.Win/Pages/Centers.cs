@@ -32,7 +32,7 @@ public sealed class AttentionPage : Screen
             all.Count > 0 ? Btn("Marcar todo revisado", () => { att.ReviewAll(); S.Toast("Todo marcado como revisado. Los problemas siguen activos hasta resolverse."); }, false, null, null, false) : null));
         if (att.RecentResolved.Count > 0) p.Children.Add(Card(att.RecentResolved.Select(r => (UIElement)T("✓ " + r.Text, 14, false, Green)).ToArray()));
         p.Children.Add(Choice(new[] { ("all", "Todos"), ("urgent", "Urgentes"), ("pay", "Pagos"), ("orders", "Pedidos"), ("clients", "Clientes"), ("other", "Otros") }, _filter, k => { _filter = k; Redraw(); }));
-        p.Children.Add(Toggle("Solo pendientes de revisar", "", _onlyPending, v => { _onlyPending = v; Redraw(); }));
+        p.Children.Add(SettingsGroup(Toggle("Solo pendientes de revisar", "Oculta lo que ya marcaste como revisado", _onlyPending, v => { _onlyPending = v; Redraw(); }, "\uE71C")));
 
         foreach (var (cat, title) in Attention.GROUPS)
         {
@@ -57,7 +57,7 @@ public sealed class AttentionPage : Screen
         }
         if (list.Count == 0) p.Children.Add(Empty(all.Count > 0 ? "Nada en este filtro" : "Todo está en orden", all.Count > 0 ? "Prueba con otro filtro o desactiva \"Solo pendientes\"." : "En este momento no tienes elementos que requieran atención."));
         var lb = att.LastBackup();
-        if (lb > 0 && Js.NowMs() - lb <= 7 * 86400000.0) p.Children.Add(Muted("☁️ Todo respaldado · último respaldo " + Js.Fmt(lb)));
+        if (lb > 0 && Js.NowMs() - lb <= 7 * 86400000.0) p.Children.Add(Muted("Todo respaldado · último respaldo " + Js.Fmt(lb)));
         var acts = att.Activity();
         var actRows = new List<UIElement>(); if (acts.Count == 0) actRows.Add(Muted("Aquí verás tus pagos, entregas, avisos y respaldos.", 14));
         foreach (var a in acts.Take(5)) actRows.Add(ActRow(a));
@@ -163,8 +163,7 @@ public sealed class NotifsPage : Screen
     static async void Settings()
     {
         var nf = Services.Core.Notifs; var c = nf.Cfg();
-        var rows = new[] { ("inapp", "Avisos dentro de la app"), ("important", "Notificaciones importantes"), ("pay", "Pagos"), ("order", "Pedidos"), ("client", "Clientes"), ("system", "Sistema (respaldos, importaciones y seguridad)") }
-            .Select(o => (UIElement)Toggle(o.Item2, "", Js.Truthy(c[o.Item1]), _ => nf.ToggleCfg(o.Item1))).ToArray();
-        await MainWindow.I.Dialog("Notificaciones", V(6, rows), "Listo", null, null);
+        // la misma ventana que Ajustes → Notificaciones
+        await MainWindow.I.Dialog("Notificaciones", NotifToggles(c, k => nf.ToggleCfg(k)), "Cerrar", null, null, sub: "Qué avisos quieres recibir");
     }
 }

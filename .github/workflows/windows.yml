@@ -2,7 +2,7 @@ name: Windows (instalador)
 
 on:
   push:
-    branches: [main, rediseno-premium, interfaz-referencia, menu-perfil, pc-sync, anillos, estructura, unificacion, ventanas]
+    branches: [main, rediseno-premium, interfaz-referencia, menu-perfil, pc-sync, anillos, estructura, unificacion, ventanas, pc-unificar]
     paths: ["windows/**", ".github/workflows/windows.yml"]
   workflow_dispatch:
 

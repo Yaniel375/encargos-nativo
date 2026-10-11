@@ -98,7 +98,7 @@ public sealed class PendingPage : Screen
             Progress(pd.PendTotal + pd.FundsTotal > 0 ? pd.PendTotal / (pd.PendTotal + pd.FundsTotal) : 0, Rose)));
         p.Children.Add(DotHeader("Saldo pendiente", Rose, Money(pd.PendTotal)));
         p.Children.Add(Choice(new[] { ("0", "Todas"), ("15", $"+15 días ({pd.Pend.Count(x => Days(x) >= 15)})"), ("30", $"+30 días ({pd.Pend.Count(x => Days(x) >= 30)})") }, _age.ToString(), k => { _age = int.Parse(k); Redraw(); }));
-        if (shown.Count == 0) p.Children.Add(Empty("🎉 No hay saldos pendientes."));
+        if (shown.Count == 0) p.Children.Add(Empty("No hay saldos pendientes."));
         var cards = new List<UIElement>();
         foreach (var x in shown)
         {
@@ -121,7 +121,7 @@ public sealed class PendingPage : Screen
             var id = Js.Str(x["id"]);
             fcards.Add(ClickCard(() => S.Go(new OrderPage(id)),
                 Lead(Avatar(x.Str("name"), Green), V(0, T(x.Str("name"), 15, true), Muted(x.Str("phone").IfEmpty("Sin teléfono"))), T("+ " + Money(-Js.Num(x["balance"])), 15, true, Green)),
-                Muted("🟢 Este importe queda a favor del cliente.")));
+                Muted("Este importe queda a favor del cliente.")));
         }
         if (fcards.Count > 0) p.Children.Add(Grid2(fcards, S.ContentWidth < 760 ? 1 : 2));
     }
@@ -172,7 +172,7 @@ public sealed class StatsPage : Screen
         }
         p.Children.Add(Cols(IconCard("\uE734", "Mejores clientes", null, topRows.ToArray()), IconCard("\uE8EF", "Gastos del periodo", Link("+ Agregar", () => ExpenseDialog(null)), exRows.ToArray())));
         var ina = st.InactiveClients(); var inRows = new List<UIElement>();
-        if (ina.Count == 0) inRows.Add(Muted("Todos tus clientes compraron en los últimos 30 días. 👏", 14));
+        if (ina.Count == 0) inRows.Add(Muted("Todos tus clientes compraron en los últimos 30 días.", 14));
         foreach (var (c, last) in ina) { var cc = c; inRows.Add(Lead(Avatar(c.Name, Mut, 34), V(0, T(c.Name, 14, true), Muted("Última compra " + Core.Attention.Ago(last))), Btn("Escribir", () => S.WhatsApp(cc.Phone, "", cc.Name), false, null, null, false))); }
         p.Children.Add(IconCard("\uE716", "Clientes inactivos", null, inRows.ToArray()));
     }

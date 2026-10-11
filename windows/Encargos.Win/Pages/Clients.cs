@@ -54,7 +54,7 @@ public static class ClientCards
             Cols(Kpi("Libras", Lb(c.Pounds)), Kpi("Cobrado", Money(c.Paid), Green), Kpi("Pendiente", c.Pending > 0.005 ? "- " + Money(c.Pending) : "$0.00", c.Pending > 0.005 ? Rose : Green)),
             Muted($"Pagó {Money(c.Paid)} de {Money(total)}", 12.5),
             Progress(total > 0 ? c.Paid / total : 0),
-            c.Funds > 0 ? T("🟢 Fondo a favor + " + Money(c.Funds), 13, true, Green) : null,
+            c.Funds > 0 ? T("Fondo a favor + " + Money(c.Funds), 13, true, Green) : null,
             Cols(CardBtn("Ficha", "\uE8A5", () => S.Go(new ClientPage(cname))),
                 c.Pending > 0.005 ? CardBtn("Cobrar", "\uE8BD", () => S.WhatsApp(cphone, Core.ReminderClient(c), cname), Green) : CardBtn("WhatsApp", "\uE8BD", () => S.WhatsApp(cphone, "", cname), Green),
                 CardBtn("Encargo", "\uE710", () => S.Go(new NewOrderPage(cname, cphone)))));
@@ -101,7 +101,7 @@ public sealed class ClientPage : Screen
         // ---- datos fijos ----
         var empty = inf.Str("address").Length == 0 && inf.Str("note").Length == 0;
         UIElement InfoLine(string glyph, string label, string value) => Lead(IconTile(glyph, 32), V(0, Muted(label, 11), T(value, 14)));
-        var datos = IconCard("\uE779", "Datos del cliente", Link(empty ? "Agregar ✎" : "Editar ✎", () => EditInfo(c.Name, inf.Str("address"), inf.Str("note"))),
+        var datos = IconCard("\uE779", "Datos del cliente", Link(empty ? "Agregar" : "Editar", () => EditInfo(c.Name, inf.Str("address"), inf.Str("note"))),
             empty ? Muted("Guarda su dirección de entrega y detalles importantes (tallas, preferencias, horarios…).", 13) : null,
             inf.Str("address").Length > 0 ? InfoLine("\uE707", "Dirección", inf.Str("address")) : null,
             inf.Str("note").Length > 0 ? InfoLine("\uE70B", "Nota fija", inf.Str("note")) : null);
@@ -115,7 +115,7 @@ public sealed class ClientPage : Screen
             var b = Js.Num(x["balance"]); var t = Js.Num(x["total"]); var id = Js.Str(x["id"]); var ph = Core.OrderPhotos(x);
             var title = T($"{Js.Fmt(x["date"]).Split(',')[0]} · {Core.ShippingName(Core.TypeOf(x))} {Lb(Js.Num(x["pounds"]))}", 14, true, null, false, 1); title.FontWeight = Microsoft.UI.Text.FontWeights.ExtraBold;
             var inner = V(8,
-                Row(V(1, title, Muted($"{Core.OrderLabel(x)} · {Money(x["lbCost"])}/lb", 11.5)), Chip(x.Str("status").IfEmpty("Pedido"), Status(x.Str("status")))),
+                Row(V(1, title, Muted($"{Money(x["lbCost"])}/lb · total {Money(t)}", 11.5)), Chip(x.Str("status").IfEmpty("Pedido"), Status(x.Str("status")))),
                 Cols(Kpi("Total", Money(t)), Kpi("Pagado", Money(x["paid"]), Green), Kpi(b < -0.005 ? "A favor" : "Saldo", b > 0.005 ? "- " + Money(b) : b < -0.005 ? "+ " + Money(-b) : "$0.00", b > 0.005 ? Rose : Green)),
                 Progress(t > 0 ? Js.Num(x["paid"]) / t : 1),
                 ph.Count > 0 ? Media.Strip(ph, 90, i => OrderActions.ViewPhotos(x, i)) : null,
@@ -133,7 +133,7 @@ public sealed class ClientPage : Screen
         {
             if (k++ > 0) payRows.Add(new Border { Height = 1, Background = LineBr });
             var oid = Js.Str(x["id"]); var idx = i;
-            var row = Row(V(0, T($"{DayLabel(h["date"])} · {h.Str("method").IfEmpty("Efectivo")}", 14, true), Muted(Core.OrderLabel(x) + (h.Str("note").Length > 0 ? " · " + h.Str("note") : ""), 12)),
+            var row = Row(V(0, T($"{DayLabel(h["date"])} · {h.Str("method").IfEmpty("Efectivo")}", 14, true), Muted("Encargo del " + Js.Fmt(x["date"]).Split(',')[0] + (h.Str("note").Length > 0 ? " · " + h.Str("note") : ""), 12)),
                 T("+ " + Money(h["amount"]), 14, true, Green));
             var rb = Click(row, () => Payments.Edit(oid, idx, Redraw)); rb.Padding = new Thickness(4, 6, 4, 6); payRows.Add(rb);
         }
