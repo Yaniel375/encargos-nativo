@@ -207,6 +207,14 @@ public sealed partial class MainWindow : Window
                     await Snap(dir, $"{i++:00}_contenido_{z * 100:0}", L);
                 }
                 SetZoom(null);
+                // medida exacta que cabe en la pantalla
+                ApplyWindowMode("900x600", false); await Task.Delay(1200);
+                { var (ew, eh) = WindowSize(); if (ew != 900 || eh != 600) { fails++; L($"ERROR: con 900x600 la ventana mide {ew}×{eh}"); } else L("medida 900x600: exacta"); }
+                // recordar el último tamaño: se guarda, se cambia la ventana y se recupera
+                SaveLast(); ApplyWindowMode("1000x700", false); await Task.Delay(1000); ApplyWindowMode("", false); await Task.Delay(1200);
+                { var (rw, rh) = WindowSize(); if (rw != 900 || rh != 600) { fails++; L($"ERROR: al recordar, la ventana mide {rw}×{rh} (debía 900×600)"); } else L("recordar el último tamaño: vuelve a 900×600"); }
+                // atajos con el teclado de verdad
+                await KeyTest(L, () => fails++);
                 ApplyWindowMode("max", false); await Task.Delay(1300); L($"maximizada: {(IsMaximized ? "sí" : "NO")} · ventana {WindowSize().W}×{WindowSize().H} · contenido {Fit * 100:0} %"); await Snap(dir, $"{i++:00}_maximizada", L);
                 ApplyWindowMode("full", false); await Task.Delay(1300); L($"pantalla completa: {(IsFullScreen ? "sí" : "NO")} · ventana {WindowSize().W}×{WindowSize().H}");
                 if (!IsFullScreen) { fails++; L("ERROR: no se puso en pantalla completa"); }
