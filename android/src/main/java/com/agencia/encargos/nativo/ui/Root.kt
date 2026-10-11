@@ -235,7 +235,6 @@ private fun Header(ui: Ui, app: EncargosApp, lock: () -> Unit, modifier: Modifie
                 // estado de la sincronización como un punto de color (verde = sincronizado); tocarlo abre Sincronización
                 if (app.sync.cfg() != null) { Spacer(Modifier.width(7.dp)); SyncDot(s.kind, s.text) { ui.go(Screen.Sync) } }
             }
-            Text("Tu negocio, en orden", fontSize = 11.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis, color = W.mut)
         }
         val attn = app.core.attention.badge(); val nf = app.core.notifs.unreadCount()
         HeadBtn(Icons.Outlined.TrackChanges, "Centro de atención", attn, Color(0xFFE11D48)) { ui.go(Screen.Attention) }
