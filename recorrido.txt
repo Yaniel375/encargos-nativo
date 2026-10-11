@@ -1,0 +1,359 @@
+captura 01 crear_acceso (557019 bytes)
+  ✓ toqué 'Usuario'
+  ✓ toqué 'Contraseña (mínimo 6)'
+  ✓ toqué 'Repite la contraseña'
+captura 02 acceso_lleno (553051 bytes)
+  ✓ toqué 'Crear acceso'
+captura 03 inicio (486939 bytes)
+  ✓ toqué 'Nuevo'
+captura 04 nuevo_encargo (459137 bytes)
+  ✓ escribí en Nombre del cliente *
+  ✓ escribí en Teléfono (WhatsApp)
+  ✓ escribí en Costo del pedido
+  ✓ escribí en Libras
+  ✓ escribí en Pago inicial
+captura 05 nuevo_encargo_lleno (471749 bytes)
+captura 06 resumen_antes_de_guardar (471749 bytes)
+  ✓ toqué 'Guardar encargo'
+captura 07 guardado (452031 bytes)
+  ✓ toqué 'Encargos'
+captura 08 encargos (529562 bytes)
+  encargo visible: sí
+  ✓ toqué 'Cliente Prueba'
+captura 09 ficha_encargo (509386 bytes)
+  total 61.00 visible: sí
+  pagado 10.00 visible: sí
+  ✓ toqué 'Clientes'
+captura 10 clientes (501731 bytes)
+  ✓ toqué 'Notas'
+captura 11 notas (428803 bytes)
+  ✓ toqué 'Inicio'
+captura 12 inicio_con_datos (491957 bytes)
+  ✓ toqué 'Más'
+  ✓ toqué 'Registro de pagos'
+captura 13 registro_de_pagos (518311 bytes)
+  ✓ toqué 'Más'
+  ✓ toqué 'Estadísticas'
+captura 14 estadísticas (497148 bytes)
+  ✓ toqué 'Más'
+  ✓ toqué 'Ajustes'
+captura 15 ajustes (490355 bytes)
+  ✓ toqué 'Más'
+  ✓ toqué 'Ajustes'
+  ✓ toqué 'Respaldo e importación'
+captura 16 respaldo (523287 bytes)
+captura 17 volver_de_respaldo (503121 bytes)
+  al volver de respaldo, Ajustes conserva su posición: sí
+  ✓ toqué 'Inicio'
+  ✓ toqué 'Más'
+  ✓ toqué 'Ajustes'
+  ✓ toqué 'Seguridad'
+captura 18 seguridad (486921 bytes)
+captura 19 volver_de_seguridad (522069 bytes)
+  al volver de seguridad, Ajustes conserva su posición: sí
+  ✓ toqué 'Inicio'
+  ✓ toqué 'Más'
+  ✓ toqué 'Ajustes'
+  ✓ toqué 'Sincronización (Telegram)'
+captura 20 sincronización (495997 bytes)
+captura 21 volver_de_sincronización (523930 bytes)
+  al volver de sincronización, Ajustes conserva su posición: sí
+  ✓ toqué 'Inicio'
+  ✓ toqué 'Más'
+captura 22 menu_perfil (441436 bytes)
+  ✓ toqué 'Más'
+  ✓ toqué 'Ajustes'
+  ✓ toqué 'Precio por libra'
+captura 23 ajustes_hoja_tarifas (226984 bytes)
+  ✓ toqué 'Cerrar'
+captura 24 ajustes_abajo (520119 bytes)
+  ✓ toqué 'Más'
+  ✓ toqué 'Registro de pagos'
+  ✓ toqué 'Pendientes y fondos a favor'
+captura 25 pendientes (488883 bytes)
+  ✓ toqué 'Encargos'
+  ✓ toqué 'Opciones del encargo'
+captura 26 menu_encargo (519882 bytes)
+  ✓ toqué 'Enviar recibo'
+captura 27 ventana_recibo (311603 bytes)
+  ✓ toqué 'Cerrar'
+  ✓ toqué 'Inicio'
+  ✓ toqué 'Centro de atención'
+captura 28 atencion (496591 bytes)
+  ✓ toqué 'Notificaciones'
+captura 29 notificaciones (445769 bytes)
+— modo día —
+captura 30 dia_acceso (512301 bytes)
+  ✓ toqué 'Contraseña'
+  ✓ toqué 'Iniciar sesión'
+captura 31 dia_inicio (285229 bytes)
+captura 32 dia_inicio_abajo (292149 bytes)
+captura 33 dia_ultimos_pagos (268737 bytes)
+  ✓ toqué 'Encargos'
+captura 34 dia_encargos (332325 bytes)
+  ✓ toqué 'Cliente Prueba'
+captura 35 dia_ficha (309335 bytes)
+  ✓ toqué 'Clientes'
+captura 36 dia_clientes (291980 bytes)
+  ✓ toqué 'Nuevo'
+captura 37 dia_nuevo (295203 bytes)
+  ✓ toqué 'Notas'
+captura 38 dia_notas (221165 bytes)
+  ✓ toqué 'Más'
+captura 39 dia_menu_perfil (237939 bytes)
+  ✓ toqué 'Más'
+  ✓ toqué 'Estadísticas'
+captura 40 dia_estadísticas (276543 bytes)
+  ✓ toqué 'Más'
+  ✓ toqué 'Registro de pagos'
+captura 41 dia_registro_de_pagos (313364 bytes)
+  ✓ toqué 'Más'
+  ✓ toqué 'Ajustes'
+captura 42 dia_ajustes (275026 bytes)
+  ✓ toqué 'Notificaciones'
+captura 43 dia_notificaciones (224742 bytes)
+  ✓ toqué 'Centro de atención'
+captura 44 dia_atencion (282159 bytes)
+— gráficas —
+  ✓ toqué 'Más'
+  ✓ toqué 'Registro de pagos'
+captura 45 pagos_llenandose (313364 bytes)
+captura 46 pagos_lleno (313364 bytes)
+  ✓ toqué 'Más'
+  ✓ toqué 'Estadísticas'
+captura 47 estadisticas_llenandose (276543 bytes)
+captura 48 estadisticas_llenas (276543 bytes)
+— tamaño de la interfaz —
+  ✓ toqué 'Más'
+  ✓ toqué 'Ajustes'
+  ✓ toqué 'Tamaño de la interfaz'
+captura 49 hoja_tamano (241943 bytes)
+  ✓ toqué 'Cerrar'
+— fotos —
+  ✓ toqué 'Contraseña'
+  ✓ toqué 'Iniciar sesión'
+  ✓ toqué 'Encargos'
+  ✓ toqué 'Cliente Prueba'
+captura 50 ficha_encargo_fotos (488013 bytes)
+  ✓ toqué 'Foto 1 de 2'
+captura 51 visor_foto_vertical (204476 bytes)
+captura 52 visor_foto_horizontal (204576 bytes)
+captura 53 visor_ampliado (204576 bytes)
+  ✓ toqué 'Cerrar'
+  ✓ toqué 'Inicio'
+  ✓ toqué 'Clientes'
+  ✓ toqué 'Cliente Prueba'
+captura 54 ficha_cliente_arriba (486282 bytes)
+captura 55 ficha_cliente_medio (487073 bytes)
+captura 56 ficha_cliente_capturas (463066 bytes)
+  ✓ toqué 'Inicio'
+  ✓ toqué 'Notas'
+captura 57 notas_con_fotos (448741 bytes)
+  ✓ toqué 'Foto 1 de 3'
+captura 58 visor_nota (201003 bytes)
+  ✓ toqué 'Cerrar'
+— artículos en venta —
+  ✓ toqué 'En venta'
+captura 59 venta_lista (470570 bytes)
+  resumen visible: sí
+captura 60 venta_lista_abajo (471290 bytes)
+  ✓ toqué 'Vendí'
+captura 61 venta_registrar (301188 bytes)
+  ✓ toqué 'Guardar venta'
+captura 62 venta_registrada (450100 bytes)
+  venta guardada (cobrado $50.00): NO
+  ✓ toqué 'Tenis de prueba'
+captura 63 venta_editor (460151 bytes)
+captura 64 venta_editor_abajo (447582 bytes)
+  ✓ toqué 'Inicio'
+— perfil y ventanas —
+  ✓ toqué 'Más'
+captura 65 menu_con_foto (444300 bytes)
+  ✓ toqué 'Más'
+  ✓ toqué 'Ajustes'
+captura 66 ajustes_perfil_foto (504989 bytes)
+  ✓ toqué 'Quitar foto'
+captura 67 ventana_confirmar (380208 bytes)
+  ✓ toqué 'Cancelar'
+  ✓ toqué 'Nombre del negocio'
+captura 68 ventana_nombre_negocio (363539 bytes)
+  ✓ toqué 'Cerrar'
+  ✓ toqué 'Más'
+  ✓ toqué 'Registro de pagos'
+  ✓ toqué 'Meta ›'
+captura 69 ventana_meta (372499 bytes)
+  ✓ toqué 'Cancelar'
+  ✓ toqué 'Inicio'
+— auditoría de Ajustes —
+  ✓ toqué 'Inicio'
+  ✓ toqué 'Más'
+  ✓ toqué 'Ajustes'
+captura 70 aj_00_ajustes (504989 bytes)
+  ✓ toqué 'Nombre del negocio'
+captura 71 aj_negocio (363681 bytes)
+  ✓ escribí 'Tienda Prueba' en el campo #0
+captura 72 aj_negocio_escrito (378091 bytes)
+  ✓ toqué 'Guardar'
+  [OK] Nombre del negocio: se cierra y vuelve a Ajustes
+  [OK] Nombre del negocio: el cambio se ve en Ajustes
+  ✓ toqué 'Precio por libra (lo que cobras)'
+captura 73 aj_precio_libra (228711 bytes)
+  ✓ toqué 'Cerrar'
+  [OK] Precio por libra (lo que cobras): se cierra y vuelve a Ajustes
+  ✓ toqué 'Costo por libra (lo que te cobran)'
+captura 74 aj_costo_libra (310155 bytes)
+  ✓ toqué 'Cerrar'
+  [OK] Costo por libra (lo que te cobran): se cierra y vuelve a Ajustes
+  ✓ toqué 'Mensajes de WhatsApp'
+captura 75 aj_mensajes (305876 bytes)
+  ✓ toqué 'Cerrar'
+  [OK] Mensajes de WhatsApp: se cierra y vuelve a Ajustes
+  ✓ toqué 'Código de país'
+captura 76 aj_codigo_pais (363787 bytes)
+  ✓ escribí '1' en el campo #0
+  ✓ toqué 'Guardar'
+  [OK] Código de país: se cierra y vuelve a Ajustes
+  [OK] Código de país: el cambio se ve en Ajustes
+  ✓ toqué 'Código de país'
+  ✓ escribí '53' en el campo #0
+  ✓ toqué 'Guardar'
+  [OK] Código de país restaurado
+  ✓ toqué 'Notificaciones'
+captura 77 aj_notificaciones (365460 bytes)
+  ✓ toqué 'Pagos'
+captura 78 aj_notificaciones_cambio (366035 bytes)
+  ✓ toqué 'Cerrar'
+  [OK] Notificaciones: se cierra y vuelve a Ajustes
+  [OK] Notificaciones: el cambio se ve en Ajustes
+  ✓ toqué 'Notificaciones'
+  ✓ toqué 'Pagos'
+  ✓ toqué 'Cerrar'
+  [OK] Notificaciones restauradas
+  ✓ toqué 'Alertas de tránsito'
+captura 79 aj_alertas (367199 bytes)
+  ✓ escribí '5' en el campo #0
+  ✓ toqué 'Guardar alertas'
+  [OK] Alertas de tránsito: se cierra y vuelve a Ajustes
+  [OK] Alertas de tránsito: el cambio se ve en Ajustes
+  ✓ toqué 'Sonido y vibración'
+captura 80 aj_sonido (393231 bytes)
+  ✓ toqué 'Vibración háptica'
+captura 81 aj_sonido_cambio (393531 bytes)
+  ✓ toqué 'Cerrar'
+  [OK] Sonido y vibración: se cierra y vuelve a Ajustes
+  [OK] Sonido y vibración: el cambio se ve en Ajustes
+  ✓ toqué 'Sonido y vibración'
+  ✓ toqué 'Vibración háptica'
+  ✓ toqué 'Cerrar'
+  [OK] Vibración restaurada
+  ✓ toqué 'Nombre del saludo'
+captura 82 aj_saludo (360075 bytes)
+  ✓ toqué 'Cerrar'
+  [OK] Nombre del saludo: se cierra y vuelve a Ajustes
+  ✓ toqué 'Tamaño de la interfaz'
+captura 83 aj_tamano (307250 bytes)
+  ✓ toqué 'Listo'
+  [OK] Tamaño de la interfaz: se cierra y vuelve a Ajustes
+  ✓ toqué 'Seguridad'
+captura 84 aj_seguridad (489048 bytes)
+  [OK] Seguridad: abre su pantalla
+captura 85 aj_seguridad_abajo (512978 bytes)
+  ✓ toqué 'fuera de la app'
+captura 86 aj_bloqueo_automatico (366761 bytes)
+  ✓ toqué '15 min'
+captura 87 aj_bloqueo_15 (367689 bytes)
+  ✓ toqué 'Cerrar'
+  [OK] Bloqueo automático: guarda 15 minutos
+  ✓ toqué 'fuera de la app'
+  ✓ toqué '5 min'
+  ✓ toqué 'Cerrar'
+  [OK] Bloqueo automático: vuelve a 5 minutos
+  [OK] Seguridad: vuelve a Ajustes con Atrás
+  ✓ toqué 'Respaldo e importación'
+captura 88 aj_respaldo (491278 bytes)
+  [OK] Respaldo e importación: abre su pantalla
+captura 89 aj_respaldo_abajo (550298 bytes)
+  ✓ toqué 'Desactivado'
+  [OK] Respaldo automático: se desactiva
+captura 90 aj_respaldo_desactivado (481760 bytes)
+  ✓ toqué 'Cada día'
+  [OK] Respaldo automático: vuelve a cada día
+  [OK] Respaldo e importación: vuelve a Ajustes con Atrás
+  ✓ toqué 'Sincronización (Telegram)'
+captura 91 aj_sincronizacion (497032 bytes)
+  [OK] Sincronización (Telegram): abre su pantalla
+captura 92 aj_sincronizacion_abajo (469119 bytes)
+  [OK] Sincronización (Telegram): vuelve a Ajustes con Atrás
+  ✓ toqué 'Editar nombre del saludo'
+captura 93 aj_perfil_saludo (349204 bytes)
+  ✓ toqué 'Cerrar'
+  ✓ toqué 'Inicio'
+  ✓ toqué 'Notificaciones'
+  ✓ toqué 'Ajustes'
+captura 94 aj_notif_desde_campana (369515 bytes)
+  ✓ toqué 'Cerrar'
+  ✓ toqué 'Inicio'
+— escala 105 % —
+  ✓ toqué 'Contraseña'
+  ✓ toqué 'Iniciar sesión'
+captura 95 escala105_inicio (494493 bytes)
+  ✓ toqué 'Encargos'
+captura 96 escala105_encargos (519772 bytes)
+  ✓ toqué 'Cliente Prueba'
+captura 97 escala105_ficha (519561 bytes)
+  ✓ toqué 'Nuevo'
+captura 98 escala105_nuevo (474331 bytes)
+  ✓ toqué 'Más'
+captura 99 escala105_menu (414979 bytes)
+  ✓ toqué 'Más'
+  ✓ toqué 'Ajustes'
+captura 100 escala105_ajustes (500942 bytes)
+— escala 80 % —
+  ✓ toqué 'Contraseña'
+  ✓ toqué 'Iniciar sesión'
+captura 101 escala80_inicio (498643 bytes)
+  ✓ toqué 'Encargos'
+captura 102 escala80_encargos (556786 bytes)
+  ✓ toqué 'Cliente Prueba'
+captura 103 escala80_ficha (522543 bytes)
+  ✓ toqué 'Nuevo'
+captura 104 escala80_nuevo (472513 bytes)
+  ✓ toqué 'Más'
+captura 105 escala80_menu (412773 bytes)
+  ✓ toqué 'Más'
+  ✓ toqué 'Ajustes'
+captura 106 escala80_ajustes (524580 bytes)
+  ✓ toqué 'Contraseña'
+  ✓ toqué 'Iniciar sesión'
+  ✓ toqué 'Más'
+  ✓ toqué 'Ajustes'
+captura 107 escala_recordada (520384 bytes)
+  tamaño recordado tras reiniciar (80 %): sí
+  ✓ toqué 'Contraseña'
+  ✓ toqué 'Iniciar sesión'
+— recibos —
+  recibos generados: 4
+  recibo recibo_1_Ana_Sin_Pago.png (582355 bytes)
+  recibo recibo_2_Pedro_Varios_Pagos.png (630309 bytes)
+  recibo recibo_3_Mar_a_Fernanda_Rodr_guez.png (595235 bytes)
+  recibo recibo_4_Cliente_Prueba.png (583969 bytes)
+— acceso con PIN —
+captura 108 pin_vacio (519086 bytes)
+  ✓ toqué '1'
+  ✓ toqué '1'
+captura 109 pin_escribiendo (519895 bytes)
+  ✓ toqué '1'
+  ✓ toqué '1'
+captura 110 pin_incorrecto (515852 bytes)
+  ✓ toqué 'Clave'
+captura 111 acceso_contrasena (526093 bytes)
+  ✓ toqué 'Entrar con PIN ›'
+  ✓ toqué '1'
+  ✓ toqué '2'
+  ✓ toqué '3'
+  ✓ toqué '4'
+  entró con el PIN: sí
+captura 112 pin_dentro (508780 bytes)
+  ✓ toqué 'Más'
+captura 113 menu_perfil_final (454659 bytes)
+RESULTADO: la app sigue abierta (pid 19567)
