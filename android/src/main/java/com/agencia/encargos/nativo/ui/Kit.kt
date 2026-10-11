@@ -876,3 +876,39 @@ fun shipIcon(type: String?): ImageVector = when (type) { "barco" -> androidx.com
     val sh = RoundedCornerShape(16.dp)
     Column(Modifier.fillMaxWidth().clip(sh).background(W.tile).border(1.dp, W.line, sh), content = content)
 }
+
+
+/* ======================= Controles de ajustes compartidos ======================= */
+/** Interruptor de la app: mismos colores en todas las pantallas (azul encendido, pista neutra apagado) y tamaño
+ *  proporcionado a las filas de 34 dp. */
+@Composable fun AppSwitch(checked: Boolean, onChange: ((Boolean) -> Unit)?, enabled: Boolean = true) {
+    androidx.compose.material3.Switch(checked, onChange, Modifier.graphicsLayer { scaleX = .86f; scaleY = .86f }, enabled = enabled,
+        colors = androidx.compose.material3.SwitchDefaults.colors(
+            checkedThumbColor = Color.White, checkedTrackColor = W.blue, checkedBorderColor = W.blue,
+            uncheckedThumbColor = if (W.day) Color.White else Color(0xFFCBD5E1), uncheckedTrackColor = W.track, uncheckedBorderColor = W.line2,
+            uncheckedIconColor = Color.Transparent, checkedIconColor = Color.Transparent))
+}
+/** Fila con interruptor (misma anatomía que las filas de Ajustes): icono opcional, título, ayuda y el interruptor a la derecha.
+ *  Toda la fila responde al toque. */
+@Composable fun ToggleRow(title: String, sub: String = "", checked: Boolean, icon: ImageVector? = null, onChange: (Boolean) -> Unit) {
+    val src = remember { MutableInteractionSource() }
+    Row(Modifier.fillMaxWidth().clickable(src, null) { tapFeedback(); onChange(!checked) }.padding(horizontal = 12.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        if (icon != null) { IconTile(icon, W.icon, 32); Spacer(Modifier.width(11.dp)) }
+        Column(Modifier.weight(1f)) {
+            Text(title, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+            if (sub.isNotEmpty()) Text(sub, fontSize = 11.5.sp, lineHeight = 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Spacer(Modifier.width(8.dp)); AppSwitch(checked, { onChange(it) })
+    }
+}
+/** Grupo de filas de ajustes dentro de una ventana: recuadro con borde fino y separadores, como en Ajustes. */
+@Composable fun SettingsGroup(title: String? = null, content: @Composable ColumnScope.() -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        if (title != null) Text(title, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 4.dp))
+        val sh = RoundedCornerShape(16.dp)
+        Column(Modifier.fillMaxWidth().clip(sh).background(W.tile).border(1.dp, W.line, sh), content = content)
+    }
+}
+/** Etiqueta de sección dentro de una ventana ("Agregar otro tipo de envío"). */
+@Composable fun SheetLabel(text: String) = Text(text, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 4.dp, top = 2.dp))

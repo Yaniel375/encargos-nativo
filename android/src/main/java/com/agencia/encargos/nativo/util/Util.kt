@@ -117,7 +117,7 @@ object Receipt {
         val stc = when (st) { "En tránsito" -> Color.parseColor("#94A3B8"); "Recibido" -> Color.parseColor("#7DD3FC"); "Entregado" -> green; "Cancelado" -> mut; else -> blue }
         var y = 56f
         rr(P.toFloat(), y, 88f, 88f, 26f, blue); text("e", P + 44f, y + 64, 54f, Color.WHITE, true, Paint.Align.CENTER)
-        text("Recibo de compra", P + 112f, y + 48, 50f, tx, true); text(Js.fmt(x["date"]) + "  ·  " + app.businessName, P + 112f, y + 90, 30f, mut)
+        text("Recibo de compra", P + 112f, y + 48, 50f, tx, true); text(Js.fmt(x["date"]) + if (app.businessName.isNotBlank()) "  ·  " + app.businessName else "", P + 112f, y + 90, 30f, mut, maxW = IW - 112f)
         y += 170
         rr(P.toFloat(), y, IW.toFloat(), 300f, 40f, card, line)
         rr(P + 36f, y + 36, 108f, 108f, 32f, Color.parseColor("#1E293B"), blue)
