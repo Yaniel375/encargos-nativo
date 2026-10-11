@@ -38,12 +38,12 @@ public sealed class NotesPage : Screen
     {
         var col = NoteUtil.ColorOf(n.Str("color"));
         var tt = T(n.Str("title").IfEmpty("Sin título"), 15, true, null, true, 2); tt.FontWeight = Microsoft.UI.Text.FontWeights.ExtraBold;
-        var items = new List<UIElement> { Lead(Dot(col), tt, Js.Truthy(n["pinned"]) ? T("📌", 12) : null) };
+        var items = new List<UIElement> { Lead(Dot(col), tt, Js.Truthy(n["pinned"]) ? new FontIcon { Glyph = "\uE718", FontSize = 12, Foreground = Mut } : null) };
         if (Js.Num(n["amount"]) > 0) items.Add(Chips(Chip("Me deben " + Money(n["amount"]), Rose)));
         if (n.Str("body").Length > 0) items.Add(T(n.Str("body"), 13.5, false, null, true, 6));
         foreach (var u in NoteUtil.Links(n.Str("body")))
         {
-            var uu = u; var lb = Click(T("🔗 " + Regex.Replace(u, "^https?://", ""), 12.5, true, Blue, false, 1), () => S.OpenUrl(NoteUtil.Full(uu))); lb.Padding = new Thickness(10, 8, 10, 8);
+            var uu = u; var lb = Click(T("↗ " + Regex.Replace(u, "^https?://", ""), 12.5, true, Blue, false, 1), () => S.OpenUrl(NoteUtil.Full(uu))); lb.Padding = new Thickness(10, 8, 10, 8);
             items.Add(new Border { Child = lb, CornerRadius = new CornerRadius(10), Background = Tile, BorderBrush = LineBr, BorderThickness = new Thickness(1) });
         }
         var ph = (n["photos"] as JArr)?.OfType<string>().ToList() ?? new();
@@ -120,7 +120,7 @@ public sealed class NoteEditorPage : Screen
     {
         _links.Children.Clear(); var l = NoteUtil.Links(_body); if (l.Count == 0) return;
         _links.Children.Add(Muted("Enlaces en esta nota · pulsa para abrir"));
-        foreach (var u in l) { var uu = u; _links.Children.Add(Link("🔗 " + u, () => S.OpenUrl(NoteUtil.Full(uu)), Blue)); }
+        foreach (var u in l) { var uu = u; _links.Children.Add(Link("↗ " + u, () => S.OpenUrl(NoteUtil.Full(uu)), Blue)); }
     }
     void DrawPhotos()
     {

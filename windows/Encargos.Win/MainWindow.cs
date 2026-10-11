@@ -167,11 +167,16 @@ public sealed class MainWindow : Window
             LastRenderError = null; Root(new SettingsPage()); await Task.Delay(1200); if (LastRenderError != null) { fails++; L($"ERROR en perfil: {LastRenderError}"); }
             await Snap(dir, $"{i++:00}_perfil_con_foto", L);
             await SnapDialog(dir, $"{i++:00}_ventana_meta", L, () => Payments.Goal());
-            await SnapDialog(dir, $"{i++:00}_ventana_negocio", L, () => _ = Dialog("Nombre del negocio", V(10, InfoBox("Aparece en los recibos y en los mensajes de WhatsApp."), Box("Nombre del negocio (aparece en recibos)", "Encargos", _ => { })), "Guardar"));
+            await SnapDialog(dir, $"{i++:00}_ventana_negocio", L, () => _ = Dialog("Nombre del negocio", V(10, InfoBox("Aparece en los recibos y en los mensajes de WhatsApp."), Box("Nombre del negocio (aparece en recibos)", "Encargos", _ => { })), "Guardar", sub: "Aparece en recibos y mensajes"));
             await SnapDialog(dir, $"{i++:00}_ventana_confirmar", L, () => Ask("🧾 Eliminar gasto", "¿Eliminar este gasto?", "Eliminar", true, () => { }));
             // acceso con PIN (PIN de prueba solo en la carpeta de prueba)
             if (!Services.Security.PinOn()) Services.Security.SetPin("1234");
-            ShowLock(); await Task.Delay(2600); await Snap(dir, $"{i++:00}_acceso_pin", L); Unlock(false); await Task.Delay(800);
+            ShowLock(); await Task.Delay(2600); await Snap(dir, $"{i++:00}_acceso_pin", L);
+            if (_host.Children.Count > 0 && _host.Children[0] is LockView lv) { lv.UsePassword(); await Task.Delay(900); await Snap(dir, $"{i++:00}_acceso_contrasena", L); }
+            Unlock(false); await Task.Delay(800);
+            // ficha del encargo como la del cliente y ventana de recibo con opciones
+            if (r.Ok) { LastRenderError = null; Go(new OrderPage(Js.Str(x!["id"]))); await Task.Delay(1000); if (LastRenderError != null) { fails++; L($"ERROR en ficha nueva: {LastRenderError}"); } await Snap(dir, $"{i++:00}_ficha_como_cliente", L);
+                await SnapDialog(dir, $"{i++:00}_ventana_recibo", L, () => Media.Receipt(Services.Core.ById(x["id"])!)); }
             // anillos: fase 1 (llenándose) y fase 2 (lleno, con brillo recorriéndolo)
             Root(new HomePage()); await Task.Delay(800); await Snap(dir, $"{i++:00}_anillo_llenandose", L);
             await Task.Delay(3200); await Snap(dir, $"{i++:00}_anillo_lleno", L);
@@ -274,7 +279,7 @@ public sealed class MainWindow : Window
         if (_side.Parent is ScrollViewer oldSv) oldSv.Content = null;
         if (_scroll.Parent is Panel oldP) oldP.Children.Remove(_scroll);
         _main.Children.Clear(); _main.ColumnDefinitions.Clear(); _side.Children.Clear(); _items.Clear();
-        _title = H("Inicio", 18); _syncText = Muted("", 11.5);
+        _title = H("Inicio", 18); _syncText = Muted("Tu negocio, en orden", 11.5); _syncDot = SyncDotBtn();
         _main.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(240) });
         _main.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
@@ -311,7 +316,7 @@ public sealed class MainWindow : Window
         bar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         for (var i = 0; i < 3; i++) bar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var back = HeadBtn("", "Volver", -1, 0, () => Back()); back.Visibility = Visibility.Collapsed; _back = back;
-        var titleRow = Hs(10, back, V(0, _title, _syncText)); bar.Children.Add(titleRow);
+        var titleRow = Hs(10, back, V(0, Hs(8, _title, _syncDot), _syncText)); bar.Children.Add(titleRow);
         var attn = HeadBtn("", "Centro de atención", 0, 0xFFF43F5Eu, () => Go(new AttentionPage())); Grid.SetColumn(attn, 1); bar.Children.Add(attn);
         var bell = HeadBtn("", "Notificaciones", 1, 0xFF3B82F6u, () => Go(new NotifsPage())); Grid.SetColumn(bell, 2); bar.Children.Add(bell);
         // chip de perfil con menú
@@ -462,11 +467,31 @@ public sealed class MainWindow : Window
         }
         catch { }
     }
+    /* ---- punto de sincronización: verde = sincronizado · azul latiendo = sincronizando · ámbar = pendiente o sin conexión · rojo = error · gris = en pausa ---- */
+    Button _syncDot = new();
+    Border _dotCore = new(), _dotHalo = new();
+    Microsoft.UI.Xaml.Media.Animation.Storyboard? _pulse;
+    Button SyncDotBtn()
+    {
+        _dotCore = new Border { Width = 9, Height = 9, CornerRadius = new CornerRadius(4.5), Background = Mut, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        _dotHalo = new Border { Width = 16, Height = 16, CornerRadius = new CornerRadius(8), Background = Alpha(Mut, .25), Child = _dotCore };
+        var b = new Button { Content = _dotHalo, Padding = new Thickness(3), MinWidth = 0, MinHeight = 0, CornerRadius = new CornerRadius(11), Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent), BorderThickness = new Thickness(0), Visibility = Visibility.Collapsed, VerticalAlignment = VerticalAlignment.Center };
+        if (BtnStyle != null) b.Style = BtnStyle;
+        b.Padding = new Thickness(3); b.Click += (_, _) => Go(new SyncPage());
+        _pulse = null; return b;
+    }
     void UpdateStatus()
     {
         var s = Services.Sync.GetStatus();
-        _syncText.Text = s.Kind == "off" && Services.Sync.Cfg() == null ? "Tu negocio, en orden" : "☁️ " + s.Text;
-        _syncText.Foreground = s.Kind switch { "ok" => Green, "error" => Rose, "offline" or "pending" => Amber, _ => Mut };
+        _syncText.Text = "Tu negocio, en orden"; _syncText.Foreground = Mut;
+        var on = Services.Sync.Cfg() != null;
+        _syncDot.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+        if (!on) return;
+        var c = s.Kind switch { "ok" => Green, "run" => Blue, "error" => Rose, "offline" or "pending" => Amber, _ => Mut };
+        _dotCore.Background = c; _dotHalo.Background = Alpha(c, .25);
+        ToolTipService.SetToolTip(_syncDot, s.Text); Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(_syncDot, s.Text);
+        if (s.Kind == "run" && Fx.Enabled) { if (_pulse == null) { _pulse = new Microsoft.UI.Xaml.Media.Animation.Storyboard(); _pulse.Children.Add(Fx.Anim(_dotHalo, "Opacity", 1, .35, 700, 0, new Microsoft.UI.Xaml.Media.Animation.SineEase(), true, true)); try { _pulse.Begin(); } catch { } } }
+        else if (_pulse != null) { _pulse.Stop(); _pulse = null; _dotHalo.Opacity = 1; }
     }
 
     /* ---------------- bloqueo ---------------- */
@@ -515,7 +540,7 @@ public sealed class MainWindow : Window
         var row = new Grid { ColumnSpacing = 10 };
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }); row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         if (ok || bad) row.Children.Add(new Border { Width = 24, Height = 24, CornerRadius = new CornerRadius(12), Background = Alpha(ok ? Green : Rose, .18), Child = new FontIcon { Glyph = ok ? "" : "", FontSize = 12, Foreground = ok ? Green : Rose } });
-        var tx = T(ok ? msg[1..].Trim() : msg, 13.5, true); tx.FontWeight = FontWeights.SemiBold; tx.VerticalAlignment = VerticalAlignment.Center; Grid.SetColumn(tx, 1); row.Children.Add(tx);
+        var tx = T(NoEmoji(msg), 13.5, true); tx.FontWeight = FontWeights.SemiBold; tx.VerticalAlignment = VerticalAlignment.Center; Grid.SetColumn(tx, 1); row.Children.Add(tx);
         if (undo != null) { var l = Link("Deshacer", () => { HideToast(); undo(); }); Grid.SetColumn(l, 2); row.Children.Add(l); }
         _toast.Child = row; _toast.Visibility = Visibility.Visible;
         Fx.Move(_toast, 18, 0, 260, true);
@@ -525,20 +550,22 @@ public sealed class MainWindow : Window
 
     /* ---------------- avisos, diálogos, identidad ---------------- */
     /// <summary>Diálogo genérico. onPrimary devuelve false para dejarlo abierto (por ejemplo si falta un dato).</summary>
-    public async Task<bool> Dialog(string title, UIElement content, string primary, Func<bool>? onPrimary = null, string? close = "Cancelar", string? secondary = null, Action? onSecondary = null, bool danger = false, string? glyph = null)
+    public async Task<bool> Dialog(string title, UIElement content, string primary, Func<bool>? onPrimary = null, string? close = "Cancelar", string? secondary = null, Action? onSecondary = null, bool danger = false, string? glyph = null, string? sub = null)
     {
         await _dlg.WaitAsync();
         try
         {
             // mismo marco que el resto de la app: vidrio, borde fino, icono en recuadro junto al título y botones de la app
             var clean = CleanTitle(title);
-            var head = Hs(12, IconTile(glyph ?? DialogGlyph(clean), 36), H(clean, 19)); ((FrameworkElement)head.Children[1]).VerticalAlignment = VerticalAlignment.Center;
+            // título con icono en recuadro y, en Ajustes, una línea que explica para qué sirve
+            var head = Hs(12, IconTile(glyph ?? DialogGlyph(clean), sub != null ? 32 : 36), V(1, H(clean, sub != null ? 17 : 19), sub != null ? Muted(sub, 12) : null));
             var d = new ContentDialog { Title = head, Content = new ScrollViewer { Content = content, MaxHeight = 560 }, PrimaryButtonText = primary, XamlRoot = _root.XamlRoot, DefaultButton = ContentDialogButton.None, RequestedTheme = Day ? ElementTheme.Light : ElementTheme.Dark, CornerRadius = new CornerRadius(22), FontFamily = Font,
                 Background = CardBg, BorderBrush = Line2, BorderThickness = new Thickness(1),
                 PrimaryButtonStyle = DialogBtn(true, danger), SecondaryButtonStyle = DialogBtn(false, false), CloseButtonStyle = DialogBtn(false, false) };
             // un solo fondo en toda la ventana (sin franja distinta en el pie)
             d.Resources["ContentDialogTopOverlay"] = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
             d.Resources["ContentDialogBackground"] = CardBg;
+            if (sub != null) d.Padding = new Thickness(20, 18, 20, 16);   // ventanas de Ajustes: más compactas
             if (close != null) d.CloseButtonText = close;
             if (secondary != null) d.SecondaryButtonText = secondary;
             d.PrimaryButtonClick += (_, a) => { if (onPrimary != null && !onPrimary()) a.Cancel = true; };

@@ -48,15 +48,16 @@ public static class OrderActions
     /// <summary>Menú ⋯ de un encargo: fecha, nota, recibo, recordar, agradecer, eliminar.</summary>
     public static Button Menu(JObj x)
     {
-        var f = new MenuFlyout();
-        void Add(string text, Action a) { var i = new MenuFlyoutItem { Text = text }; i.Click += (_, _) => a(); f.Items.Add(i); }
-        Add("📅 Cambiar fecha", () => PickDate(x));
-        Add("📝 Nota interna", () => EditNote(x));
-        Add("📤 Enviar recibo al cliente", () => Media.Receipt(x));
-        if (Js.Num(x["balance"]) > 0.005) Add("🔔 Recordar pago", () => S.WhatsApp(x.Str("phone"), Core.ReminderOrder(x), x.Str("name")));
-        Add("🙏 Enviar agradecimiento", () => S.WhatsApp(x.Str("phone"), Core.ThanksOrder(x), x.Str("name")));
-        f.Items.Add(new MenuFlyoutSeparator());
-        Add("🗑️ Eliminar", () => Delete(x));
+        // mismo marco, ancho y filas que el menú del perfil
+        var mp = new StackPanel(); var f = AppFlyout(mp);
+        void Add(string glyph, string text, Action a, bool danger = false) => mp.Children.Add(MenuItemBtn(glyph, text, () => { f.Hide(); a(); }, danger));
+        Add("\uE787", "Cambiar fecha", () => PickDate(x));
+        Add("\uE70B", "Nota interna", () => EditNote(x));
+        Add("\uE8A5", "Enviar recibo", () => Media.Receipt(x));
+        if (Js.Num(x["balance"]) > 0.005) Add("\uEA8F", "Recordar pago", () => S.WhatsApp(x.Str("phone"), Core.ReminderOrder(x), x.Str("name")));
+        Add("\uEB51", "Agradecer", () => S.WhatsApp(x.Str("phone"), Core.ThanksOrder(x), x.Str("name")));
+        mp.Children.Add(MenuSep());
+        Add("\uE74D", "Eliminar encargo", () => Delete(x), true);
         var b = CardBtn(null, "\uE712", () => { }, null, "Opciones del encargo"); b.Flyout = f; b.MinWidth = 44; b.HorizontalAlignment = HorizontalAlignment.Left; return b;
     }
     public static void EditPhotoDelete(JObj x, int idx)
@@ -80,12 +81,12 @@ public static class OrderActions
         UIElement[] btns = { CardBtn("Ficha", "\uE8A5", () => S.Go(new OrderPage(id))), CardBtn("Editar", "\uE70F", () => S.Go(new EditOrderPage(id))), CardBtn("WhatsApp", "\uE8BD", () => S.WhatsApp(x.Str("phone"), "", x.Str("name")), Green), Menu(x) };
         for (var i = 0; i < btns.Length; i++) { Grid.SetColumn((FrameworkElement)btns[i], i); actions.Children.Add(btns[i]); }
         return ClickCard(() => S.Go(new OrderPage(id)),
-            Lead(Avatar(x.Str("name"), Status(st)), V(1, name, Muted($"{Core.ShippingLabel(Core.TypeOf(x))} · {Lb(Js.Num(x["pounds"]))} · {Js.Fmt(x["date"])}", 12), Muted($"{Core.OrderLabel(x)} · {x.Str("phone").IfEmpty("Sin número")}", 11.5)),
+            Lead(Avatar(x.Str("name"), Status(st)), V(1, name, Hs(5, new FontIcon { Glyph = ShipGlyph(Core.TypeOf(x)), FontSize = 12, Foreground = Mut }, Muted($"{Core.ShippingName(Core.TypeOf(x))} · {Lb(Js.Num(x["pounds"]))} · {Js.Fmt(x["date"])}", 12)), Muted($"{Core.OrderLabel(x)} · {x.Str("phone").IfEmpty("Sin número")}", 11.5)),
                 Chip(st + (nx != null ? "  →" : ""), Status(st), nx != null ? () => Advance(x) : () => S.Toast("Este encargo ya está entregado."))),
             Cols(Kpi("Total", Money(t)), Kpi("Pagado", Money(pd), Green), Kpi("Saldo", b > 0.005 ? "- " + Money(b) : b < -0.005 ? "+ " + Money(-b) : "$0.00", b > 0.005 ? Rose : Green, b < -0.005 ? "a favor" : null)),
             Row(Js.Num(x["pounds"]) > 0 ? Chips(Chip("Ganancia " + Signed(g), g >= 0 ? Green : Rose)) : (UIElement)new Border(), Muted("Envío " + Money(x["shipping"]), 12)),
             Progress(t > 0 ? pd / t : 0),
-            x.Str("note").Length > 0 ? Muted("📝 " + x.Str("note")) : null,
+            x.Str("note").Length > 0 ? Hs(6, new FontIcon { Glyph = "\uE70B", FontSize = 12, Foreground = Mut }, Muted(x.Str("note"))) : null,
             actions);
     }
 }
@@ -141,22 +142,30 @@ public sealed class OrderPage : Screen
         if (x == null) { p.Children.Add(Empty("Este encargo ya no existe.")); return; }
         double t = Js.Num(x["total"]), pd = Js.Num(x["paid"]), b = Js.Num(x["balance"]); var st = x.Str("status").IfEmpty("Pedido");
         var g = Core.Profit(x); var nx = Core.NextStatus(st); var photos = Core.OrderPhotos(x);
-        p.Children.Add(Card(
-            Lead(Avatar(x.Str("name"), Status(st), 52), V(2, H(x.Str("name")), Muted($"{Core.OrderLabel(x)} · {x.Str("phone").IfEmpty("Sin teléfono")} · {Js.Fmt(x["date"])}")), OrderActions.Menu(x)),
-            Chips(Chip(st, Status(st)), Chip(Core.ShippingName(Core.TypeOf(x)) + " · " + Lb(Js.Num(x["pounds"])), Teal)),
-            Row(T($"Pagado {Money(pd)} de {Money(t)}"), T(b > 0.005 ? $"Debe {Money(b)}" : b < -0.005 ? $"A favor {Money(-b)}" : "Pagado completo", 14, true, b > 0.005 ? Rose : Green)),
-            Progress(t > 0 ? pd / t : 1)));
-        if (st == "Cancelado") p.Children.Add(Card(Muted("Este encargo está cancelado.", 14)));
-        else
-        {
-            p.Children.Add(IconCard("\uE804", "Estado del pedido", nx != null ? Link($"Pasar a {nx} ›", () => OrderActions.Advance(x)) : null, Stepper(EncargosApp.FLOW, st)));
-        }
-        p.Children.Add(Cols(Kpi("Pedido", Money(x["cost"])), Kpi("Envío", Money(x["shipping"]), null, $"{Js.ToFixed(Js.Num(x["pounds"]), 2)} × {Money(x["lbCost"])}"), Kpi("Total", Money(t), Blue),
-            Kpi("Pagado", Money(pd), Green), Kpi(b < -0.005 ? "A favor" : "Saldo", b > 0.005 ? "-" + Money(b) : b < -0.005 ? "+" + Money(-b) : "$0.00", b > 0.005 ? Rose : Green),
-            Kpi("Ganancia", Signed(g), g >= 0 ? Green : Rose, Money(Core.MarginOf(x)) + "/lb")));
-        p.Children.Add(Cols(Btn("Editar", () => S.Go(new EditOrderPage(_id)), true, null, ""), Btn("WhatsApp", () => S.WhatsApp(x.Str("phone"), "", x.Str("name")), false, Green, ""),
-            Btn("Enviar recibo", () => Media.Receipt(x), false, null, ""),
-            b > 0.005 ? Btn("Recordar pago", () => S.WhatsApp(x.Str("phone"), Core.ReminderOrder(x), x.Str("name")), false, Rose) : Btn("Agradecer", () => S.WhatsApp(x.Str("phone"), Core.ThanksOrder(x), x.Str("name")))));
+        // ---- cabecera con la misma apariencia que la ficha del cliente: quién es, su saldo y los datos clave ----
+        var owes = b > 0.005; var tone = owes ? Rose : Green;
+        var name = H(x.Str("name"), 21);
+        var headInfo = V(2, name,
+            Hs(6, new FontIcon { Glyph = "\uE717", FontSize = 12, Foreground = Mut }, Muted(x.Str("phone").IfEmpty("Sin teléfono"), 13)),
+            Hs(6, new FontIcon { Glyph = ShipGlyph(Core.TypeOf(x)), FontSize = 12, Foreground = Mut }, Muted(Core.ShippingName(Core.TypeOf(x)) + " · " + Lb(Js.Num(x["pounds"])), 13)),
+            Muted("Encargo del " + Js.Fmt(x["date"]).Split(',')[0], 12));
+        var side = V(8, OrderActions.Menu(x), Chip(st, Status(st))); side.HorizontalAlignment = HorizontalAlignment.Right;
+        foreach (var ch in side.Children) ((FrameworkElement)ch).HorizontalAlignment = HorizontalAlignment.Right;
+        var totalCol = V(0, Muted("Total", 12), Big(Money(t), null, 17)); foreach (var ch in totalCol.Children) ((FrameworkElement)ch).HorizontalAlignment = HorizontalAlignment.Right;
+        var balance = new Border { CornerRadius = new CornerRadius(16), Padding = new Thickness(14), Background = Alpha(tone, .08), BorderBrush = Alpha(tone, .30), BorderThickness = new Thickness(1),
+            Child = V(8, Row(V(0, Muted(owes ? "Pendiente por cobrar" : b < -0.005 ? "Saldo a favor" : "Pagado completo", 12.5), Big(owes ? "- " + Money(b) : b < -0.005 ? "+ " + Money(-b) : Money(0), tone, 26)), totalCol),
+                Progress(t > 0 ? pd / t : 1),
+                Muted($"Pagó {Money(pd)} de {Money(t)}" + (t > 0 ? $" · {Math.Round(Math.Clamp(pd / t, 0, 1) * 100)} %" : ""), 12.5)) };
+        var head = Card(Lead(Avatar(x.Str("name"), owes ? Rose : Blue, 60), headInfo, side), balance,
+            Cols(Kpi("Pedido", Money(x["cost"])), Kpi("Envío", Money(x["shipping"]), null, $"{Js.ToFixed(Js.Num(x["pounds"]), 2)} × {Money(x["lbCost"])}"),
+                Kpi("Ganancia", Signed(g), g >= 0 ? Green : Rose, Money(Core.MarginOf(x)) + "/lb")));
+        // ---- acciones (mismo orden y estilo que en la ficha del cliente) ----
+        var actions = Grid2(new List<UIElement> { Btn("Editar", () => S.Go(new EditOrderPage(_id)), true, null, "\uE70F"), Btn("WhatsApp", () => S.WhatsApp(x.Str("phone"), "", x.Str("name")), false, Green, "\uE8BD"),
+            Btn("Enviar recibo", () => Media.Receipt(x), false, null, "\uE724"),
+            b > 0.005 ? Btn("Recordar pago", () => S.WhatsApp(x.Str("phone"), Core.ReminderOrder(x), x.Str("name")), false, Rose, "\uEA8F") : Btn("Agradecer", () => S.WhatsApp(x.Str("phone"), Core.ThanksOrder(x), x.Str("name")), false, null, "\uEB51") }, 2);
+        UIElement estado = st == "Cancelado" ? Card(Muted("Este encargo está cancelado.", 14))
+            : IconCard("\uE804", "Estado del pedido", nx != null ? Link($"Pasar a {nx} ›", () => OrderActions.Advance(x)) : null, Stepper(EncargosApp.FLOW, st));
+        p.Children.Add(S.ContentWidth < 760 ? V(12, head, actions, estado) : Cols(V(12, head), V(12, actions, estado)));
         p.Children.Add(IconCard("\uE70B", "Nota interna", Link(x.Str("note").Length == 0 ? "Agregar" : "Editar", () => OrderActions.EditNote(x)),
             x.Str("note").Length == 0 ? Muted("Solo para ti: el cliente nunca la ve.", 14) : T(x.Str("note"))));
         p.Children.Add(IconCard("\uEB9F", $"Fotos ({photos.Count})", Link("Agregar foto", async () => { var d = await Media.PickPhoto(900, 0.55); if (d != null && Core.AddOrderPhoto(x["id"], d)) S.Toast("✅ Foto guardada."); }),
@@ -190,7 +199,7 @@ public sealed class EditOrderPage : Screen
         _st ??= x.Str("status").IfEmpty("Pedido");
         _sum = new StackPanel { Spacing = 8 }; _gain = Muted("");
         p.Children.Add(Card(Lead(Avatar(x.Str("name"), Status(_st), 48), V(2, H(x.Str("name"), 18), Muted(x.Str("phone").IfEmpty("Sin teléfono")))),
-            Chips(Chip("🔒 " + Core.ShippingName(Core.TypeOf(x)) + " · " + Money(x["lbCost"]) + "/lb", Teal)),
+            Chips(Chip(Core.ShippingName(Core.TypeOf(x)) + " · " + Money(x["lbCost"]) + "/lb", Teal)),
             Muted("El tipo de envío y la tarifa quedan fijos para conservar el precio original.")));
         p.Children.Add(IconCard("\uE9D2", "Resumen", null, _sum));
         p.Children.Add(IconCard("\uE804", "Estado", null, Choice(EncargosApp.STATES.Select(s => (s, s)), _st, k => { _st = k; Redraw(); })));

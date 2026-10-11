@@ -149,7 +149,7 @@ public sealed class SecurityPage : Screen
             NavRow("\uED1A", "Ocultar en capturas de pantalla", "Excluye la ventana de capturas, grabaciones y pantallas compartidas", null, null, Switch(sec.PrivacyOn(), v => { sec.SetPrivacy(v); S.ApplyPrivacy(); })));
         var log = sec.LogEntries().Take(15).ToList();
         var activity = IconCard("\uE81C", "Actividad de seguridad", null, log.Count == 0 ? new UIElement[] { Muted("Sin actividad registrada.", 14) } :
-            log.Select(e => (UIElement)Lead(T(Js.Truthy(e["ok"]) ? "✅" : "⚠️"), V(0, T(e.Str("text"), 13), Muted(AdminUtil.TimeLabel(e["t"]), 11)))).ToArray());
+            log.Select(e => (UIElement)Lead(new FontIcon { Glyph = Js.Truthy(e["ok"]) ? "\uE73E" : "\uE7BA", FontSize = 14, Foreground = Js.Truthy(e["ok"]) ? Green : Amber }, V(0, T(e.Str("text"), 13), Muted(AdminUtil.TimeLabel(e["t"]), 11)))).ToArray());
         var danger = Group("Zona de peligro", NavRow("\uE74D", "Eliminar todos los datos", "Requiere confirmar tu identidad y escribir ELIMINAR", () => S.RequireAuth("Confirma tu identidad", Wipe, true), null, null, Rose, Rose));
         var foot = Muted("El PIN se guarda con sal y hash iterado; Windows Hello no comparte tu huella con la app. Ningún respaldo incluye tu PIN ni tu contraseña.", 12);
         p.Children.Add(S.ContentWidth < 760 ? V(14, status, access, data, activity, danger, foot) : Cols(V(14, status, access, data), V(14, activity, danger, foot)));
@@ -160,8 +160,8 @@ public sealed class SecurityPage : Screen
         var opts = new[] { ("0", "Al salir"), ("1", "1 min"), ("5", "5 min"), ("15", "15 min"), ("30", "30 min"), ("never", "Nunca") };
         var sel = !lk.On ? "never" : Js.NumberToString(lk.Minutes);
         await S.Dialog("Bloqueo automático", V(10, Muted("Se pedirá tu PIN o contraseña cuando pase este tiempo fuera de la app.", 13),
-            Choice(opts, sel, k => sec.SetLock(k == "never" ? (double?)null : double.Parse(k, System.Globalization.CultureInfo.InvariantCulture)))), "Listo", null, null);
-        Redraw();
+            Choice(opts, sel, k => sec.SetLock(k == "never" ? (double?)null : double.Parse(k, System.Globalization.CultureInfo.InvariantCulture)))), "Listo", null, null, sub: "Cuándo se vuelve a pedir el PIN o la contraseña");
+        FlashTitle = "Bloqueo automático"; Redraw();
     }
     async Task CheckHello() { _hello = await Native.HelloAvailable(); Redraw(); }
 
@@ -243,7 +243,7 @@ public sealed class SettingsPage : Screen
         var right = V(14,
             Group("Apariencia",
                 NavRow("\uE740", "Adaptar a la pantalla", MainWindow.FitAuto() ? $"Automático: todo crece o se reduce según la resolución y el tamaño de la ventana · ahora {Math.Round(S.Fit * 100)} %" : "Desactivado: tamaño normal en cualquier ventana", null, null,
-                    Switch(MainWindow.FitAuto(), v => { Core.Ls.Set("encargos_win_fit", v ? "auto" : "off"); S.RefreshFit(); Redraw(); })),
+                    Switch(MainWindow.FitAuto(), v => { Core.Ls.Set("encargos_win_fit", v ? "auto" : "off"); S.RefreshFit(); FlashTitle = "Adaptar a la pantalla"; Redraw(); })),
                 NavRow("\uE8D4", "Nombre del saludo", $"\"¡Hola, {Core.GreetName.IfEmpty("…")}!\"", Greet),
                 NavRow("\uE708", "Modo noche", !day ? "Encendido · fondo oscuro" : "Apagado · colores claros", null, null, Switch(!day, v =>
                 {
@@ -261,8 +261,8 @@ public sealed class SettingsPage : Screen
     async void Biz()
     {
         var v = Core.BusinessName;
-        if (await S.Dialog("Nombre del negocio", V(10, InfoBox("Aparece en los recibos y en los mensajes de WhatsApp."), Box("Nombre del negocio (aparece en recibos)", v, x => v = x)), "Guardar"))
-        { Core.BusinessName = v.Trim(); S.Toast("✅ Datos guardados."); Redraw(); }
+        if (await S.Dialog("Nombre del negocio", V(10, InfoBox("Aparece en los recibos y en los mensajes de WhatsApp."), Box("Nombre del negocio (aparece en recibos)", v, x => v = x)), "Guardar", sub: "Aparece en recibos y mensajes"))
+        { Core.BusinessName = v.Trim(); FlashTitle = "Nombre del negocio"; S.Toast("✅ Datos guardados."); Redraw(); }
     }
     /// <summary>Foto de perfil: se guarda solo en este equipo.</summary>
     async void ChangePhoto()
@@ -272,13 +272,13 @@ public sealed class SettingsPage : Screen
     async void Greet()
     {
         var v = Core.GreetName;
-        if (await S.Dialog("Nombre del saludo", Box("Tu nombre (para el saludo)", v, x => v = x), "Guardar")) { Core.GreetName = v.Trim(); S.RefreshProfile(); S.Toast("✅ Datos guardados."); Redraw(); }
+        if (await S.Dialog("Nombre del saludo", Box("Tu nombre (para el saludo)", v, x => v = x), "Guardar", sub: "Cómo te saluda la app en Inicio")) { Core.GreetName = v.Trim(); FlashTitle = "Nombre del saludo"; S.RefreshProfile(); S.Toast("✅ Datos guardados."); Redraw(); }
     }
     async void CountryCode()
     {
         var v = Core.PhoneCC;
-        if (await S.Dialog("Código de país", V(10, InfoBox("Se agrega a los números de 8 cifras al abrir WhatsApp."), Box("Código de país para WhatsApp (sin +)", v, x => v = x, false, null, 4)), "Guardar"))
-        { Core.PhoneCC = new string(v.Where(char.IsDigit).ToArray()).IfEmpty("53"); S.Toast("✅ Datos guardados."); Redraw(); }
+        if (await S.Dialog("Código de país", V(10, InfoBox("Se agrega a los números de 8 cifras al abrir WhatsApp."), Box("Código de país para WhatsApp (sin +)", v, x => v = x, false, null, 4)), "Guardar", sub: "Para abrir WhatsApp con números cortos"))
+        { Core.PhoneCC = new string(v.Where(char.IsDigit).ToArray()).IfEmpty("53"); FlashTitle = "Código de país"; S.Toast("✅ Datos guardados."); Redraw(); }
     }
     async void Rates()
     {
@@ -289,8 +289,8 @@ public sealed class SettingsPage : Screen
         foreach (var k in keys)
         {
             var key = k;
-            rows.Add(Row(Box(Core.ShippingLabel(k) + " · USD/lb", rates[k], v => rates[key] = v),
-                k is "avion" or "barco" ? null : Btn("Quitar", () => S.Ask("Eliminar tarifa", $"¿Eliminar la tarifa \"{Core.ShippingLabel(key)}\"? Los encargos que ya la usan no cambian.", "Eliminar", true, () => { Core.RemoveShippingRate(key); Redraw(); }), false, Rose, null, false)));
+            rows.Add(Row(Box(Core.ShippingName(k) + " · USD/lb", rates[k], v => rates[key] = v),
+                k is "avion" or "barco" ? null : Btn("Quitar", () => S.Ask("Eliminar tarifa", $"¿Eliminar la tarifa \"{Core.ShippingName(key)}\"? Los encargos que ya la usan no cambian.", "Eliminar", true, () => { Core.RemoveShippingRate(key); Redraw(); }), false, Rose, null, false)));
         }
         rows.Add(T("Agregar otro tipo de envío", 14, true));
         rows.Add(Cols(Box("Nombre del envío (ej. Express)", "", v => newName = v), Box("Precio · USD/lb", "", v => newPrice = v)));
@@ -306,20 +306,20 @@ public sealed class SettingsPage : Screen
                 if (Core.AddShippingRate(newName, pr) == null) { S.Toast("No se pudo agregar la tarifa."); return false; }
             }
             Core.SetShippingRates(m); return true;
-        });
-        if (ok) { S.Toast("✅ Tarifas guardadas. Se aplican a los encargos nuevos."); Redraw(); }
+        }, sub: "Lo que cobras por libra en cada tipo de envío");
+        if (ok) { FlashTitle = "Precio por libra (lo que cobras)"; S.Toast("✅ Tarifas guardadas. Se aplican a los encargos nuevos."); Redraw(); }
     }
     async void Buy()
     {
         var keys = Core.ShippingRates.Keys.ToList(); var buyR = Core.BuyRates();
         var buy = keys.ToDictionary(k => k, k => Js.NumberToString(Js.Num(buyR[k]))); var applyActive = false;
         var rows = new List<UIElement> { InfoBox("Se usa para calcular tu ganancia por encargo.") };
-        foreach (var k in keys) { var key = k; rows.Add(Box(Core.ShippingLabel(k) + " · USD/lb", buy[k], v => buy[key] = v)); }
+        foreach (var k in keys) { var key = k; rows.Add(Box(Core.ShippingName(k) + " · USD/lb", buy[k], v => buy[key] = v)); }
         rows.Add(Toggle("Aplicar también a encargos activos", "Actualiza el costo en los encargos de clientes que aún no terminan", false, v => applyActive = v));
-        if (await S.Dialog("Lo que te cuesta a ti la libra", V(10, rows.ToArray()), "Guardar costos"))
+        if (await S.Dialog("Lo que te cuesta a ti la libra", V(10, rows.ToArray()), "Guardar costos", sub: "Se usa para calcular tu ganancia"))
         {
             var m = new Dictionary<string, double>(); foreach (var k in keys) { var n = Num(buy.GetValueOrDefault(k, "")); if (!double.IsNaN(n) && n >= 0) m[k] = n; }
-            Core.SaveBuyRates(m, applyActive); S.Toast("✅ Costos guardados."); Redraw();
+            Core.SaveBuyRates(m, applyActive); FlashTitle = "Costo por libra (lo que te cobran)"; S.Toast("✅ Costos guardados."); Redraw();
         }
     }
     async void Templates()
@@ -327,22 +327,22 @@ public sealed class SettingsPage : Screen
         string a = Core.Tpl("arrival"), r = Core.Tpl("reminder"), t = Core.Tpl("thanks");
         var restore = false;
         var ok = await S.Dialog("Mensajes de WhatsApp", V(10, InfoBox("Puedes usar {nombre}, {total}, {pagado}, {saldo}, {libras} y {negocio}."),
-            Box("Aviso de llegada", a, v => a = v, true), Box("Recordatorio de pago", r, v => r = v, true), Box("Agradecimiento", t, v => t = v, true)), "Guardar mensajes", null, "Cancelar", "Restaurar", () => restore = true);
-        if (ok) { Core.SaveTemplates(a, r, t); S.Toast("✅ Mensajes guardados."); }
+            Box("Aviso de llegada", a, v => a = v, true), Box("Recordatorio de pago", r, v => r = v, true), Box("Agradecimiento", t, v => t = v, true)), "Guardar mensajes", null, "Cancelar", "Restaurar", () => restore = true, sub: "Llegada, recordatorio de pago y agradecimiento");
+        if (ok) { Core.SaveTemplates(a, r, t); FlashTitle = "Mensajes de WhatsApp"; S.Toast("✅ Mensajes guardados."); Redraw(); }
         else if (restore) S.Ask("Restaurar mensajes", "¿Volver a los mensajes originales?", "Restaurar", false, () => { Core.ResetTemplates(); S.Toast("✅ Mensajes restaurados."); });
     }
     async void Transit()
     {
         string w = Core.TransitWarn.ToString(), l = Core.TransitLate.ToString();
-        if (await S.Dialog("Alertas de tránsito", V(10, InfoBox("El centro de atención te avisa cuando un encargo lleva muchos días en tránsito."), Cols(Box("Avisar a los (días)", w, v => w = v), Box("Retrasado a los (días)", l, v => l = v))), "Guardar alertas"))
-        { Core.SaveTransitAlerts(int.TryParse(w, out var a) ? a : Core.TransitWarn, int.TryParse(l, out var b) ? b : Core.TransitLate); S.Toast("✅ Alertas guardadas."); Redraw(); }
+        if (await S.Dialog("Alertas de tránsito", V(10, InfoBox("El centro de atención te avisa cuando un encargo lleva muchos días en tránsito."), Cols(Box("Avisar a los (días)", w, v => w = v), Box("Retrasado a los (días)", l, v => l = v))), "Guardar alertas", sub: "Cuándo avisar de un pedido que tarda"))
+        { Core.SaveTransitAlerts(int.TryParse(w, out var a) ? a : Core.TransitWarn, int.TryParse(l, out var b) ? b : Core.TransitLate); FlashTitle = "Alertas de tránsito"; S.Toast("✅ Alertas guardadas."); Redraw(); }
     }
     async void Notifs()
     {
         var cfg = Core.Notifs.Cfg();
         await S.Dialog("Notificaciones", V(6, new[] { ("inapp", "Avisos dentro de la app"), ("pay", "Pagos"), ("order", "Encargos"), ("client", "Clientes"), ("system", "Sistema y seguridad"), ("important", "Avisos importantes") }
-            .Select(o => (UIElement)Toggle(o.Item2, "", Js.Truthy(cfg[o.Item1]), _ => Core.Notifs.ToggleCfg(o.Item1))).ToArray()), "Cerrar", null, null);
-        Redraw();
+            .Select(o => (UIElement)Toggle(o.Item2, "", Js.Truthy(cfg[o.Item1]), _ => Core.Notifs.ToggleCfg(o.Item1))).ToArray()), "Cerrar", null, null, sub: "Qué avisos quieres recibir");
+        FlashTitle = "Notificaciones"; Redraw();
     }
 }
 
@@ -451,7 +451,7 @@ public sealed class SyncDiagPage : Screen
                 .Concat(conf.Take(20).Select(c => (UIElement)T("• " + c.Str("entity") + " · ganó " + (c.Str("kept") == "local" ? "este equipo" : "otro dispositivo (" + c.Str("remoteDevice") + ")") + " · " + AdminUtil.TimeLabel(c["t"]), 12))).ToArray()));
         var log = sync.LogEntries().Take(60).ToList();
         p.Children.Add(IconCard("\uE8A5", "Registro", null, log.Count == 0 ? new UIElement[] { Muted("Sin registros.", 14) } :
-            log.Select(e => (UIElement)V(0, T((e.Str("kind") switch { "err" => "⚠️ ", "in" => "⬇️ ", "out" => "⬆️ ", _ => "• " }) + Services.Redact(e.Str("text")), 12, false, e.Str("kind") == "err" ? Rose : null),
+            log.Select(e => (UIElement)V(0, T((e.Str("kind") switch { "err" => "Error · ", "in" => "Recibido · ", "out" => "Enviado · ", _ => "" }) + Services.Redact(e.Str("text")), 12, false, e.Str("kind") == "err" ? Rose : null),
                 Muted(AdminUtil.TimeLabel(e["t"]) + " · " + e.Str("dev"), 11))).ToArray()));
         p.Children.Add(Btn("Copiar diagnóstico (sin secretos)", () =>
         {

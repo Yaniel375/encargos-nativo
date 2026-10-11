@@ -46,6 +46,13 @@ public static class Media
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(b, "Foto de perfil");
         _ = FillProfile(b, p); return b;
     }
+    /// <summary>Foto de perfil en círculo con aro (pantalla de acceso).</summary>
+    public static Border ProfileCircle(double size, Brush ring)
+    {
+        var inner = new Border { CornerRadius = new CornerRadius((size - 10) / 2), Background = Alpha(Mut, 0.12) };
+        _ = FillProfile(inner, ProfilePhoto);
+        return new Border { Width = size, Height = size, CornerRadius = new CornerRadius(size / 2), BorderBrush = ring, BorderThickness = new Thickness(2), Padding = new Thickness(3), Child = inner, HorizontalAlignment = HorizontalAlignment.Center };
+    }
     static async Task FillProfile(Border b, string p) { var bmp = await Load(p, 256); if (bmp != null) b.Background = new ImageBrush { ImageSource = bmp, Stretch = Stretch.UniformToFill }; }
     /// <summary>Elige una foto, la reduce a 400 px y la guarda como foto de perfil.</summary>
     public static async Task<bool> PickProfile()
@@ -215,7 +222,7 @@ public static class Media
     {
         var core = Services.Core; var view = ReceiptView(core, x);
         async Task<byte[]?> Png() { try { return await RenderPng(view); } catch (Exception e) { Services.Report(e); MainWindow.I.Toast("No se pudo preparar el recibo."); return null; } }
-        var copy = Btn("Copiar imagen y abrir WhatsApp", async () =>
+        var copy = OptionRow("\uE8BD", "Copiar y abrir WhatsApp", "Pega el recibo en el chat con Ctrl+V", async () =>
         {
             var png = await Png(); if (png == null) return;
             var ms = new InMemoryRandomAccessStream(); await ms.WriteAsync(png.AsBuffer()); ms.Seek(0);
@@ -223,14 +230,14 @@ public static class Media
             Clipboard.SetContent(dp); try { Clipboard.Flush(); } catch { }
             MainWindow.I.Toast("Recibo copiado. En WhatsApp pulsa Ctrl+V para pegarlo.");
             MainWindow.I.WhatsApp(x.Str("phone"), core.ReceiptCaption(x), x.Str("name"));
-        }, true, Green);
-        var save = Btn("Guardar imagen (PNG)", async () => { var png = await Png(); if (png != null && await SaveFile(FileBase(x) + ".png", ".png", "Imagen PNG", png)) MainWindow.I.Toast("✅ Recibo guardado."); });
-        var print = Btn("Abrir para imprimir", async () =>
+        }, true);
+        var save = OptionRow("\uE896", "Guardar imagen (PNG)", "Elige la carpeta donde guardarlo", async () => { var png = await Png(); if (png != null && await SaveFile(FileBase(x) + ".png", ".png", "Imagen PNG", png)) MainWindow.I.Toast("✅ Recibo guardado."); });
+        var print = OptionRow("\uE749", "Abrir para imprimir", "Se abre con el visor de imágenes", async () =>
         {
             var png = await Png(); if (png == null) return;
             var path = Path.Combine(Path.GetTempPath(), FileBase(x) + ".png"); await File.WriteAllBytesAsync(path, png);
             await Windows.System.Launcher.LaunchFileAsync(await StorageFile.GetFileFromPathAsync(path));
         });
-        await MainWindow.I.Dialog("Enviar recibo", V(10, view, copy, Cols(save, print)), "Cerrar", null, null);
+        await MainWindow.I.Dialog("Enviar recibo", V(12, view, OptionGroup(copy, save, print)), "Cerrar", null, null, glyph: "\uE8A5", sub: $"{x.Str("name")} · total {Money(x["total"])}");
     }
 }

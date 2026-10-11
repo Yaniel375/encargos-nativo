@@ -67,7 +67,10 @@ public sealed class LockView : Grid
 
         // ----- tarjeta compacta y centrada -----
         var c = new StackPanel { Spacing = 10 };
-        if (!pinMode)
+        // tu foto de perfil (si la pusiste) o el candado, en PIN y en contraseña; el aro se vuelve verde al entrar
+        var ringBrush = _granted ? (Brush)GreenB : Br(0x963B82F6u);
+        if (!_setup && Media.ProfilePhoto.Length > 0) c.Children.Add(Media.ProfileCircle(58, ringBrush));
+        else
         {
             var ring = new Border { Width = 46, Height = 46, CornerRadius = new CornerRadius(23), Background = Br(0xA00F172Au), BorderBrush = _granted ? GreenB : Br(0x963B82F6u), BorderThickness = new Thickness(1.5), HorizontalAlignment = HorizontalAlignment.Center,
                 Child = new FontIcon { Glyph = _granted ? "\uE73E" : "\uE72E", FontSize = 18, Foreground = _granted ? GreenB : Br(0xFF60A5FAu) } };
@@ -98,9 +101,10 @@ public sealed class LockView : Grid
             // cápsula con un punto por dígito (rojo si el PIN fue incorrecto, verde al entrar)
             var dots = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 14 };
             for (var i = 0; i < sec.PinLen(); i++) dots.Children.Add(new Border { Width = 12, Height = 12, CornerRadius = new CornerRadius(6), BorderBrush = _granted ? GreenB : Alpha(Blue, .85), BorderThickness = new Thickness(1.5), Background = i < _pin.Length ? (_granted ? GreenB : Blue) : null });
-            c.Children.Add(new Border { Child = dots, HorizontalAlignment = HorizontalAlignment.Center, CornerRadius = new CornerRadius(99), Padding = new Thickness(18, 12, 18, 12), Background = Br(0x960F172Au), BorderBrush = pinErr ? Alpha(Rose, .6) : Line2, BorderThickness = new Thickness(1) });
-            var pad = new Grid { RowSpacing = 8, ColumnSpacing = 18, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 2, 0, 0) };
-            for (var i = 0; i < 3; i++) pad.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            c.Children.Add(new Border { Child = dots, HorizontalAlignment = HorizontalAlignment.Center, CornerRadius = new CornerRadius(99), Padding = new Thickness(18, 9, 18, 9), Background = Br(0x960F172Au), BorderBrush = pinErr ? Alpha(Rose, .6) : Line2, BorderThickness = new Thickness(1) });
+            // teclado en cuadrícula 3 × 4, del mismo ancho que los campos de la contraseña; números centrados
+            var pad = new Grid { RowSpacing = 8, ColumnSpacing = 8, HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 2, 0, 0) };
+            for (var i = 0; i < 3; i++) pad.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             for (var i = 0; i < 4; i++) pad.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             var keys = new[] { "1", "2", "3", "4", "5", "6", "7", "8", "9", "left", "0", "del" };
             for (var i = 0; i < keys.Length; i++)
@@ -108,19 +112,20 @@ public sealed class LockView : Grid
                 var k = keys[i]; Button b;
                 if (k == "left")
                 {
-                    if (sec.BioOn()) { b = KeyBtn("\uE928", true); b.Click += (_, _) => TryHello(); ToolTipService.SetToolTip(b, "Windows Hello"); }
-                    else { b = KeyBtn("\uE8D7", true); b.Background = null; b.BorderThickness = new Thickness(0); b.Click += (_, _) => { _usePass = true; _msg = ""; Draw(); }; ToolTipService.SetToolTip(b, "Entrar con contraseña"); }
+                    if (sec.BioOn()) { b = GridKey(new FontIcon { Glyph = "\uE928", FontSize = 18, Foreground = BlueInk }, false); b.Click += (_, _) => TryHello(); ToolTipService.SetToolTip(b, "Windows Hello"); Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(b, "Windows Hello"); }
+                    else { b = GridKey(Hs(5, new FontIcon { Glyph = "\uE8D7", FontSize = 13, Foreground = BlueInk }, T("Clave", 12.5, true, BlueInk, false)), false); b.Click += (_, _) => { _usePass = true; _msg = ""; Draw(); }; Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(b, "Entrar con contraseña"); }
                 }
-                else if (k == "del") { b = KeyBtn("\uE750", true); b.Background = null; b.BorderThickness = new Thickness(0); b.Click += (_, _) => { if (_pin.Length > 0) { _pin = _pin[..^1]; Draw(); } }; Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(b, "Borrar"); }
-                else { b = KeyBtn(k, false); b.Click += (_, _) => Digit(k); Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(b, k); }
+                else if (k == "del") { b = GridKey(new FontIcon { Glyph = "\uE750", FontSize = 18, Foreground = Mut }, false); b.Click += (_, _) => { if (_pin.Length > 0) { _pin = _pin[..^1]; Draw(); } }; Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(b, "Borrar"); }
+                else { var tx = T(k, 20, true, Br(0xFFF1F5F9u), false); tx.FontWeight = Microsoft.UI.Text.FontWeights.SemiBold; b = GridKey(tx, true); b.Click += (_, _) => Digit(k); Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(b, k); }
                 Grid.SetRow(b, i / 3); Grid.SetColumn(b, i % 3); pad.Children.Add(b);
             }
             c.Children.Add(pad);
-            c.Children.Add(new Border { Height = 1, Background = LineBr, Margin = new Thickness(8, 2, 8, 0) });
-            c.Children.Add(Center(Link("Entrar con usuario y contraseña", () => { _usePass = true; _msg = ""; Draw(); })));
+            if (sec.BioOn()) c.Children.Add(Center(Link("Entrar con usuario y contraseña", () => { _usePass = true; _msg = ""; Draw(); })));
         }
         c.Children.Add(Center(Hs(6, new FontIcon { Glyph = "\uE83D", FontSize = 12, Foreground = Mut }, Muted("Tus datos se guardan solo en este equipo", 11.5))));
-        _card = new Border { Child = c, CornerRadius = new CornerRadius(22), Padding = new Thickness(18, pinMode ? 16 : 20, 18, 16), BorderThickness = new Thickness(1), BorderBrush = _granted ? Alpha(GreenB, .75) : Line2,
+        // PIN y contraseña comparten el mismo tamaño de tarjeta (el contenido se centra dentro)
+        c.VerticalAlignment = VerticalAlignment.Center;
+        _card = new Border { Child = c, MinHeight = _setup ? 0 : 500, CornerRadius = new CornerRadius(22), Padding = new Thickness(18, 18, 18, 16), BorderThickness = new Thickness(1), BorderBrush = _granted ? Alpha(GreenB, .75) : Line2,
             Background = new LinearGradientBrush { StartPoint = new Windows.Foundation.Point(.2, 0), EndPoint = new Windows.Foundation.Point(.8, 1), GradientStops = { new GradientStop { Color = Windows.UI.Color.FromArgb(214, 17, 24, 39), Offset = 0 }, new GradientStop { Color = Windows.UI.Color.FromArgb(224, 10, 15, 28), Offset = 1 } } } };
         _box.Children.Add(_card);
         var tag = V(10, new Border { Width = 22, Height = 3, CornerRadius = new CornerRadius(2), Background = Blue, HorizontalAlignment = HorizontalAlignment.Center }, Center(T("Encargos  •  Rápido  •  Seguro  •  Siempre contigo", 11, false, NavOff, false)));
@@ -133,7 +138,18 @@ public sealed class LockView : Grid
         }
         if (!_usePass && !_setup) Focus(FocusState.Programmatic);
     }
+    /// <summary>Solo para la autoprueba: muestra el acceso por contraseña.</summary>
+    public void UsePassword() { _usePass = true; _msg = ""; Draw(); }
     static FrameworkElement Center(FrameworkElement e) { e.HorizontalAlignment = HorizontalAlignment.Center; return e; }
+    /// <summary>Tecla del PIN: rectángulo redondeado que ocupa su columna; las de función sin fondo.</summary>
+    static Button GridKey(UIElement content, bool filled)
+    {
+        var b = new Button { Height = 46, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center, VerticalContentAlignment = VerticalAlignment.Center, CornerRadius = new CornerRadius(14), Padding = new Thickness(0), Content = content,
+            Background = filled ? Glass : new SolidColorBrush(Microsoft.UI.Colors.Transparent), BorderBrush = filled ? Line2 : new SolidColorBrush(Microsoft.UI.Colors.Transparent), BorderThickness = new Thickness(1) };
+        if (BtnStyle != null) b.Style = BtnStyle;
+        b.HorizontalAlignment = HorizontalAlignment.Stretch; b.HorizontalContentAlignment = HorizontalAlignment.Center;
+        return Fx.Bounce(b, .94);
+    }
     static Button KeyBtn(string text, bool glyph)
     {
         var b = new Button { Width = 56, Height = 56, CornerRadius = new CornerRadius(28), Padding = new Thickness(0), Content = glyph ? (object)new FontIcon { Glyph = text, FontSize = 18 } : T(text, 20, true), Background = Glass, BorderBrush = Line2, BorderThickness = new Thickness(1) };

@@ -51,7 +51,7 @@ public sealed class NewOrderPage : Screen
         var step2 = StepCard(2, "\uE7B8", "Pedido y envío", "Costo de la compra, tipo de envío y libras", Num(_cost) > 0,
             Box("Costo del pedido ($)", _cost, v => { _cost = v; SaveDraft(); }),
             Muted("Tipo de envío", 12.5),
-            Choice(Core.ShippingRates.Keys.Select(k => (k, Core.ShippingLabel(k))), _type, k => { _type = k; _rate = Js.ToFixed(Core.RateOf(k), 2); SaveDraft(); Redraw(); }),
+            Choice(Core.ShippingRates.Keys.Select(k => (k, Core.ShippingName(k))), _type, k => { _type = k; _rate = Js.ToFixed(Core.RateOf(k), 2); SaveDraft(); Redraw(); }),
             Cols(_rateBox, _lbBox),
             Cols(new[] { 0.5, 1, 2, 5 }.Select(q => (UIElement)Btn("+" + Js.NumberToString(q), () => _lbBox.Text = Js.ToFixed(Num(_lbBox.Text) + q, 2))).ToArray()));
         var step3 = StepCard(3, "\uE8C7", "Pago y estado", "Lo que pagó hoy y en qué etapa va", true,

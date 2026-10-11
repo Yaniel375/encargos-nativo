@@ -57,7 +57,7 @@ public sealed class AttentionPage : Screen
         }
         if (list.Count == 0) p.Children.Add(Empty(all.Count > 0 ? "Nada en este filtro" : "Todo está en orden", all.Count > 0 ? "Prueba con otro filtro o desactiva \"Solo pendientes\"." : "En este momento no tienes elementos que requieran atención."));
         var lb = att.LastBackup();
-        if (lb > 0 && Js.NowMs() - lb <= 7 * 86400000.0) p.Children.Add(Muted("☁️ Todo respaldado · último respaldo " + Js.Fmt(lb)));
+        if (lb > 0 && Js.NowMs() - lb <= 7 * 86400000.0) p.Children.Add(Muted("Todo respaldado · último respaldo " + Js.Fmt(lb)));
         var acts = att.Activity();
         var actRows = new List<UIElement>(); if (acts.Count == 0) actRows.Add(Muted("Aquí verás tus pagos, entregas, avisos y respaldos.", 14));
         foreach (var a in acts.Take(5)) actRows.Add(ActRow(a));
