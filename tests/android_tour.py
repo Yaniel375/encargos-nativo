@@ -339,8 +339,9 @@ if open_settings():
                     if nd is not None and center(nd)[1] < 1500: break
                     adb("shell", "input", "swipe", "540", "1400", "540", "900", "400"); time.sleep(1)
                 if tap("fuera de la app", wait=1.6):
-                    shot("aj_bloqueo_automatico"); tap("5 min", exact=True, wait=1.0); tap("Cerrar", exact=True, wait=1.2)
-                    check("Bloqueo automático: guarda 5 min", "Después de 5 min fuera de la app")
+                    shot("aj_bloqueo_automatico"); tap("15 min", exact=True, wait=1.0); shot("aj_bloqueo_15"); tap("Cerrar", exact=True, wait=1.2)
+                    check("Bloqueo automático: guarda 15 minutos", "15 minutos")
+                    if tap("fuera de la app", wait=1.6): tap("5 min", exact=True, wait=1.0); tap("Cerrar", exact=True, wait=1.2); check("Bloqueo automático: vuelve a 5 minutos", "5 minutos")
             if slug == "respaldo":
                 adb("shell", "input", "swipe", "540", "600", "540", "1500", "450"); time.sleep(1)
                 if tap("Desactivado", exact=True, wait=1.0): check("Respaldo automático: se desactiva", "No se guardarán copias automáticas"); shot("aj_respaldo_desactivado")

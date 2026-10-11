@@ -195,8 +195,10 @@ fun BackupScreen() {
         }
         item {
             SectionCard("Respaldo automático", icon = Icons.Outlined.Autorenew) {
-                Choice(listOf("off" to "Desactivado", "daily" to "Cada día", "weekly" to "Cada semana"), bk.autoMode) { bk.autoMode = it }
-                Hint(if (bk.autoMode == "off") "No se guardarán copias automáticas." else "Al abrir la app se guarda una copia en Descargas/Encargos " + (if (bk.autoMode == "weekly") "una vez por semana." else "una vez al día.") +
+                // el estado local hace que la opción elegida se marque al instante (y se guarda a la vez)
+                var auto by remember { mutableStateOf(bk.autoMode) }
+                Choice(listOf("off" to "Desactivado", "daily" to "Cada día", "weekly" to "Cada semana"), auto) { bk.autoMode = it; auto = it }
+                Hint(if (auto == "off") "No se guardarán copias automáticas." else "Al abrir la app se guarda una copia en Descargas/Encargos " + (if (auto == "weekly") "una vez por semana." else "una vez al día.") +
                         if (bk.lastAuto > 0) " Última: " + Js.fmt(bk.lastAuto) else " Todavía no se ha hecho ningún respaldo automático.")
                 Secondary("Hacer copia automática ahora", Modifier.fillMaxWidth()) {
                     val payload = bk.autoDue(true) ?: return@Secondary
