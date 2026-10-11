@@ -162,7 +162,10 @@ if tap("Más", wait=1.2) and tap("Registro de pagos", wait=2.5):
     if tap("Pendientes y fondos a favor", wait=2.5): shot("pendientes"); adb("shell", "input", "keyevent", "4"); time.sleep(1.2)
     adb("shell", "input", "keyevent", "4"); time.sleep(1.2)
 tap("Encargos", exact=True, wait=2, last=True)
-if tap("Opciones del encargo", wait=1.2): shot("menu_encargo"); adb("shell", "input", "keyevent", "4"); time.sleep(1)
+if tap("Opciones del encargo", wait=1.2):
+    shot("menu_encargo")
+    if tap("Enviar recibo", exact=True, wait=1.8): shot("ventana_recibo"); tap("Cerrar", exact=True, wait=1.2)
+    else: adb("shell", "input", "keyevent", "4"); time.sleep(1)
 tap("Inicio", exact=True, wait=2, last=True)
 tap("Centro de atención", wait=2); shot("atencion"); adb("shell", "input", "keyevent", "4"); time.sleep(1)
 tap("Notificaciones", wait=2); shot("notificaciones")

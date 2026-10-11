@@ -106,7 +106,7 @@ fun NewOrderScreen(forName: String?, forPhone: String?) {
             StepCard(2, Icons.Outlined.Inventory2, "Pedido y envío", "Costo de la compra, tipo de envío y libras", c > 0) {
                 Field(cost, { cost = it }, "Costo del pedido", number = true, prefix = "$")
                 Text("Tipo de envío", fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Choice(core.shippingRates.keys.map { it to core.shippingLabel(it) }, type) { type = it; rate = Js.toFixed(core.rateOf(it), 2) }
+                Choice(core.shippingRates.keys.map { it to core.shippingName(it) }, type) { type = it; rate = Js.toFixed(core.rateOf(it), 2) }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Field(rate, { rate = it }, "Tarifa por libra", Modifier.weight(1f), number = true, prefix = "$")
                     Field(pounds, { pounds = it }, "Libras", Modifier.weight(1f), number = true, suffix = "lb")

@@ -97,7 +97,7 @@ fun NoteCard(n: JObj, modifier: Modifier, open: () -> Unit) {
         if (Js.num(n["amount"]) > 0) Chip("Me deben ${money(n["amount"])}", C.rose)
         if (n.str("body").isNotEmpty()) Text(n.str("body"), maxLines = 6, fontSize = 13.5.sp)
         noteLinks(n.str("body")).forEach { u -> val sh = RoundedCornerShape(10.dp)
-            Text("🔗 " + u.removePrefix("https://").removePrefix("http://").take(40), color = C.blue, fontSize = 12.5.sp, fontWeight = FontWeight.Bold, maxLines = 1,
+            Text("↗ " + u.removePrefix("https://").removePrefix("http://").take(40), color = C.blue, fontSize = 12.5.sp, fontWeight = FontWeight.Bold, maxLines = 1,
                 modifier = Modifier.fillMaxWidth().clip(sh).background(W.tile).border(1.dp, W.line, sh).clickable { Files.open(ui.act, fullUrl(u)) }.padding(horizontal = 10.dp, vertical = 8.dp)) }
         val ph = (n["photos"] as? JArr)?.filterIsInstance<String>() ?: emptyList()
         if (ph.size == 1) FitPhoto(Images.decode(ph[0], 700), maxHeight = 200) { viewer = ph to 0 } else if (ph.isNotEmpty()) PhotoStrip(ph, 84) { viewer = ph to it }
@@ -119,7 +119,7 @@ fun NoteEditor(n: JObj?, close: () -> Unit) {
         item { Field(title, { title = it }, "Título") }
         item { Field(body, { body = it }, "Nota (puedes pegar enlaces https://…)", singleLine = false, minLines = 5) }
         val links = noteLinks(body)
-        if (links.isNotEmpty()) item { Column { Text("Enlaces en esta nota · toca para abrir", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); links.forEach { u -> Text("🔗 " + u, color = C.blue, modifier = Modifier.clickable { Files.open(ui.act, fullUrl(u)) }.padding(vertical = 3.dp)) } } }
+        if (links.isNotEmpty()) item { Column { Text("Enlaces en esta nota · toca para abrir", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); links.forEach { u -> Text("↗ " + u, color = C.blue, modifier = Modifier.clickable { Files.open(ui.act, fullUrl(u)) }.padding(vertical = 3.dp)) } } }
         item { Field(amt, { amt = it }, "Me deben (opcional)", number = true, prefix = "$") }
         item {
             SectionCard("Fotos de artículos", icon = Icons.Outlined.PhotoLibrary) {

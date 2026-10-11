@@ -412,7 +412,7 @@ const val AUTO_TITLE = "\u0000"
                     }
                     Spacer(Modifier.width(10.dp))
                 }
-                Text(msg.removePrefix("✅").trim(), Modifier.weight(1f), fontSize = 13.5.sp, fontWeight = FontWeight.SemiBold, color = W.tx)
+                Text(noEmoji(msg), Modifier.weight(1f), fontSize = 13.5.sp, fontWeight = FontWeight.SemiBold, color = W.tx)
                 d.visuals.actionLabel?.let { l -> TextButton(onClick = { d.performAction() }) { Text(l, color = W.blue, fontWeight = FontWeight.ExtraBold) } }
             }
         }

@@ -73,6 +73,14 @@ import androidx.compose.foundation.border
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.background
 import androidx.compose.material.icons.outlined.Phone
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.NotificationsActive
+import androidx.compose.material.icons.outlined.Favorite
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Image
+import androidx.compose.material.icons.outlined.PictureAsPdf
+import androidx.compose.material.icons.outlined.Print
+import androidx.compose.material.icons.outlined.Download
 
 /* ======================= Lista de encargos activos ======================= */
 @Composable
@@ -120,7 +128,10 @@ fun OrderCard(x: JObj) {
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
                 Text(x.str("name"), fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text("${core.shippingLabel(core.typeOf(x))} · ${lb(Js.num(x["pounds"]))} · ${Js.fmt(x["date"])}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(shipIcon(core.typeOf(x)), null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant); Spacer(Modifier.width(5.dp))
+                    Text("${core.shippingName(core.typeOf(x))} · ${lb(Js.num(x["pounds"]))} · ${Js.fmt(x["date"])}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
                 Text("${core.orderLabel(x)} · ${x.str("phone").ifEmpty { "Sin número" }}", fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Spacer(Modifier.width(6.dp))
@@ -137,7 +148,7 @@ fun OrderCard(x: JObj) {
             Text("Envío ${money(x["shipping"])}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
         }
         ProgressBar(if (t > 0) p / t else 0.0)
-        if (x.str("note").isNotEmpty()) Text("📝 " + x.str("note"), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (x.str("note").isNotEmpty()) Row(verticalAlignment = Alignment.Top) { Icon(Icons.Outlined.EditNote, null, Modifier.size(15.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant); Spacer(Modifier.width(6.dp)); Text(x.str("note"), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             CardBtn("Ficha", Icons.Outlined.Description, Modifier.weight(1f)) { ui.go(Screen.Order(id)) }
             CardBtn("Editar", Icons.Filled.Edit, Modifier.weight(1f)) { ui.go(Screen.EditOrder(id)) }
@@ -157,13 +168,14 @@ fun advanceWithUndo(ui: Ui, x: JObj) {
 fun OrderMenu(x: JObj, open: Boolean, close: () -> Unit) {
     val ui = LocalUi.current; val core = ui.core
     var note by remember { mutableStateOf<String?>(null) }; var receipt by remember { mutableStateOf(false) }
-    DropdownMenu(open, close) {
-        DropdownMenuItem(text = { Text("📅 Cambiar fecha") }, onClick = { close(); pickDate(ui, x) })
-        DropdownMenuItem(text = { Text("📝 Nota interna") }, onClick = { close(); note = x.str("note") })
-        DropdownMenuItem(text = { Text("📤 Enviar recibo al cliente") }, onClick = { close(); receipt = true })
-        if (Js.num(x["balance"]) > 0.005) DropdownMenuItem(text = { Text("🔔 Recordar pago") }, onClick = { close(); ui.whatsapp(x.str("phone"), core.reminderOrder(x), x.str("name")) })
-        DropdownMenuItem(text = { Text("🙏 Enviar agradecimiento") }, onClick = { close(); ui.whatsapp(x.str("phone"), core.thanksOrder(x), x.str("name")) })
-        DropdownMenuItem(text = { Text("🗑️ Eliminar", color = C.rose) }, onClick = { close(); deleteOrder(ui, x) })
+    AppMenu(open, close) {
+        MenuItem(Icons.Outlined.CalendarMonth, "Cambiar fecha", Js.fmt(x["date"]).substringBefore(",")) { close(); pickDate(ui, x) }
+        MenuItem(Icons.Outlined.EditNote, "Nota interna", if (x.str("note").isEmpty()) "Solo para ti" else "Editar la nota") { close(); note = x.str("note") }
+        MenuItem(Icons.Outlined.Receipt, "Enviar recibo", "Imagen, PDF o imprimir") { close(); receipt = true }
+        if (Js.num(x["balance"]) > 0.005) MenuItem(Icons.Outlined.NotificationsActive, "Recordar pago", "Debe ${money(x["balance"])} · por WhatsApp") { close(); ui.whatsapp(x.str("phone"), core.reminderOrder(x), x.str("name")) }
+        MenuItem(Icons.Outlined.Favorite, "Enviar agradecimiento", "Por WhatsApp") { close(); ui.whatsapp(x.str("phone"), core.thanksOrder(x), x.str("name")) }
+        MenuSep()
+        MenuItem(Icons.Outlined.Delete, "Eliminar encargo", danger = true) { close(); deleteOrder(ui, x) }
     }
     note?.let { n -> NoteDialog(n, { note = null }) { t -> if (core.setNote(x["id"], t)) ui.toast("✅ Nota guardada."); note = null } }
     if (receipt) ReceiptDialog(x) { receipt = false }
@@ -216,13 +228,20 @@ fun ReceiptDialog(x: JObj, dismiss: () -> Unit) {
         dismiss()
     }
     AlertDialog(onDismissRequest = dismiss, icon = Icons.Outlined.Receipt, title = { Text("Enviar recibo") },
-        text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Recibo de ${x.str("name")} · ${money(x["total"])}", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Primary("Enviar como imagen", Modifier.fillMaxWidth()) { make("png") }
-            Secondary("Enviar como PDF", Modifier.fillMaxWidth()) { make("pdf") }
-            Secondary("Imprimir o guardar PDF", Modifier.fillMaxWidth()) { make("print") }
-            Secondary("Guardar imagen en Descargas", Modifier.fillMaxWidth()) { make("save") }
-        } }, confirmButton = { TextButton(onClick = dismiss) { Text("Cerrar") } })
+        text = { Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            // resumen del recibo: cliente y total
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Avatar(x.str("name"), C.blue, 34); Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) { Text(x.str("name"), fontWeight = FontWeight.ExtraBold, fontSize = 14.5.sp, maxLines = 1); Text("Total del recibo", fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                Text(money(x["total"]), fontWeight = FontWeight.ExtraBold, fontSize = 17.sp)
+            }
+            OptionGroup {
+                OptionRow(Icons.Outlined.Image, "Enviar como imagen", "La forma más rápida por WhatsApp", primary = true) { make("png") }; RowSep()
+                OptionRow(Icons.Outlined.PictureAsPdf, "Enviar como PDF", "Documento listo para compartir") { make("pdf") }; RowSep()
+                OptionRow(Icons.Outlined.Print, "Imprimir o guardar PDF", "Abre la impresión del teléfono") { make("print") }; RowSep()
+                OptionRow(Icons.Outlined.Download, "Guardar en Descargas", "Imagen en Descargas/Encargos/Recibos") { make("save") }
+            }
+        } }, dismissButton = { TextButton(onClick = dismiss) { Text("Cerrar") } })
 }
 
 /* ======================= Ficha del encargo ======================= */
@@ -244,7 +263,7 @@ fun OrderScreen(id: String) {
                     Column(Modifier.weight(1f)) {
                         Text(x.str("name"), fontSize = 21.sp, fontWeight = FontWeight.ExtraBold, maxLines = 2)
                         IconLabel(Icons.Outlined.Phone, x.str("phone").ifEmpty { "Sin teléfono" })
-                        IconLabel(Icons.Outlined.LocalShipping, core.shippingName(core.typeOf(x)) + " · " + lb(Js.num(x["pounds"])))
+                        IconLabel(shipIcon(core.typeOf(x)), core.shippingName(core.typeOf(x)) + " · " + lb(Js.num(x["pounds"])))
                         Text("Encargo del ${Js.fmt(x["date"]).substringBefore(",")}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Column(horizontalAlignment = Alignment.End) {
@@ -339,7 +358,7 @@ fun EditOrderScreen(id: String) {
         item {
             SectionCard {
                 Row(verticalAlignment = Alignment.CenterVertically) { Avatar(x.str("name"), C.status(st), 48); Spacer(Modifier.width(10.dp)); Column { Text(x.str("name"), fontSize = 18.sp, fontWeight = FontWeight.ExtraBold); Text(x.str("phone").ifEmpty { "Sin teléfono" }, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
-                Chip("🔒 " + core.shippingName(core.typeOf(x)) + " · " + money(x["lbCost"]) + "/lb", C.teal)
+                Chip(core.shippingName(core.typeOf(x)) + " · " + money(x["lbCost"]) + "/lb", C.teal)
                 Text("El tipo de envío y la tarifa quedan fijos para conservar el precio original.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }

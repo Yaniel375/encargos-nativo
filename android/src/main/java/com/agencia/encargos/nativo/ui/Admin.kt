@@ -94,6 +94,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.border
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.outlined.PhotoCamera
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Warning
 
 /* ---------------- piezas comunes ---------------- */
 
@@ -117,7 +119,7 @@ private fun timeLabel(t: Any?): String = if (Js.num(t) > 0) Js.fmt(t) else "—"
 @Composable
 fun PasswordDialog(title: String, text: String, confirm: Boolean, ok: String, dismiss: () -> Unit, onOk: (String) -> Unit) {
     var a by remember { mutableStateOf("") }; var b by remember { mutableStateOf("") }; var err by remember { mutableStateOf("") }
-    AlertDialog(onDismissRequest = dismiss, icon = Icons.Outlined.Lock, title = { Text(title) },
+    AlertDialog(onDismissRequest = dismiss, icon = Icons.Outlined.Lock, title = { Text(noEmoji(title)) },
         text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(text, fontSize = 13.sp)
             Field(a, { a = it; err = "" }, "Contraseña", password = true)
@@ -286,7 +288,7 @@ fun SecurityScreen() {
             SectionCard("Actividad de seguridad", icon = Icons.Outlined.History) {
                 val log = sec.logEntries().take(15)
                 if (log.isEmpty()) Hint("Sin actividad registrada.")
-                log.forEach { e -> Row { Text(if (Js.truthy(e["ok"])) "✅ " else "⚠️ "); Column(Modifier.weight(1f)) { Text(e.str("text"), fontSize = 13.sp); Hint(timeLabel(e["t"])) } } }
+                log.forEach { e -> Row(verticalAlignment = Alignment.Top) { Icon(if (Js.truthy(e["ok"])) Icons.Filled.CheckCircle else Icons.Filled.Warning, null, Modifier.padding(top = 2.dp, end = 8.dp).size(15.dp), tint = if (Js.truthy(e["ok"])) C.green else C.amber); Column(Modifier.weight(1f)) { Text(e.str("text"), fontSize = 13.sp); Hint(timeLabel(e["t"])) } } }
             }
         }
         item { RowGroup("Zona de peligro") {
@@ -443,8 +445,8 @@ fun SettingsScreen() {
             InfoBox("Configura todos tus tipos de envío. Cada tipo puede tener su propio precio por libra. Al crear un encargo, el precio se selecciona automáticamente según el envío.")
             keys.forEach { k ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Field(rates[k] ?: "", { rates[k] = it }, core.shippingLabel(k), Modifier.weight(1f), number = true, prefix = "$", suffix = "USD/lb")
-                    if (k != "avion" && k != "barco") TextButton(onClick = { ui.ask("Eliminar tarifa", "¿Eliminar la tarifa \"${core.shippingLabel(k)}\"? Los encargos que ya la usan no cambian.", "Eliminar", true) { core.removeShippingRate(k); rates.remove(k) } }) { Text("Quitar", color = C.rose) }
+                    Field(rates[k] ?: "", { rates[k] = it }, core.shippingName(k), Modifier.weight(1f), number = true, prefix = "$", suffix = "USD/lb")
+                    if (k != "avion" && k != "barco") TextButton(onClick = { ui.ask("Eliminar tarifa", "¿Eliminar la tarifa \"${core.shippingName(k)}\"? Los encargos que ya la usan no cambian.", "Eliminar", true) { core.removeShippingRate(k); rates.remove(k) } }) { Text("Quitar", color = C.rose) }
                 }
             }
             Text("Agregar otro tipo de envío", fontWeight = FontWeight.ExtraBold)
@@ -463,7 +465,7 @@ fun SettingsScreen() {
         }
         "buy" -> Sheet("Lo que te cuesta a ti la libra", { sheet = null }, Icons.Outlined.Sell, "Se usa para calcular tu ganancia") {
             InfoBox("Se usa para calcular tu ganancia por encargo.")
-            keys.forEach { k -> Field(buy[k] ?: "", { buy[k] = it }, core.shippingLabel(k), number = true, prefix = "$", suffix = "USD/lb") }
+            keys.forEach { k -> Field(buy[k] ?: "", { buy[k] = it }, core.shippingName(k), number = true, prefix = "$", suffix = "USD/lb") }
             ToggleRow("Aplicar también a encargos activos", "Actualiza el costo en los encargos de clientes que aún no terminan", applyActive) { applyActive = it }
             Primary("Guardar costos", Modifier.fillMaxWidth()) {
                 val m = LinkedHashMap<String, Double>(); keys.forEach { k -> (buy[k] ?: "").replace(',', '.').toDoubleOrNull()?.let { if (it >= 0) m[k] = it } }
@@ -674,7 +676,7 @@ fun SyncDiagScreen() {
                 val log = sync.logEntries().take(60)
                 if (log.isEmpty()) Hint("Sin registros.")
                 log.forEach { e -> Column(Modifier.padding(vertical = 2.dp)) {
-                    Text(when (e.str("kind")) { "err" -> "⚠️ "; "in" -> "⬇️ "; "out" -> "⬆️ "; else -> "• " } + e.str("text"), fontSize = 12.sp, color = if (e.str("kind") == "err") C.rose else MaterialTheme.colorScheme.onSurface)
+                    Text(when (e.str("kind")) { "err" -> "Error · "; "in" -> "Recibido · "; "out" -> "Enviado · "; else -> "" } + e.str("text"), fontSize = 12.sp, color = if (e.str("kind") == "err") C.rose else MaterialTheme.colorScheme.onSurface)
                     Hint(timeLabel(e["t"]) + " · " + e.str("dev"))
                 } }
             }
