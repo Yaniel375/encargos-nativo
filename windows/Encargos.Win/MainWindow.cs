@@ -67,6 +67,9 @@ public sealed partial class MainWindow : Window
     readonly TextBlock _busyText = T("", 14, true);
     readonly List<Screen> _stack = new();
     readonly Dictionary<string, (Button B, FontIcon I, TextBlock T, Border? Badge, TextBlock? BadgeT)> _items = new();
+    /// <summary>Fondo azul y barrita de cada botón de la barra lateral (se animan al cambiar de sección).</summary>
+    readonly Dictionary<string, (Border Hl, Border Bar)> _navFx = new();
+    string? _lastNav;
     readonly (Border B, TextBlock T)[] _topBadges = new (Border, TextBlock)[2];
     readonly DispatcherQueueTimer _renderTimer, _tick, _toastTimer;
     readonly SemaphoreSlim _dlg = new(1, 1);
@@ -317,8 +320,8 @@ public sealed partial class MainWindow : Window
         // al reconstruir (cambio de tema) hay que soltar los elementos que se reutilizan de su contenedor anterior
         if (_side.Parent is ScrollViewer oldSv) oldSv.Content = null;
         if (_scroll.Parent is Panel oldP) oldP.Children.Remove(_scroll);
-        _main.Children.Clear(); _main.ColumnDefinitions.Clear(); _side.Children.Clear(); _items.Clear();
-        _title = H("Inicio", 18); _titleRight = T("", 12.5, true, Mut, false); _syncText = Muted("Tu negocio, en orden", 11.5); _syncDot = SyncDotBtn();
+        _main.Children.Clear(); _main.ColumnDefinitions.Clear(); _side.Children.Clear(); _items.Clear(); _navFx.Clear(); _lastNav = null;
+        _title = H("Inicio", 18); _titleRight = T("", 12.5, true, Mut, false); _syncText = Muted("", 11.5); _syncDot = SyncDotBtn();
         _main.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(240) });
         _main.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
@@ -326,7 +329,7 @@ public sealed partial class MainWindow : Window
         var logo = new Image { Width = 34, Height = 34 };
         try { logo.Source = new BitmapImage(new Uri(Path.Combine(AppContext.BaseDirectory, "Assets", "logo.png"))); } catch { }
         var brandT = T("Encargos", 17, true); brandT.FontWeight = FontWeights.ExtraBold;
-        _side.Children.Add(Click(Hs(10, new Border { CornerRadius = new CornerRadius(10), Child = logo }, V(0, brandT, Muted("Tu negocio, en orden", 11))), () => Root(new HomePage())));
+        _side.Children.Add(Click(Hs(10, new Border { CornerRadius = new CornerRadius(10), Child = logo }, brandT), () => Root(new HomePage())));
         var nb = Btn("Nuevo encargo", () => Root(new NewOrderPage()), true, null, ""); nb.Margin = new Thickness(0, 12, 0, 12); _side.Children.Add(nb);
         void Item(string key, string text, string glyph, uint? badge = null)
         {
@@ -339,7 +342,11 @@ public sealed partial class MainWindow : Window
             if (badge != null) { bt = T("", 10.5, true, Br(0xFFFFFFFFu), false); bt.FontWeight = FontWeights.ExtraBold; bt.HorizontalAlignment = HorizontalAlignment.Center; bd = new Border { MinWidth = 20, Height = 20, CornerRadius = new CornerRadius(10), Background = Br(badge.Value), Padding = new Thickness(5, 0, 5, 0), Child = bt, Visibility = Visibility.Collapsed }; Grid.SetColumn(bd, 2); g.Children.Add(bd); }
             var b = Click(g, () => Root(PageFor(key))); b.Padding = new Thickness(12, 9, 12, 9); b.BorderThickness = new Thickness(1); b.BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
             Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(b, text);
-            _items[key] = (b, ic, tx, bd, bt); _side.Children.Add(b);
+            // detrás del botón: fondo azul con una barrita a la izquierda (aparecen animados al elegir la sección)
+            var navBar = new Border { Width = 3, Height = 18, CornerRadius = new CornerRadius(2), Background = Blue, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(5, 0, 0, 0), Opacity = 0 };
+            var hl = new Border { CornerRadius = new CornerRadius(12), Background = Alpha(Blue, .14), BorderBrush = Alpha(Blue, .45), BorderThickness = new Thickness(1), Opacity = 0, Child = navBar, IsHitTestVisible = false };
+            var wrap = new Grid(); wrap.Children.Add(hl); wrap.Children.Add(b);
+            _items[key] = (b, ic, tx, bd, bt); _navFx[key] = (hl, navBar); _side.Children.Add(wrap);
         }
         void Sep() => _side.Children.Add(new Border { Height = 1, Background = LineBr, Margin = new Thickness(6, 8, 6, 8) });
         Item("home", "Inicio", ""); Item("orders", "Encargos", ""); Item("clients", "Clientes", ""); Item("payments", "Pagos", "");
@@ -355,7 +362,7 @@ public sealed partial class MainWindow : Window
         bar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         for (var i = 0; i < 3; i++) bar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var back = HeadBtn("", "Volver", -1, 0, () => Back()); back.Visibility = Visibility.Collapsed; _back = back;
-        var titleRow = Hs(10, back, V(0, Hs(8, _title, _titleRight, _syncDot), _syncText)); bar.Children.Add(titleRow);
+        var titleRow = Hs(10, back, Hs(8, _title, _titleRight, _syncDot)); bar.Children.Add(titleRow);
         var attn = HeadBtn("", "Centro de atención", 0, 0xFFF43F5Eu, () => Go(new AttentionPage())); Grid.SetColumn(attn, 1); bar.Children.Add(attn);
         var bell = HeadBtn("", "Notificaciones", 1, 0xFF3B82F6u, () => Go(new NotifsPage())); Grid.SetColumn(bell, 2); bar.Children.Add(bell);
         // chip de perfil con menú
@@ -495,10 +502,15 @@ public sealed partial class MainWindow : Window
         foreach (var (k, it) in _items)
         {
             var on = k == p.Nav;
-            it.B.Background = on ? Alpha(Blue, .14) : new SolidColorBrush(Microsoft.UI.Colors.Transparent);
-            it.B.BorderBrush = on ? Alpha(Blue, .45) : new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+            if (_navFx.TryGetValue(k, out var fx))
+            {
+                if (on && _lastNav != null && _lastNav != p.Nav) Fx.NavIn(fx.Hl, fx.Bar, it.I, it.T);
+                else if (!on && k == _lastNav && _lastNav != p.Nav) Fx.NavOut(fx.Hl, fx.Bar);
+                else { fx.Hl.Opacity = on ? 1 : 0; fx.Bar.Opacity = on ? 1 : 0; }
+            }
             it.I.Foreground = on ? Blue : Mut; it.T.Foreground = on ? (Day ? Br(0xFF0F172Au) : Br(0xFFFFFFFFu)) : Br(Day ? 0xFF334155u : 0xFFCBD5E1u);
         }
+        _lastNav = p.Nav;
         UpdateBadges(); UpdateStatus();
     }
     void UpdateBadges()
@@ -528,7 +540,6 @@ public sealed partial class MainWindow : Window
     void UpdateStatus()
     {
         var s = Services.Sync.GetStatus();
-        _syncText.Text = "Tu negocio, en orden"; _syncText.Foreground = Mut;
         var on = Services.Sync.Cfg() != null;
         _syncDot.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
         if (!on) return;
