@@ -162,6 +162,13 @@ public sealed class MainWindow : Window
                 Media.Viewer(Services.Core.OrderPhotos(Services.Core.ById(x["id"])!), 0, null); await Task.Delay(1500); await Snap(dir, $"{i++:00}_visor_vertical", L);
                 HideOverlay(); Media.Viewer(Services.Core.OrderPhotos(Services.Core.ById(x["id"])!), 1, null); await Task.Delay(1500); await Snap(dir, $"{i++:00}_visor_horizontal", L); HideOverlay();
             }
+            // foto de perfil de prueba y ventanas con el estilo de la app (solo en la carpeta de prueba)
+            Services.Core.Ls.Set(Media.ProfileKey, await TestPhoto(400, 400, "PERFIL")); RefreshProfile();
+            LastRenderError = null; Root(new SettingsPage()); await Task.Delay(1200); if (LastRenderError != null) { fails++; L($"ERROR en perfil: {LastRenderError}"); }
+            await Snap(dir, $"{i++:00}_perfil_con_foto", L);
+            await SnapDialog(dir, $"{i++:00}_ventana_meta", L, () => Payments.Goal());
+            await SnapDialog(dir, $"{i++:00}_ventana_negocio", L, () => _ = Dialog("Nombre del negocio", V(10, InfoBox("Aparece en los recibos y en los mensajes de WhatsApp."), Box("Nombre del negocio (aparece en recibos)", "Encargos", _ => { })), "Guardar"));
+            await SnapDialog(dir, $"{i++:00}_ventana_confirmar", L, () => Ask("🧾 Eliminar gasto", "¿Eliminar este gasto?", "Eliminar", true, () => { }));
             // acceso con PIN (PIN de prueba solo en la carpeta de prueba)
             if (!Services.Security.PinOn()) Services.Security.SetPin("1234");
             ShowLock(); await Task.Delay(2600); await Snap(dir, $"{i++:00}_acceso_pin", L); Unlock(false); await Task.Delay(800);
@@ -211,12 +218,22 @@ public sealed class MainWindow : Window
         var bytes = new byte[ms.Size]; using (var rs = ms.AsStreamForRead()) { var n = 0; while (n < bytes.Length) { var k = await rs.ReadAsync(bytes.AsMemory(n)); if (k == 0) break; n += k; } }
         _ = label; return "data:image/jpeg;base64," + Convert.ToBase64String(bytes);
     }
-    async Task Snap(string dir, string name, Action<string> L)
+    Task Snap(string dir, string name, Action<string> L) => SnapEl(_root, dir, name, L);
+    /// <summary>Abre una ventana, la captura (las ventanas viven en una capa aparte) y la cierra.</summary>
+    async Task SnapDialog(string dir, string name, Action<string> L, Action open)
+    {
+        open(); await Task.Delay(1300);
+        ContentDialog? cd = null;
+        foreach (var p in VisualTreeHelper.GetOpenPopupsForXamlRoot(_root.XamlRoot)) if (p.Child is ContentDialog c) cd = c;
+        if (cd == null) { L($"(no se encontró la ventana {name})"); return; }
+        await SnapEl(cd, dir, name, L); cd.Hide(); await Task.Delay(700);
+    }
+    async Task SnapEl(UIElement el, string dir, string name, Action<string> L)
     {
         try
         {
             var rtb = new Microsoft.UI.Xaml.Media.Imaging.RenderTargetBitmap();
-            await rtb.RenderAsync(_root);
+            await rtb.RenderAsync(el);
             var px = await rtb.GetPixelsAsync();
             var bytes = System.Runtime.InteropServices.WindowsRuntime.WindowsRuntimeBufferExtensions.ToArray(px);
             using var ms = new Windows.Storage.Streams.InMemoryRandomAccessStream();
@@ -298,7 +315,7 @@ public sealed class MainWindow : Window
         var attn = HeadBtn("", "Centro de atención", 0, 0xFFF43F5Eu, () => Go(new AttentionPage())); Grid.SetColumn(attn, 1); bar.Children.Add(attn);
         var bell = HeadBtn("", "Notificaciones", 1, 0xFF3B82F6u, () => Go(new NotifsPage())); Grid.SetColumn(bell, 2); bar.Children.Add(bell);
         // chip de perfil con menú
-        var av = new Border { Width = 30, Height = 30, CornerRadius = new CornerRadius(10), Background = AvatarBg, BorderBrush = Alpha(Blue, .45), BorderThickness = new Thickness(1), Child = new TextBlock { Text = (Services.Core.GreetName.Trim() + "E")[..1].ToUpperInvariant(), FontFamily = Font, FontWeight = FontWeights.ExtraBold, FontSize = 14, Foreground = Text, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center } };
+        _avSlot = new Grid(); _avSlot.Children.Add(ChipAvatar()); var av = _avSlot;
         var who = V(0, T("Administrador", 12.5, true, null, false), Muted(Services.Security.UserName().IfEmpty("—"), 10.5));
         var chip = new Button { Content = Hs(8, av, who, new FontIcon { Glyph = "", FontSize = 11, Foreground = Mut }), Padding = new Thickness(4, 4, 10, 4), CornerRadius = new CornerRadius(14), Background = BtnBg, BorderBrush = BtnLine, BorderThickness = new Thickness(1) };
         if (BtnStyle != null) chip.Style = BtnStyle;
@@ -309,7 +326,8 @@ public sealed class MainWindow : Window
         // (Pendientes, Completados, Respaldo, Seguridad y Sincronización siguen en la barra lateral)
         var mp = new StackPanel { Spacing = 5, Width = 232 };
         var whoName = T(Services.Core.GreetName.IfEmpty("Mi cuenta"), 13.5, true, null, false, 1); whoName.FontWeight = FontWeights.ExtraBold;
-        var headBtn = Click(Lead(Avatar(Services.Core.GreetName.IfEmpty("E"), Blue, 30), V(0, whoName, Muted(Services.Security.UserName().IfEmpty("admin"), 11)), new FontIcon { Glyph = "\uE76C", FontSize = 11, Foreground = Mut }), () => { menu.Hide(); Go(new SettingsPage()); });
+        _menuAvSlot = new Grid(); _menuAvSlot.Children.Add(Media.ProfilePic(Services.Core.GreetName.IfEmpty("E"), 30));
+        var headBtn = Click(Lead(_menuAvSlot, V(0, whoName, Muted(Services.Security.UserName().IfEmpty("admin"), 11)), new FontIcon { Glyph = "\uE76C", FontSize = 11, Foreground = Mut }), () => { menu.Hide(); Go(new SettingsPage()); });
         headBtn.Padding = new Thickness(4); ((Grid)headBtn.Content).ColumnSpacing = 9; Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(headBtn, "Ver perfil y ajustes");
         mp.Children.Add(headBtn);
         var tiles = new List<UIElement>();
@@ -345,6 +363,16 @@ public sealed class MainWindow : Window
         Grid.SetColumn(body, 1); _main.Children.Add(body);
     }
     Button? _back;
+    Grid _avSlot = new(), _menuAvSlot = new();
+    /// <summary>Avatar del chip de la barra: foto de perfil o la inicial.</summary>
+    FrameworkElement ChipAvatar() => Media.ProfilePhoto.Length > 0 ? Media.ProfilePic(Services.Core.GreetName.IfEmpty("E"), 30, Alpha(Blue, .45)) :
+        new Border { Width = 30, Height = 30, CornerRadius = new CornerRadius(10), Background = AvatarBg, BorderBrush = Alpha(Blue, .45), BorderThickness = new Thickness(1), Child = new TextBlock { Text = (Services.Core.GreetName.Trim() + "E")[..1].ToUpperInvariant(), FontFamily = Font, FontWeight = FontWeights.ExtraBold, FontSize = 14, Foreground = Text, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center } };
+    /// <summary>Actualiza la foto (o inicial) del perfil en la barra y en su menú.</summary>
+    public void RefreshProfile()
+    {
+        _avSlot.Children.Clear(); _avSlot.Children.Add(ChipAvatar());
+        _menuAvSlot.Children.Clear(); _menuAvSlot.Children.Add(Media.ProfilePic(Services.Core.GreetName.IfEmpty("E"), 30));
+    }
     Button HeadBtn(string glyph, string desc, int badgeIdx, uint badgeColor, Action onClick)
     {
         var g = new Grid { Width = 40, Height = 40 };
@@ -497,12 +525,20 @@ public sealed class MainWindow : Window
 
     /* ---------------- avisos, diálogos, identidad ---------------- */
     /// <summary>Diálogo genérico. onPrimary devuelve false para dejarlo abierto (por ejemplo si falta un dato).</summary>
-    public async Task<bool> Dialog(string title, UIElement content, string primary, Func<bool>? onPrimary = null, string? close = "Cancelar", string? secondary = null, Action? onSecondary = null)
+    public async Task<bool> Dialog(string title, UIElement content, string primary, Func<bool>? onPrimary = null, string? close = "Cancelar", string? secondary = null, Action? onSecondary = null, bool danger = false, string? glyph = null)
     {
         await _dlg.WaitAsync();
         try
         {
-            var d = new ContentDialog { Title = H(title, 19), Content = new ScrollViewer { Content = content, MaxHeight = 560 }, PrimaryButtonText = primary, XamlRoot = _root.XamlRoot, DefaultButton = ContentDialogButton.Primary, RequestedTheme = Day ? ElementTheme.Light : ElementTheme.Dark, CornerRadius = new CornerRadius(22), FontFamily = Font };
+            // mismo marco que el resto de la app: vidrio, borde fino, icono en recuadro junto al título y botones de la app
+            var clean = CleanTitle(title);
+            var head = Hs(12, IconTile(glyph ?? DialogGlyph(clean), 36), H(clean, 19)); ((FrameworkElement)head.Children[1]).VerticalAlignment = VerticalAlignment.Center;
+            var d = new ContentDialog { Title = head, Content = new ScrollViewer { Content = content, MaxHeight = 560 }, PrimaryButtonText = primary, XamlRoot = _root.XamlRoot, DefaultButton = ContentDialogButton.None, RequestedTheme = Day ? ElementTheme.Light : ElementTheme.Dark, CornerRadius = new CornerRadius(22), FontFamily = Font,
+                Background = CardBg, BorderBrush = Line2, BorderThickness = new Thickness(1),
+                PrimaryButtonStyle = DialogBtn(true, danger), SecondaryButtonStyle = DialogBtn(false, false), CloseButtonStyle = DialogBtn(false, false) };
+            // un solo fondo en toda la ventana (sin franja distinta en el pie)
+            d.Resources["ContentDialogTopOverlay"] = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+            d.Resources["ContentDialogBackground"] = CardBg;
             if (close != null) d.CloseButtonText = close;
             if (secondary != null) d.SecondaryButtonText = secondary;
             d.PrimaryButtonClick += (_, a) => { if (onPrimary != null && !onPrimary()) a.Cancel = true; };
@@ -514,8 +550,35 @@ public sealed class MainWindow : Window
     }
     public async void Ask(string title, string text, string ok, bool danger, Action onOk)
     {
-        if (await Dialog(title, T(text, 14), ok)) onOk();
+        if (await Dialog(title, T(text, 14, false, Mut), ok, null, "Cancelar", null, null, danger)) onOk();
     }
+    /// <summary>Botones del pie de las ventanas: principal en degradado azul (rojo si la acción es destructiva) y secundarios en vidrio.</summary>
+    static Style DialogBtn(bool primary, bool danger)
+    {
+        var s = new Style(typeof(Button));
+        if (BtnStyle != null) s.BasedOn = BtnStyle;
+        s.Setters.Add(new Setter(Control.CornerRadiusProperty, new CornerRadius(14)));
+        s.Setters.Add(new Setter(FrameworkElement.MinHeightProperty, 46.0));
+        s.Setters.Add(new Setter(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Stretch));
+        s.Setters.Add(new Setter(Control.FontFamilyProperty, Font));
+        s.Setters.Add(new Setter(Control.FontWeightProperty, primary ? FontWeights.ExtraBold : FontWeights.Bold));
+        s.Setters.Add(new Setter(Control.FontSizeProperty, primary ? 15.0 : 14.0));
+        s.Setters.Add(new Setter(Control.BackgroundProperty, primary ? (danger ? Grad(Rose) : PrimaryBrush) : Tile));
+        s.Setters.Add(new Setter(Control.ForegroundProperty, primary ? White : Text));
+        s.Setters.Add(new Setter(Control.BorderBrushProperty, primary ? new SolidColorBrush(Microsoft.UI.Colors.Transparent) : Line2));
+        s.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(primary ? 0 : 1)));
+        return s;
+    }
+    /// <summary>Quita el emoji del principio del título (el icono va en su recuadro).</summary>
+    static string CleanTitle(string t) { var i = 0; while (i < t.Length && !char.IsLetterOrDigit(t[i]) && t[i] != '¿' && t[i] != '¡') i++; return t[i..].Trim(); }
+    static readonly (string K, string G)[] _dlgIcons = {
+        ("eliminar", "\uE74D"), ("borrar", "\uE74D"), ("quitar", "\uE74D"), ("identidad", "\uE72E"), ("pin", "\uE72E"), ("contraseña", "\uE72E"), ("bloqueo", "\uE72E"),
+        ("meta", "\uE7C1"), ("gasto", "\uE8EF"), ("pago", "\uE8C7"), ("nota", "\uE70B"), ("código", "\uE8D7"), ("recibo", "\uE8A5"), ("foto", "\uE722"),
+        ("precio", "\uE804"), ("libra", "\uE804"), ("tránsito", "\uE804"), ("whatsapp", "\uE8BD"), ("mensaje", "\uE8BD"), ("negocio", "\uE719"), ("saludo", "\uE76E"),
+        ("país", "\uE717"), ("notific", "\uEA8F"), ("tamaño", "\uE8D3"), ("sonido", "\uE767"), ("importar", "\uE896"), ("respaldo", "\uE74E"), ("restaurar", "\uE777"),
+        ("sincron", "\uE895"), ("bot", "\uE895"), ("desconectar", "\uE895"), ("historial", "\uE81C"), ("actividad", "\uE81C"), ("fecha", "\uE787"), ("cliente", "\uE77B"),
+        ("usuario", "\uE77B"), ("datos", "\uE77B"), ("estado", "\uE804") };
+    static string DialogGlyph(string title) { var t = title.ToLowerInvariant(); foreach (var (k, g) in _dlgIcons) if (t.Contains(k)) return g; return "\uE946"; }
     public async void Info(string title, UIElement content) => await Dialog(title, content, "Cerrar", null, null);
 
     /// <summary>Pide PIN, contraseña o Windows Hello antes de una acción sensible.</summary>

@@ -27,10 +27,8 @@ import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.Payments
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import com.agencia.encargos.core.objs
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.agencia.encargos.core.Js
 import com.agencia.encargos.core.str
+import androidx.compose.material.icons.outlined.Person
 
 @Composable
 fun ClientsScreen() {
@@ -231,7 +230,7 @@ fun ClientScreen(name: String) {
 fun ClientInfoDialog(name: String, a0: String, n0: String, dismiss: () -> Unit) {
     val ui = LocalUi.current
     var a by remember { mutableStateOf(a0) }; var n by remember { mutableStateOf(n0) }
-    AlertDialog(onDismissRequest = dismiss, title = { Text("📇 Datos de $name") },
+    AlertDialog(onDismissRequest = dismiss, icon = Icons.Outlined.Person, title = { Text("Datos de $name") },
         text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { Field(a, { a = it }, "Dirección de entrega", singleLine = false, minLines = 2); Field(n, { n = it }, "Nota fija del cliente (talla, horarios…)", singleLine = false, minLines = 2) } },
         confirmButton = { TextButton(onClick = { if (ui.core.saveClientInfo(name, a, n)) ui.toast("✅ Datos del cliente guardados."); dismiss() }) { Text("Guardar") } },
         dismissButton = { TextButton(onClick = dismiss) { Text("Cancelar") } })

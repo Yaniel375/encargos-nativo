@@ -13,10 +13,8 @@ import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,6 +32,8 @@ import com.agencia.encargos.core.Js
 import com.agencia.encargos.core.str
 import java.time.LocalDate
 import androidx.compose.material.icons.outlined.CreditCard
+import androidx.compose.material.icons.outlined.Flag
+import androidx.compose.material.icons.outlined.Payments
 
 /** Pago que se está editando (pedido, índice en paymentHistory). */
 val editPaymentState = mutableStateOf<Pair<String, Int>?>(null)
@@ -48,7 +48,7 @@ fun PaymentEditHost() {
     var amt by remember(sel) { mutableStateOf(Js.numberToString(Js.num(p["amount"]))) }
     var method by remember(sel) { mutableStateOf(p.str("method").ifEmpty { "Efectivo" }) }
     var note by remember(sel) { mutableStateOf(p.str("note")) }
-    AlertDialog(onDismissRequest = { editPaymentState.value = null }, title = { Text("💵 Editar pago") },
+    AlertDialog(onDismissRequest = { editPaymentState.value = null }, icon = Icons.Outlined.Payments, title = { Text("Editar pago") },
         text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Pago de ${x.str("name")} · ${Js.fmt(p["date"])}", color = MaterialTheme.colorScheme.onSurfaceVariant)
             Field(amt, { amt = it }, "Cantidad", number = true, prefix = "$")
@@ -124,7 +124,7 @@ fun dayLabel(d: Any?): String {
 fun GoalDialog(dismiss: () -> Unit) {
     val ui = LocalUi.current; val g = ui.app.stats.goal()
     var mode by remember { mutableStateOf(g.str("mode")) }; var amt by remember { mutableStateOf(if (Js.num(g["amount"]) > 0) Js.numberToString(Js.num(g["amount"])) else "") }
-    AlertDialog(onDismissRequest = dismiss, title = { Text("🎯 Meta de cobro") },
+    AlertDialog(onDismissRequest = dismiss, icon = Icons.Outlined.Flag, title = { Text("Meta de cobro") },
         text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("El círculo se llena según lo cobrado frente a esta meta.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             Choice(listOf("auto" to "Total de encargos activos", "monthly" to "Meta del mes"), mode) { mode = it }

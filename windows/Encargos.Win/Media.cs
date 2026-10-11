@@ -35,6 +35,25 @@ public static class Media
         return bmp;
     }
 
+    /* ---------- foto de perfil del administrador (solo en este equipo) ---------- */
+    public const string ProfileKey = "encargos_profile_photo";
+    public static string ProfilePhoto => Services.Core.Ls.Get(ProfileKey, "");
+    /// <summary>Foto de perfil recortada al recuadro (o la inicial si no hay foto).</summary>
+    public static FrameworkElement ProfilePic(string name, double size, Brush? border = null)
+    {
+        var p = ProfilePhoto; if (p.Length == 0) return Avatar(name, Blue, size);
+        var b = new Border { Width = size, Height = size, CornerRadius = new CornerRadius(size * .3), Background = Alpha(Mut, 0.12), BorderBrush = border ?? Line2, BorderThickness = new Thickness(1) };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(b, "Foto de perfil");
+        _ = FillProfile(b, p); return b;
+    }
+    static async Task FillProfile(Border b, string p) { var bmp = await Load(p, 256); if (bmp != null) b.Background = new ImageBrush { ImageSource = bmp, Stretch = Stretch.UniformToFill }; }
+    /// <summary>Elige una foto, la reduce a 400 px y la guarda como foto de perfil.</summary>
+    public static async Task<bool> PickProfile()
+    {
+        var d = await PickPhoto(400, 0.8); if (d == null) return false;
+        Services.Core.Ls.Set(ProfileKey, d); return true;
+    }
+
     /// <summary>Foto a partir de un data URL. Se ve SIEMPRE entera (sin recortes ni deformaciones) dentro de su recuadro.</summary>
     public static Border Photo(string dataUrl, double w, double h, Action? onClick = null, int decode = 400)
     {

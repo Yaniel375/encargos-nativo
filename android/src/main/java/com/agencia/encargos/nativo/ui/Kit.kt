@@ -509,22 +509,87 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.waterIn(c: Offset, 
     }
 }
 
-/** Hoja emergente de la referencia: tarjeta de vidrio arriba, título y botón "Cerrar"; se desplaza y respeta el teclado. */
-@Composable fun Sheet(title: String, dismiss: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+/** Marco común de todas las ventanas (hojas de Ajustes, Meta, confirmaciones…): tarjeta de vidrio centrada, radio 22,
+ *  cabecera con icono en recuadro y título como las tarjetas de Inicio; se desplaza y respeta el teclado. */
+@Composable private fun WindowFrame(dismiss: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
     androidx.compose.ui.window.Dialog(onDismissRequest = dismiss, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
         val none = remember { MutableInteractionSource() }; val none2 = remember { MutableInteractionSource() }
         val shape = RoundedCornerShape(22.dp)
-        Box(Modifier.fillMaxWidth().fillMaxHeight().clickable(none, null) { dismiss() }.imePadding().padding(12.dp), contentAlignment = Alignment.TopCenter) {
+        Box(Modifier.fillMaxSize().clickable(none, null) { dismiss() }.imePadding().padding(horizontal = 14.dp, vertical = 18.dp), contentAlignment = Alignment.Center) {
             Column(Modifier.fillMaxWidth().widthIn(max = 560.dp).enterUp(0).clip(shape).background(W.menu).border(1.dp, W.line2, shape).clickable(none2, null) {}
-                .verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(title, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.weight(1f))
-                    Secondary("Cerrar", Modifier.height(38.dp)) { dismiss() }
-                }
-                content()
-            }
+                .padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp), content = content)
         }
     }
+}
+@Composable private fun WindowHead(title: @Composable () -> Unit, icon: ImageVector?, close: (() -> Unit)?) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        if (icon != null) { IconTile(icon, W.icon, 36); Spacer(Modifier.width(12.dp)) }
+        Box(Modifier.weight(1f)) { androidx.compose.material3.ProvideTextStyle(TextStyle(fontFamily = Manrope, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.18).sp)) { title() } }
+        if (close != null) { Spacer(Modifier.width(8.dp)); Secondary("Cerrar", Modifier.height(38.dp)) { close() } }
+    }
+}
+
+/** Hoja de Ajustes: mismo marco, título con icono y botón "Cerrar". */
+@Composable fun Sheet(title: String, dismiss: () -> Unit, icon: ImageVector? = null, content: @Composable ColumnScope.() -> Unit) {
+    WindowFrame(dismiss) {
+        WindowHead({ Text(title) }, icon, dismiss)
+        Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
+    }
+}
+
+/** ¿Este botón está en el pie de una ventana? (el de confirmar se pinta como botón principal). */
+private val LocalDlgSlot = androidx.compose.runtime.compositionLocalOf { 0 }   // 0 = fuera, 1 = cancelar, 2 = confirmar
+
+/** Ventana de aviso o formulario con el estilo de la app (sustituye al diálogo del sistema en todas las pantallas):
+ *  mismo marco que las hojas; pie con "Cancelar" a la izquierda y la acción principal a la derecha. */
+@Composable fun AlertDialog(onDismissRequest: () -> Unit, confirmButton: (@Composable () -> Unit)? = null, modifier: Modifier = Modifier,
+                            dismissButton: (@Composable () -> Unit)? = null, icon: ImageVector? = null, title: (@Composable () -> Unit)? = null,
+                            text: (@Composable () -> Unit)? = null, @Suppress("UNUSED_PARAMETER") shape: androidx.compose.ui.graphics.Shape? = null) {
+    WindowFrame(onDismissRequest) {
+        if (title != null) WindowHead(title, icon, null)
+        if (text != null) Column(modifier.fillMaxWidth().weight(1f, fill = false).verticalScroll(rememberScrollState())) {
+            androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+                androidx.compose.material3.ProvideTextStyle(TextStyle(fontFamily = Manrope, fontSize = 14.sp, lineHeight = 20.sp)) { text() }
+            }
+        }
+        if (confirmButton != null || dismissButton != null) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (dismissButton != null) Box(Modifier.weight(1f)) { androidx.compose.runtime.CompositionLocalProvider(LocalDlgSlot provides 1) { dismissButton() } }
+            if (confirmButton != null) Box(Modifier.weight(1f)) { androidx.compose.runtime.CompositionLocalProvider(LocalDlgSlot provides 2) { confirmButton() } }
+        }
+    }
+}
+
+/** Botón de texto con el estilo de la app: en el pie de una ventana ocupa su mitad (confirmar = principal azul, o rojo si
+ *  [tone] es rojo); fuera de las ventanas es un botón secundario compacto. */
+@Composable fun TextButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, tone: Color? = null, content: @Composable RowScope.() -> Unit) {
+    val slot = LocalDlgSlot.current; val primary = slot == 2
+    val src = remember { MutableInteractionSource() }; val shape = RoundedCornerShape(if (slot > 0) 14.dp else 12.dp); val once = rememberOnce(onClick)
+    val base = tone ?: C.blue
+    val brush: Brush = if (primary) (if (tone == null) W.primary else Brush.linearGradient(listOf(base.copy(alpha = .85f), base))) else SolidColor(W.tile)
+    val fg = if (primary) Color.White else MaterialTheme.colorScheme.onSurface
+    Row(modifier.let { if (slot > 0) it.fillMaxWidth().height(48.dp) else it.heightIn(min = 38.dp) }.pressBounce(src, .96f).graphicsLayer { alpha = if (enabled) 1f else .45f }
+        .clip(shape).background(brush).let { if (primary) it else it.border(1.dp, W.line2, shape) }
+        .clickable(src, null, enabled = enabled) { tapFeedback(); once() }.padding(horizontal = 14.dp),
+        horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+        androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides fg) {
+            androidx.compose.material3.ProvideTextStyle(TextStyle(fontFamily = Manrope, fontSize = 14.sp, fontWeight = if (primary) FontWeight.ExtraBold else FontWeight.Bold)) { content() }
+        }
+    }
+}
+
+/* ======================= Foto de perfil del administrador ======================= */
+/** Se guarda solo en este dispositivo (ajustes locales), reducida a 400 px. */
+object Profile {
+    const val KEY = "encargos_profile_photo"
+    var photo by mutableStateOf("")
+}
+/** Foto de perfil (o la inicial si no hay foto) en recuadro redondeado. */
+@Composable fun ProfilePic(name: String, size: Int, border: Color = W.line2) {
+    val p = Profile.photo
+    val bm = remember(p) { if (p.isEmpty()) null else com.agencia.encargos.nativo.util.Images.decode(p, 400) }
+    if (bm == null) { Avatar(name, C.blue, size); return }
+    val shape = RoundedCornerShape((size * .3).dp)
+    Image(bm.asImageBitmap(), "Foto de perfil", Modifier.size(size.dp).clip(shape).border(1.dp, border, shape), contentScale = ContentScale.Crop)
 }
 
 /** Recuadro informativo azul de las hojas. */
