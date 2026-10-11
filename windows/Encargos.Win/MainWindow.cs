@@ -31,7 +31,7 @@ public abstract class Screen
     protected void Redraw() => S.Render(true);
 }
 
-public sealed class MainWindow : Window
+public sealed partial class MainWindow : Window
 {
     public static MainWindow I { get; private set; } = null!;
     public IntPtr Hwnd { get; }
@@ -40,9 +40,7 @@ public sealed class MainWindow : Window
     readonly Canvas _stage = new();
     /// <summary>Escala actual de "Adaptar a la pantalla" (1 = tamaño normal).</summary>
     public double Fit { get; private set; } = 1;
-    public static bool FitAuto() => Services.Core.Ls.Get("encargos_win_fit", "") != "off";
-    /// <summary>Tamaño de diseño: la ventana inicial (1320×860). Más ancha → todo crece; más estrecha → se reduce un poco.</summary>
-    public static double FitFor(double w, double h) => !FitAuto() ? 1 : Math.Clamp(Math.Min(w / 1320.0, h / 640.0), 0.85, 1.6);
+    // FitAuto, FitFor y el tamaño de la ventana están en Display.cs (Pantalla y resolución)
     public void ApplyFit(double w, double h)
     {
         if (w <= 0 || h <= 0) return;
@@ -82,9 +80,10 @@ public sealed class MainWindow : Window
         Hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
         Title = "Encargos";
         try { AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "icon.ico")); } catch { }
-        try { AppWindow.Resize(new Windows.Graphics.SizeInt32(1320, 860)); } catch { }
         try { if (AppWindow.TitleBar is { } tb && AppWindowTitleBar.IsCustomizationSupported()) { tb.BackgroundColor = Windows.UI.Color.FromArgb(255, 6, 10, 20); tb.ButtonBackgroundColor = Windows.UI.Color.FromArgb(255, 6, 10, 20); tb.ForegroundColor = Windows.UI.Color.FromArgb(255, 226, 232, 240); tb.ButtonForegroundColor = Windows.UI.Color.FromArgb(255, 226, 232, 240); tb.InactiveBackgroundColor = Windows.UI.Color.FromArgb(255, 6, 10, 20); tb.ButtonInactiveBackgroundColor = Windows.UI.Color.FromArgb(255, 6, 10, 20); } } catch { }
         Services.Start(DispatcherQueue.GetForCurrentThread());
+        // tamaño de la ventana según Ajustes → Pantalla y resolución (cabe siempre en la pantalla)
+        try { InitWindowSize(); } catch (Exception ex) { Services.Report(ex); }
         _renderTimer = DispatcherQueue.CreateTimer(); _renderTimer.Interval = TimeSpan.FromMilliseconds(150); _renderTimer.IsRepeating = false; _renderTimer.Tick += (_, _) => Render(false);
         _tick = DispatcherQueue.CreateTimer(); _tick.Interval = TimeSpan.FromSeconds(45); _tick.IsRepeating = true; _tick.Tick += (_, _) => { if (_unlocked && Services.Sync.Enabled()) Services.Sync.SyncNow(); UpdateStatus(); };
         _toastTimer = DispatcherQueue.CreateTimer(); _toastTimer.IsRepeating = false; _toastTimer.Tick += (_, _) => HideToast();
@@ -188,6 +187,34 @@ public sealed class MainWindow : Window
             foreach (var k in new[] { "home", "orders", "settings" }) { LastRenderError = null; Root(PageFor(k)); await Task.Delay(1200); if (LastRenderError != null) { fails++; L($"ERROR (grande) en {k}: {LastRenderError}"); } await Snap(dir, $"{i++:00}_grande_{k}", L); }
             try { AppWindow.Resize(new Windows.Graphics.SizeInt32(1320, 860)); } catch { }
             await Task.Delay(1200);
+            // Pantalla y resolución: ventana de Ajustes, medidas fijas, maximizada, pantalla completa y tamaño del contenido
+            {
+                var (sw, sh) = ScreenSize(); L($"pantalla {sw}×{sh} · escala de Windows {DpiScale() * 100:0} %");
+                Root(new SettingsPage()); await Task.Delay(900); await Snap(dir, $"{i++:00}_ajustes_pantalla", L);
+                await SnapDialog(dir, $"{i++:00}_ventana_pantalla", L, () => DisplaySheet());
+                foreach (var m in new[] { "1024x768", "1366x768", "1280x720" })
+                {
+                    ApplyWindowMode(m, false); await Task.Delay(1200); var (ww, wh) = WindowSize();
+                    L($"medida {m}: ventana {ww}×{wh} · contenido {Fit * 100:0} %");
+                    if (sw > 0 && (ww > sw || wh > sh)) { fails++; L($"ERROR: la ventana {ww}×{wh} no cabe en la pantalla {sw}×{sh}"); }
+                    LastRenderError = null; Root(PageFor("home")); await Task.Delay(900); if (LastRenderError != null) { fails++; L($"ERROR ({m}): {LastRenderError}"); }
+                    await Snap(dir, $"{i++:00}_medida_{m}", L);
+                }
+                foreach (var z in new[] { 1.25, 0.85 })
+                {
+                    SetZoom(z); await Task.Delay(900);
+                    if (Math.Abs(Fit - z) > 0.001) { fails++; L($"ERROR: el contenido debería estar al {z * 100:0} % y está al {Fit * 100:0} %"); } else L($"contenido al {Fit * 100:0} %");
+                    await Snap(dir, $"{i++:00}_contenido_{z * 100:0}", L);
+                }
+                SetZoom(null);
+                ApplyWindowMode("max", false); await Task.Delay(1300); L($"maximizada: {(IsMaximized ? "sí" : "NO")} · ventana {WindowSize().W}×{WindowSize().H} · contenido {Fit * 100:0} %"); await Snap(dir, $"{i++:00}_maximizada", L);
+                ApplyWindowMode("full", false); await Task.Delay(1300); L($"pantalla completa: {(IsFullScreen ? "sí" : "NO")} · ventana {WindowSize().W}×{WindowSize().H}");
+                if (!IsFullScreen) { fails++; L("ERROR: no se puso en pantalla completa"); }
+                await Snap(dir, $"{i++:00}_pantalla_completa", L);
+                ExitFull(); await Task.Delay(1300); if (IsFullScreen) { fails++; L("ERROR: no salió de la pantalla completa"); }
+                ApplyWindowMode("1320x860", false); try { AppWindow.Resize(new Windows.Graphics.SizeInt32(1320, 860)); } catch { }
+                await Task.Delay(1200);
+            }
             // segunda vuelta: MODO DÍA (cambio inmediato, sin reiniciar)
             ApplyTheme(true); await Task.Delay(800);
             foreach (var k in new[] { "home", "orders", "clients", "new", "payments", "pending", "stats", "attention", "notifs", "settings" })

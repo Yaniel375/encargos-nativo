@@ -84,6 +84,17 @@ public static partial class K
         var b = Click(g, onClick); b.Padding = new Thickness(12, 10, 12, 10); b.CornerRadius = new CornerRadius(0);
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(b, title); return b;
     }
+    /// <summary>Opción elegible dentro de una ventana (misma anatomía que Toggle): icono, título, ayuda y círculo marcado si está elegida.</summary>
+    public static Button PickRow(string glyph, string title, string sub, bool selected, Action onClick)
+    {
+        var tt = T(title, 14, true, null, false); tt.FontWeight = FontWeights.ExtraBold;
+        var mark = new Border { Width = 20, Height = 20, CornerRadius = new CornerRadius(10), VerticalAlignment = VerticalAlignment.Center,
+            Background = selected ? PrimaryBrush : null, BorderBrush = selected ? null : Line2, BorderThickness = new Thickness(selected ? 0 : 1.5),
+            Child = selected ? new FontIcon { Glyph = "\uE73E", FontSize = 10, Foreground = White } : null };
+        var g = Lead(IconTile(glyph, 32), V(1, tt, sub.Length > 0 ? Muted(sub, 11.5) : null), mark); g.ColumnSpacing = 11;
+        var b = Click(g, onClick); b.Padding = new Thickness(12, 7, 12, 7); b.CornerRadius = new CornerRadius(0);
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(b, title + (selected ? " (elegida)" : "")); return b;
+    }
     public static Border OptionGroup(params UIElement[] rows)
     {
         var inner = new StackPanel(); var first = true;
