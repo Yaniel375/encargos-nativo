@@ -25,7 +25,7 @@ Apps nativas de **Encargos** (gestión de encargos, clientes, pagos y notas):
 - Windows: `dotnet build windows/Encargos.Win` (necesita .NET SDK y Windows App SDK). La autoprueba se activa con la variable `ENCARGOS_SELFTEST=<carpeta>` y usa una carpeta de datos aparte.
 - Tests del núcleo: Kotlin (`core`) y C# (`windows/Encargos.Tests`).
 
-## Estado al pasar a Claude Code (11/10/2026)
-- Publicado en `main`: unificación visual, ventanas, ficha del encargo como la del cliente, menús, acceso con PIN, foto de perfil, auditoría de Ajustes (Android).
-- Rama `recibo`: nueva imagen del recibo con el estilo de la app (Android, `util/Util.kt` → `Receipt`). Pendiente de revisar y publicar.
-- Rama `pc-unificar`: todos los cambios de Android pasados a PC (+ interruptores y grupos de Ajustes). Compila y la autoprueba da OK; **pendiente de que el usuario apruebe publicarla**. El recibo de PC (`Media.ReceiptView`) aún tiene el estilo antiguo (tarjeta blanca).
+## Estado actual (11/10/2026)
+- Publicado en `main` (CI de Android, Windows y núcleo en verde): unificación visual, ventanas, ficha del encargo como la del cliente, menús, acceso con PIN, foto de perfil, auditoría de Ajustes, recibo nuevo con el estilo de la app (Android `util/Util.kt` → `Receipt` y PC `Media.ReceiptView`) y versión de PC unificada con Android (interruptores y grupos de Ajustes incluidos).
+- Las ramas `recibo` y `pc-unificar` ya están fusionadas; no hay trabajo pendiente en ellas.
+- Sin verificar en dispositivo real: bot de Telegram real, sonido, vibración, huella/Windows Hello, WhatsApp, selector de archivos y fotos.
