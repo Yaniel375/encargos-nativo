@@ -156,7 +156,7 @@ fun LockScreen(onUnlocked: () -> Unit) {
                 .let { if (glowK.value > 0f) it.glow(green, 18.dp, 0.dp, .35f * glowK.value) else it }
                 .clip(cardShape).background(Brush.linearGradient(listOf(Color(17, 24, 39, 214), Color(10, 15, 28, 224)))).border(1.dp, lerpColor(NIGHT.line2, green.copy(alpha = .75f), glowK.value), cardShape)
                 // PIN y contraseña comparten el mismo tamaño de tarjeta (el contenido se centra dentro)
-                .let { if (!setup) it.heightIn(min = 436.dp) else it }
+                .let { if (!setup) it.heightIn(min = 500.dp) else it }
                 .padding(horizontal = 18.dp, vertical = 18.dp), verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically)) {
                 // encabezado centrado: candado pequeño, saludo y una línea de ayuda
                 val pinMode = !setup && !usePass
