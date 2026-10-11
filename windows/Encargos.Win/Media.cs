@@ -218,11 +218,17 @@ public static class Media
             Child = new TextBlock { Text = (x.Str("name").Trim() + "?")[..1].ToUpperInvariant(), FontFamily = Font, FontSize = 25, FontWeight = Microsoft.UI.Text.FontWeights.ExtraBold, Foreground = tx, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center } };
         var stChip = new Border { CornerRadius = new CornerRadius(13), Background = A(stc, .14), BorderBrush = A(stc, .38), BorderThickness = new Thickness(1), Padding = new Thickness(10, 4, 11, 5), VerticalAlignment = VerticalAlignment.Top,
             Child = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Children = { new Border { Width = 6, Height = 6, CornerRadius = new CornerRadius(3), Background = stc, VerticalAlignment = VerticalAlignment.Center }, Tx(st, 11.5, stc, "b") } } };
+        // el nombre usa todo el ancho; la etiqueta de estado va a la derecha de los datos de contacto
+        var nameT = Tx(x.Str("name").IfEmpty("Cliente"), 21, tx, "xb", true); nameT.Margin = new Thickness(14, 0, 0, 1);
         var info = new StackPanel { Spacing = 1, Margin = new Thickness(14, 0, 8, 0), Children = {
-            Tx(x.Str("name").IfEmpty("Cliente"), 21, tx, "xb", true), Tx("Tel. " + x.Str("phone").IfEmpty("sin teléfono"), 13, mut, "r", true),
-            Tx(core.ShippingName(core.TypeOf(x)) + " · " + Js.ToFixed(Js.Num(x["pounds"]), 2) + " lb", 13, mut), Tx("Encargo del " + Js.Fmt(x["date"]).Split(',')[0], 12, mut) } };
+            Tx("Tel. " + x.Str("phone").IfEmpty("sin teléfono"), 13, mut, "r", true),
+            Tx(core.ShippingName(core.TypeOf(x)) + " · " + Js.ToFixed(Js.Num(x["pounds"]), 2) + " lb", 13, mut, "r", true), Tx("Encargo del " + Js.Fmt(x["date"]).Split(',')[0], 12, mut) } };
         var head = new Grid(); head.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); head.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }); head.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        head.Children.Add(av); Grid.SetColumn(info, 1); head.Children.Add(info); Grid.SetColumn(stChip, 2); head.Children.Add(stChip);
+        head.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); head.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        Grid.SetRowSpan(av, 2); head.Children.Add(av);
+        Grid.SetColumn(nameT, 1); Grid.SetColumnSpan(nameT, 2); head.Children.Add(nameT);
+        Grid.SetColumn(info, 1); Grid.SetRow(info, 1); head.Children.Add(info);
+        Grid.SetColumn(stChip, 2); Grid.SetRow(stChip, 1); head.Children.Add(stChip);
         var k = tot > 0 ? Math.Clamp(paid / tot, 0, 1) : 1;
         var barTrack = new Grid { Height = 6 }; barTrack.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Math.Max(k, 0.0001), GridUnitType.Star) }); barTrack.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Math.Max(1 - k, 0.0001), GridUnitType.Star) });
         barTrack.Children.Add(new Border { CornerRadius = new CornerRadius(3), Background = track }); Grid.SetColumnSpan((FrameworkElement)barTrack.Children[0], 2);

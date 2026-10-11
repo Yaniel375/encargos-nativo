@@ -169,14 +169,15 @@ object Receipt {
         val av = dp(60f); rr(P + pad, yy, av, av, av * .3f, tile, if (owes) alpha(rose, .35f) else line2)
         text(x.str("name").trim().take(1).uppercase().ifEmpty { "?" }, P + pad + av / 2, yy + av / 2 + dp(9f), 25f, tx, fXb, Paint.Align.CENTER)
         // etiqueta de estado (punto + texto) a la derecha
-        val chW = width(st, 11.5f, fBold) + dp(32f); val chX = P + IW - pad - chW
-        rr(chX, yy, chW, dp(26f), dp(13f), alpha(stc, .14f), alpha(stc, .38f))
-        p.color = stc; c.drawCircle(chX + dp(13f), yy + dp(13f), dp(3f), p)
-        text(st, chX + dp(22f), yy + dp(17.5f), 11.5f, ink(stc), fBold)
-        val nx = P + pad + av + dp(14f); val nameMax = chX - nx - dp(8f)
-        text(x.str("name").ifEmpty { "Cliente" }, nx, yy + dp(20f), 21f, tx, fXb, maxW = nameMax)
-        text("Tel. " + x.str("phone").ifEmpty { "sin teléfono" }, nx, yy + dp(39f), 13f, mut, fReg, maxW = IW - pad * 2 - av - dp(14f))
-        text(app.shippingName(app.typeOf(x)) + " · " + Js.toFixed(Js.num(x["pounds"]), 2) + " lb", nx, yy + dp(56f), 13f, mut, fReg)
+        // el nombre usa todo el ancho; la etiqueta de estado va a la derecha de los datos de contacto
+        val nx = P + pad + av + dp(14f)
+        text(x.str("name").ifEmpty { "Cliente" }, nx, yy + dp(20f), 21f, tx, fXb, maxW = P + IW - pad - nx)
+        val chW = width(st, 11.5f, fBold) + dp(32f); val chX = P + IW - pad - chW; val chY = yy + dp(30f)
+        rr(chX, chY, chW, dp(26f), dp(13f), alpha(stc, .14f), alpha(stc, .38f))
+        p.color = stc; c.drawCircle(chX + dp(13f), chY + dp(13f), dp(3f), p)
+        text(st, chX + dp(22f), chY + dp(17.5f), 11.5f, ink(stc), fBold)
+        text("Tel. " + x.str("phone").ifEmpty { "sin teléfono" }, nx, yy + dp(39f), 13f, mut, fReg, maxW = chX - nx - dp(8f))
+        text(app.shippingName(app.typeOf(x)) + " · " + Js.toFixed(Js.num(x["pounds"]), 2) + " lb", nx, yy + dp(56f), 13f, mut, fReg, maxW = chX - nx - dp(8f))
         text("Encargo del " + Js.fmt(x["date"]).substringBefore(","), nx, yy + dp(73f), 12f, mut, fReg)
         yy += dp(84f)
         // recuadro del saldo (rojo si debe, verde si está pagado o tiene saldo a favor)
@@ -220,7 +221,7 @@ object Receipt {
             rows.forEachIndexed { i, (l, v, vc) ->
                 val last = boldLast && i == rows.size - 1
                 if (i > 0) { p.color = line; p.strokeWidth = dp(1f); c.drawLine(P + dp(18f), ry, P + IW - dp(18f), ry, p) }
-                text(l, P + dp(18f), ry + dp(26f), 14f, if (last) tx else mut, if (last) fBold else fReg, maxW = IW - dp(150f))
+                text(l, P + dp(18f), ry + dp(26f), 14f, if (last) tx else mut, if (last) fBold else fReg, maxW = IW - dp(36f) - width(v, 14f, fSemi) - dp(14f))
                 text(v, P + IW - dp(18f), ry + dp(26f), 14f, vc, if (last) fXb else fSemi, Paint.Align.RIGHT)
                 ry += rowH
             }
