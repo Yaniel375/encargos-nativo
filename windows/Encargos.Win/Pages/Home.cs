@@ -118,7 +118,7 @@ public sealed class HomePage : Screen
         if (od.Count > 0) items.Add(T("Encargos", 14, true, Blue));
         foreach (var x in od) items.Add(Click(T($"{x.Str("name")} · {Money(x["total"])} · {x.Str("status").IfEmpty("Pedido")}"), () => S.Go(new OrderPage(Js.Str(x["id"])))));
         if (nt.Count > 0) items.Add(T("Notas", 14, true, Amber));
-        foreach (var n in nt) items.Add(Click(T(n.Str("title").IfEmpty("Sin título")), () => S.Root(new NotesPage())));
+        foreach (var n in nt) { var sale = EncargosApp.IsSale(n); items.Add(Click(T(n.Str("title").IfEmpty("Sin título") + (sale ? $" · en venta {Money(n["price"])}" : "")), () => S.Root(new NotesPage(sale ? "sale" : "notes")))); }
         _results.Children.Add(Card(items.ToArray()));
     }
 }

@@ -20,13 +20,20 @@ public sealed class NotesPage : Screen
 {
     public override string Title => "Notas";
     public override string Nav => "notes";
-    public override string? Right { get { var n = Core.NotesSorted().Count; return $"{n} nota{(n == 1 ? "" : "s")}"; } }
-    string _q = ""; StackPanel _list = new();
+    public override string? Right => _tab == "sale" ? Plural(Core.SaleItems().Count, "artículo", "artículos") : Plural(Plain().Count, "nota", "notas");
+    string _q = "", _tab; StackPanel _list = new();
+    readonly SaleList _sale;
+    /// <summary>tab: "notes" (notas) o "sale" (artículos en venta).</summary>
+    public NotesPage(string tab = "notes") { _tab = tab; _sale = new SaleList(Redraw); }
+    /// <summary>Notas normales (los artículos en venta se guardan como notas con kind = "sale" y van en su pestaña).</summary>
+    List<JObj> Plain() => Core.NotesSorted().Where(n => !EncargosApp.IsSale(n)).ToList();
 
     public override void Build(StackPanel p)
     {
+        p.Children.Add(Choice(new[] { ("notes", "Notas"), ("sale", "En venta") }, _tab, k => { if (k == _tab) return; _tab = k; Redraw(); }));
+        if (_tab == "sale") { _sale.Build(p); return; }
         _list = new StackPanel { Spacing = 12 };
-        var all = Core.NotesSorted();
+        var all = Plain();
         var owe = all.Sum(n => Js.Num(n["amount"])); var oweN = all.Count(n => Js.Num(n["amount"]) > 0);
         if (owe > 0) p.Children.Add(Card(Row(V(1, T("Te deben en notas", 13.5, true, Mut), Muted($"{oweN} nota{(oweN == 1 ? "" : "s")} con monto")), Big(Money(owe), Rose, 22))));
         p.Children.Add(Btn("Nueva nota", () => S.Go(new NoteEditorPage(null)), true, null, ""));
@@ -56,7 +63,7 @@ public sealed class NotesPage : Screen
     void Fill()
     {
         _list.Children.Clear();
-        var all = Core.NotesSorted(); var nq = Js.NormSearch(_q);
+        var all = Plain(); var nq = Js.NormSearch(_q);
         var list = all.Where(n => nq.Length == 0 || Js.NormSearch(n.Str("title") + " " + n.Str("body")).Contains(nq)).ToList();
         if (all.Count == 0) { _list.Children.Add(Empty("Aún no tienes notas", "Guarda recordatorios, pedidos por hacer, direcciones o lo que necesites.")); return; }
         if (list.Count == 0) { _list.Children.Add(Empty("Ninguna nota coincide con la búsqueda.")); return; }

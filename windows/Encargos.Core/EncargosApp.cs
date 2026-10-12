@@ -465,6 +465,94 @@ public sealed class EncargosApp
     }
     public bool DeleteNote(string id) => PutBusiness("encargos_notes", new JArr(Ls.Arr("encargos_notes").Where(it => !(it is JObj o && Js.Eq(o["id"], id)))));
 
+    /* ---------------- Artículos en venta (se guardan como notas con kind = "sale") ---------------- */
+    public sealed record SaleSummary(int Items, int Available, int Units, double Value, double Invested, double Potential,
+                                     int SoldUnits, double Income, double Realized, double Lbs = 0, double TotalInvested = 0);
+    public static bool IsSale(JObj n) => n.Str("kind") == "sale";
+    public List<JObj> SaleItems() => Notes().Where(IsSale).OrderByDescending(n => Js.Num(n["updated"])).ToList();
+    public static List<JObj> SaleSales(JObj n) => n["sales"] is JArr a ? a.Objs() : new List<JObj>();
+    /// <summary>Envío de una unidad: libras × costo por libra.</summary>
+    public static double SaleShipCost(JObj n) => Js.Num(n["weight"]) * Js.Num(n["lbRate"]);
+    /// <summary>Lo que te cuesta una unidad puesta en tus manos: compra + envío por peso + otros gastos.</summary>
+    public static double SaleUnitCost(JObj n) => Js.Num(n["cost"]) + SaleShipCost(n) + Js.Num(n["extra"]);
+    /// <summary>Cálculos de todos los artículos: lo que vale lo que tienes, la inversión, la ganancia neta posible y la ya obtenida.</summary>
+    public SaleSummary SaleSummaryOf(List<JObj>? list = null)
+    {
+        list ??= SaleItems();
+        int units = 0, soldU = 0; double value = 0, invested = 0, income = 0, realized = 0, lbs = 0, soldCost = 0;
+        foreach (var n in list)
+        {
+            int st = Math.Max(0, (int)Js.Num(n["stock"])); double pr = Js.Num(n["price"]), uc = SaleUnitCost(n);
+            units += st; value += st * pr; invested += st * uc; lbs += st * Js.Num(n["weight"]);
+            foreach (var v in SaleSales(n))
+            {
+                int q = (int)Js.Num(v["qty"]); soldU += q; income += q * Js.Num(v["price"]); soldCost += q * Js.Num(v["cost"]);
+                realized += q * (Js.Num(v["price"]) - Js.Num(v["cost"]));
+            }
+        }
+        return new SaleSummary(list.Count, list.Count(it => Js.Num(it["stock"]) > 0), units, value, invested, value - invested, soldU, income, realized, lbs, invested + soldCost);
+    }
+    private static string SaleBody(JObj n)
+    {
+        int st = (int)Js.Num(n["stock"]); double w = Js.Num(n["weight"]);
+        return $"Artículo en venta · {Js.Money(n["price"])} · {(st == 1 ? "1 disponible" : $"{st} disponibles")}" +
+            (w > 0 ? $" · {Js.ToFixed(w, 2)} lb c/u" : "") + $" · costo {Js.Money(SaleUnitCost(n))} c/u" +
+            (string.IsNullOrWhiteSpace(n.Str("desc")) ? "" : "\n" + n.Str("desc"));
+    }
+    /// <summary>Guarda un artículo. cost = precio de compra por unidad; weight = libras por unidad; lbRate = costo del envío por libra;
+    /// extra = otros gastos por unidad (aduana, empaque…).</summary>
+    public Res<JObj> SaveSaleItem(string? id, string name, string desc, double price, double cost, int stock, IList<string> photos,
+                                  double weight = 0, string shipType = "avion", double lbRate = 0, double extra = 0)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return Res<JObj>.Fail("Escribe el nombre del artículo.");
+        if (double.IsNaN(price) || price <= 0) return Res<JObj>.Fail("Escribe el precio de venta.");
+        if (double.IsNaN(cost) || cost < 0) return Res<JObj>.Fail("Revisa el precio de compra.");
+        if (double.IsNaN(weight) || weight < 0 || double.IsNaN(lbRate) || lbRate < 0) return Res<JObj>.Fail("Revisa el peso y el costo por libra.");
+        if (double.IsNaN(extra) || extra < 0) return Res<JObj>.Fail("Revisa los otros gastos.");
+        int st = Math.Max(0, stock); var all = Ls.Arr("encargos_notes"); double now = Js.NowMs();
+        JObj n;
+        if (!string.IsNullOrEmpty(id))
+        {
+            n = all.FirstOrDefault(it => it is JObj o && Js.Eq(o["id"], id)) as JObj; if (n == null) return Res<JObj>.Fail("No existe el artículo");
+        }
+        else
+        {
+            n = JObj.Of(("id", "s" + Js.Base36((long)now) + Js.Base36((long)(System.Random.Shared.NextDouble() * 1.6e6)).Take(4)), ("kind", "sale"), ("created", now),
+                ("sales", new JArr()), ("color", "green"), ("pinned", false));
+            all.Add(n);
+        }
+        n["title"] = name.Trim(); n["desc"] = desc.Trim(); n["price"] = Js.ToFixed2(price); n["cost"] = Js.ToFixed2(cost); n["stock"] = (double)st;
+        n["weight"] = Js.ToFixed2(weight); n["shipType"] = string.IsNullOrEmpty(shipType) ? "avion" : shipType; n["lbRate"] = Js.ToFixed2(lbRate); n["extra"] = Js.ToFixed2(extra);
+        n["photos"] = new JArr(photos); n["updated"] = now; n["body"] = SaleBody(n); n.Remove("amount");
+        return PutBusiness("encargos_notes", all) ? Res<JObj>.Success(n) : Res<JObj>.Fail("No se pudo guardar el artículo (memoria llena).");
+    }
+    /// <summary>Registra una venta: baja las unidades y guarda el precio y el costo completo de ese momento (para la ganancia neta real).</summary>
+    public Res<JObj> SellSaleItem(string id, int qty, double price)
+    {
+        var all = Ls.Arr("encargos_notes");
+        if (all.FirstOrDefault(it => it is JObj o && Js.Eq(o["id"], id)) is not JObj n) return Res<JObj>.Fail("No existe el artículo");
+        int st = (int)Js.Num(n["stock"]);
+        if (qty <= 0) return Res<JObj>.Fail("La cantidad debe ser 1 o más.");
+        if (qty > st) return Res<JObj>.Fail(st <= 0 ? "No quedan unidades de este artículo." : $"Solo quedan {st}.");
+        if (double.IsNaN(price) || price < 0) return Res<JObj>.Fail("Revisa el precio de venta.");
+        double now = Js.NowMs();
+        if (n["sales"] is not JArr sales) { sales = new JArr(); n["sales"] = sales; }
+        sales.Add(JObj.Of(("t", now), ("qty", (double)qty), ("price", Js.ToFixed2(price)), ("cost", Js.ToFixed2(SaleUnitCost(n)))));
+        n["stock"] = (double)(st - qty); n["updated"] = now; n["body"] = SaleBody(n);
+        return PutBusiness("encargos_notes", all) ? Res<JObj>.Success(n) : Res<JObj>.Fail("No se pudo guardar la venta.");
+    }
+    /// <summary>Deshace la última venta registrada del artículo (devuelve las unidades).</summary>
+    public bool UndoLastSale(string id)
+    {
+        var all = Ls.Arr("encargos_notes");
+        if (all.FirstOrDefault(it => it is JObj o && Js.Eq(o["id"], id)) is not JObj n) return false;
+        if (n["sales"] is not JArr sales || sales.Count == 0) return false;
+        if (sales[^1] is not JObj last) return false;
+        sales.RemoveAt(sales.Count - 1);
+        n["stock"] = (double)((int)Js.Num(n["stock"]) + (int)Js.Num(last["qty"])); n["updated"] = (double)Js.NowMs(); n["body"] = SaleBody(n);
+        return PutBusiness("encargos_notes", all);
+    }
+
     public List<JObj> Expenses() => Ls.Arr("encargos_expenses").Objs();
     public Res<bool> SaveExpense(string? id, string concept, double amount, string dateYmd, string cat)
     {

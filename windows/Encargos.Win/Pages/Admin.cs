@@ -34,7 +34,7 @@ public sealed class BackupPage : Screen
         var bk = Services.Backup;
         var last = double.TryParse(Core.Ls.Get("encargos_last_backup", "0"), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var l) ? l : 0;
         var mode = bk.AutoMode;
-        var counts = new[] { ("Encargos", Core.Orders().Count), ("Clientes", Core.Clients().Count), ("Pagos", Core.Orders().Sum(o => Core.Payments(o).Count)), ("Notas", Core.Notes().Count) };
+        var counts = new[] { ("Encargos", Core.Orders().Count), ("Clientes", Core.Clients().Count), ("Pagos", Core.Orders().Sum(o => Core.Payments(o).Count)), ("Notas", Core.Notes().Count(n => !EncargosApp.IsSale(n))) };
         var head = H("Tus datos están guardados", 17);
         p.Children.Add(Card(Lead(IconTile("\uE83D", 48).Also(t => ((FontIcon)t.Child).Foreground = Green), V(2, head, Muted("Se guardan solos en este equipo", 13))),
             Cols(counts.Select(c => (UIElement)Kpi(c.Item1, c.Item2.ToString())).ToArray())));
