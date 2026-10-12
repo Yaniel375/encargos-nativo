@@ -1,0 +1,88 @@
+captura 00_acceso (1070x780)
+encargo de prueba creado: total $61.00 · pagado $10.00 · saldo $51.00
+captura 01_home (1070x780)
+captura 02_clients (1070x780)
+captura 03_new (1070x780)
+captura 04_orders (1070x780)
+captura 05_notes (1070x780)
+captura 06_payments (1070x780)
+captura 07_pending (1070x780)
+captura 08_stats (1070x780)
+captura 09_attention (1070x780)
+captura 10_notifs (1070x780)
+captura 11_completed (1070x780)
+captura 12_backup (1070x780)
+captura 13_security (1070x780)
+captura 14_sync (1070x780)
+captura 15_settings (1070x780)
+captura 16_ficha_encargo (1070x780)
+captura 17_editar_encargo (1070x780)
+captura 18_ficha_cliente (1070x780)
+captura 19_diagnostico_sync (1070x780)
+captura 20_ficha_encargo_fotos (1070x780)
+captura 21_ficha_cliente_fotos (1070x780)
+captura 22_visor_vertical (1070x780)
+captura 23_visor_horizontal (1070x780)
+captura 24_perfil_con_foto (1070x780)
+captura 25_ventana_meta (1028x749)
+captura 26_ventana_negocio (1028x749)
+captura 27_ventana_confirmar (1028x749)
+captura 28_acceso_pin (1070x780)
+captura 29_acceso_contrasena (1070x780)
+captura 30_ficha_como_cliente (1070x780)
+captura 31_ventana_recibo (1028x749)
+en venta: 3 artículos · valor $151.00 · inversión $85.50 · ganancia neta $13.50 · cobrado $42.00
+captura 32_en_venta (1070x780)
+captura 33_notas_sin_articulos (1070x780)
+captura 34_articulo (1070x780)
+captura 35_ventana_vendi (1028x749)
+captura 36_ventana_compartir (1028x749)
+captura 37_articulo_nuevo (1070x780)
+captura 38_anillo_llenandose (1070x780)
+captura 39_anillo_lleno (1070x780)
+captura 40_agua_llenandose (1070x780)
+captura 41_agua_llena (1070x780)
+ventana 1028×749 · escala 0.85
+captura 42_grande_home (1070x780)
+captura 43_grande_orders (1070x780)
+captura 44_grande_settings (1070x780)
+pantalla 1024×768 · escala de Windows 100 %
+captura 45_ajustes_pantalla (1070x780)
+captura 46_ventana_pantalla (1028x749)
+medida 1024x768: ventana 1024×720 · contenido 85 %
+captura 47_medida_1024x768 (1049x709)
+medida 1366x768: ventana 1024×720 · contenido 85 %
+captura 48_medida_1366x768 (1049x709)
+medida 1280x720: ventana 1024×720 · contenido 85 %
+captura 49_medida_1280x720 (1049x709)
+contenido al 125 %
+captura 50_contenido_125 (1049x709)
+contenido al 85 %
+captura 51_contenido_85 (1049x709)
+captura 52_ancha_home (1049x709)
+captura 53_ancha_orders (1049x709)
+captura 54_ancha_settings (1049x709)
+medida 900x600: exacta
+recordar el último tamaño: vuelve a 900×600
+teclado: F11 → pantalla completa: sí
+teclado: Esc → sale de pantalla completa: sí
+teclado: Ctrl + → contenido 85 % → 90 %
+teclado: Ctrl 0 → contenido 100 %
+atajos de teclado: OK
+maximizada: sí · ventana 1040×736 · contenido 85 %
+captura 55_maximizada (1065x725)
+pantalla completa: sí · ventana 1024×768
+captura 56_pantalla_completa (1065x799)
+captura dia_57_home (1028x749)
+captura dia_58_orders (1028x749)
+captura dia_59_clients (1028x749)
+captura dia_60_new (1028x749)
+captura dia_61_payments (1028x749)
+captura dia_62_pending (1028x749)
+captura dia_63_stats (1028x749)
+captura dia_64_attention (1028x749)
+captura dia_65_notifs (1028x749)
+captura dia_66_settings (1028x749)
+captura dia_67_ficha (1028x749)
+captura dia_68_en_venta (1028x749)
+RESULTADO: OK
